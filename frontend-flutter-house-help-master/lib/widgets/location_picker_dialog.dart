@@ -37,10 +37,13 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     });
 
     try {
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
       final results = await locationProvider.searchLocations(query);
       setState(() {
-        _searchResults = results;
+        _searchResults = results.cast<models.Location>();
         _isSearching = false;
       });
     } catch (e) {
@@ -53,7 +56,10 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   }
 
   void _selectLocation(models.Location location) {
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
     locationProvider.setManualLocation(location);
     Navigator.of(context).pop();
   }
@@ -64,9 +70,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     final theme = Theme.of(context);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.8,
@@ -128,12 +132,16 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                         )
                       : null,
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withAlpha((0.3 * 255).round()),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 onChanged: _searchLocations,
               ),
@@ -160,7 +168,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                       const SizedBox(height: 8),
                       _LocationTile(
                         location: locationProvider.currentLocationData!,
-                        onTap: () => _selectLocation(locationProvider.currentLocationData!),
+                        onTap: () => _selectLocation(
+                          locationProvider.currentLocationData!,
+                        ),
                         isCurrent: true,
                       ),
                       const SizedBox(height: 24),
@@ -176,10 +186,12 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...locationProvider.recentLocations.map((location) => _LocationTile(
-                        location: location,
-                        onTap: () => _selectLocation(location),
-                      )),
+                      ...locationProvider.recentLocations.map(
+                        (location) => _LocationTile(
+                          location: location,
+                          onTap: () => _selectLocation(location),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                     ],
 
@@ -226,10 +238,12 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                           ),
                         )
                       else
-                        ..._searchResults.map((location) => _LocationTile(
-                          location: location,
-                          onTap: () => _selectLocation(location),
-                        )),
+                        ..._searchResults.map(
+                          (location) => _LocationTile(
+                            location: location,
+                            onTap: () => _selectLocation(location),
+                          ),
+                        ),
                     ],
                   ],
                 ),
@@ -272,7 +286,7 @@ class _LocationTile extends StatelessWidget {
           border: Border.all(
             color: isCurrent
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outline.withOpacity(0.2),
+                : theme.colorScheme.outline.withAlpha((0.2 * 255).round()),
             width: isCurrent ? 2 : 1,
           ),
         ),

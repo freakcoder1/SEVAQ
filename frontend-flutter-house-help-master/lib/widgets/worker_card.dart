@@ -13,7 +13,8 @@ class WorkerCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Semantics(
-      label: '${worker.user.firstName} ${worker.user.lastName}, rating ${worker.rating} with ${worker.reviewCount} reviews, available',
+      label:
+          '${worker.user.firstName} ${worker.user.lastName}, rating ${worker.rating} with ${worker.reviewCount} reviews, available',
       hint: 'Tap to view worker details',
       button: true,
       child: GestureDetector(
@@ -25,7 +26,7 @@ class WorkerCard extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 theme.colorScheme.surface,
-                theme.colorScheme.surface.withOpacity(0.9),
+                theme.colorScheme.surface.withAlpha((0.9 * 255).round()),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -33,7 +34,7 @@ class WorkerCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: theme.primaryColor.withOpacity(0.1),
+                color: theme.primaryColor.withAlpha((0.1 * 255).round()),
                 blurRadius: 12,
                 offset: Offset(0, 5),
               ),

@@ -10,45 +10,46 @@ class LocationSetupScreen extends StatefulWidget {
   _LocationSetupScreenState createState() => _LocationSetupScreenState();
 }
 
-class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerProviderStateMixin {
+class _LocationSetupScreenState extends State<LocationSetupScreen>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
-  
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
   }
-  
+
   void _initializeAnimations() {
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _slideAnimation = Tween<double>(begin: 50, end: 0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
+
     _animationController.forward();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _handleLocationSelection(
     String option,
     LocationProvider locationProvider,
@@ -59,7 +60,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
           // Use current GPS location
           await locationProvider.refreshLocation();
           break;
-        
+
         case 'new':
           // Open search dialog for new address
           await showDialog(
@@ -67,21 +68,26 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
             builder: (context) => const LocationPickerDialog(),
           );
           break;
-        
+
         case 'saved':
           // Show saved locations in a bottom sheet
           await _showSavedLocationsBottomSheet(locationProvider);
           break;
       }
-      
+
       // Check if location was successfully set
       if (locationProvider.currentLocationData != null) {
         // Mark location setup as complete
         locationProvider.markLocationSetupComplete();
-        
+
         // Check service availability
-        await locationProvider.checkServiceAvailability();
-        
+        if (locationProvider.currentLocationData != null) {
+          await locationProvider.checkServiceAvailability(
+            locationProvider.currentLocationData!.latitude ?? 0.0,
+            locationProvider.currentLocationData!.longitude ?? 0.0,
+          );
+        }
+
         // Navigate based on availability
         if (locationProvider.availabilityStatus?.isAvailable == true) {
           Navigator.pushReplacement(
@@ -104,10 +110,12 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
       );
     }
   }
-  
-  Future<void> _showSavedLocationsBottomSheet(LocationProvider locationProvider) async {
+
+  Future<void> _showSavedLocationsBottomSheet(
+    LocationProvider locationProvider,
+  ) async {
     final savedLocations = locationProvider.recentLocations;
-    
+
     if (savedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -178,14 +186,18 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withAlpha((0.2 * 255).round()),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -195,25 +207,30 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
                               children: [
                                 Text(
                                   location.address,
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(fontWeight: FontWeight.w500),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (location.city != null && location.state != null)
+                                if (location.city != null &&
+                                    location.state != null)
                                   Text(
                                     '${location.city}, ${location.state}',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
                                   ),
                               ],
                             ),
                           ),
                           Icon(
                             Icons.chevron_right,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             size: 20,
                           ),
                         ],
@@ -245,7 +262,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
       },
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
@@ -257,8 +274,8 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              theme.primaryColor.withOpacity(0.1),
-              theme.colorScheme.surface.withOpacity(0.95),
+              theme.primaryColor.withAlpha((0.1 * 255).round()),
+              theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
               theme.colorScheme.surface,
             ],
             begin: Alignment.topCenter,
@@ -287,12 +304,18 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surface.withOpacity(0.8),
+                          color: theme.colorScheme.surface.withAlpha(
+                            (0.8 * 255).round(),
+                          ),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border: Border.all(
+                            color: Colors.white.withAlpha((0.3 * 255).round()),
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.shadow.withOpacity(0.2),
+                              color: theme.colorScheme.shadow.withAlpha(
+                                (0.2 * 255).round(),
+                              ),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -326,9 +349,9 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Location Options
                 AnimatedBuilder(
                   animation: _slideAnimation,
@@ -346,43 +369,49 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
                       _buildOptionCard(
                         icon: Icons.my_location,
                         title: 'Use Current Location',
-                        subtitle: 'Detect your location automatically using GPS',
-                        onTap: () => _handleLocationSelection('current', locationProvider),
+                        subtitle:
+                            'Detect your location automatically using GPS',
+                        onTap: () => _handleLocationSelection(
+                          'current',
+                          locationProvider,
+                        ),
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       _buildOptionCard(
                         icon: Icons.search,
                         title: 'Add New Address',
                         subtitle: 'Search for and select a specific address',
-                        onTap: () => _handleLocationSelection('new', locationProvider),
+                        onTap: () =>
+                            _handleLocationSelection('new', locationProvider),
                         color: theme.colorScheme.secondary,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       if (locationProvider.recentLocations.isNotEmpty)
                         _buildOptionCard(
                           icon: Icons.history,
                           title: 'Choose from Saved',
-                          subtitle: 'Select from your previously saved locations',
-                          onTap: () => _handleLocationSelection('saved', locationProvider),
+                          subtitle:
+                              'Select from your previously saved locations',
+                          onTap: () => _handleLocationSelection(
+                            'saved',
+                            locationProvider,
+                          ),
                           color: theme.colorScheme.tertiary,
                         ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Footer
                 AnimatedBuilder(
                   animation: _fadeAnimation,
                   builder: (context, child) {
-                    return Opacity(
-                      opacity: _fadeAnimation.value,
-                      child: child,
-                    );
+                    return Opacity(opacity: _fadeAnimation.value, child: child);
                   },
                   child: Row(
                     children: [
@@ -410,7 +439,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
       ),
     );
   }
-  
+
   Widget _buildOptionCard({
     required IconData icon,
     required String title,
@@ -428,10 +457,12 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(
+            color: Colors.white.withAlpha((0.2 * 255).round()),
+          ),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.shadow.withOpacity(0.1),
+              color: theme.colorScheme.shadow.withAlpha((0.1 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -443,15 +474,11 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> with TickerPr
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha((0.1 * 255).round()),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withAlpha((0.3 * 255).round())),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
+              child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(

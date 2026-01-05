@@ -61,7 +61,7 @@ class AppTheme {
         onErrorContainer: Color(0xFF410002),
         surface: surfaceColor,
         onSurface: Color(0xFF1A1C1E),
-        surfaceVariant: Color(0xFFDDE3EA),
+        surfaceContainerHighest: Color(0xFFDDE3EA),
         onSurfaceVariant: Color(0xFF41484D),
         outline: Color(0xFF71787E),
         outlineVariant: Color(0xFFC1C7CE),
@@ -73,21 +73,66 @@ class AppTheme {
         surfaceTint: primaryColor,
       ),
       textTheme: TextTheme(
-        displayLarge: _googleFontTextStyle(fontSize: 57, fontWeight: FontWeight.w400),
-        displayMedium: _googleFontTextStyle(fontSize: 45, fontWeight: FontWeight.w400),
-        displaySmall: _googleFontTextStyle(fontSize: 36, fontWeight: FontWeight.w400),
-        headlineLarge: _googleFontTextStyle(fontSize: 32, fontWeight: FontWeight.w400),
-        headlineMedium: _googleFontTextStyle(fontSize: 28, fontWeight: FontWeight.w400),
-        headlineSmall: _googleFontTextStyle(fontSize: 24, fontWeight: FontWeight.w400),
-        titleLarge: _googleFontTextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-        titleMedium: _googleFontTextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        titleSmall: _googleFontTextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        labelLarge: _googleFontInterTextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        labelMedium: _googleFontInterTextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        labelSmall: _googleFontInterTextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-        bodyLarge: _googleFontInterTextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-        bodyMedium: _googleFontInterTextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-        bodySmall: _googleFontInterTextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        displayLarge: _googleFontTextStyle(
+          fontSize: 57,
+          fontWeight: FontWeight.w400,
+        ),
+        displayMedium: _googleFontTextStyle(
+          fontSize: 45,
+          fontWeight: FontWeight.w400,
+        ),
+        displaySmall: _googleFontTextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineLarge: _googleFontTextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineMedium: _googleFontTextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineSmall: _googleFontTextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w400,
+        ),
+        titleLarge: _googleFontTextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+        titleMedium: _googleFontTextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        titleSmall: _googleFontTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        labelLarge: _googleFontInterTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        labelMedium: _googleFontInterTextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        labelSmall: _googleFontInterTextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+        bodyLarge: _googleFontInterTextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        bodyMedium: _googleFontInterTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        bodySmall: _googleFontInterTextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: surfaceColor,
@@ -158,7 +203,7 @@ class AppTheme {
         onErrorContainer: Color(0xFFFFDAD6),
         surface: Color(0xFF0F1419),
         onSurface: Color(0xFFE0E2E8),
-        surfaceVariant: Color(0xFF41484D),
+        surfaceContainerHighest: Color(0xFF41484D),
         onSurfaceVariant: Color(0xFFC1C7CE),
         outline: Color(0xFF8B9198),
         outlineVariant: Color(0xFF41484D),
@@ -170,21 +215,66 @@ class AppTheme {
         surfaceTint: Color(0xFF9ECAFF),
       ),
       textTheme: TextTheme(
-        displayLarge: _googleFontTextStyle(fontSize: 57, fontWeight: FontWeight.w400),
-        displayMedium: _googleFontTextStyle(fontSize: 45, fontWeight: FontWeight.w400),
-        displaySmall: _googleFontTextStyle(fontSize: 36, fontWeight: FontWeight.w400),
-        headlineLarge: _googleFontTextStyle(fontSize: 32, fontWeight: FontWeight.w400),
-        headlineMedium: _googleFontTextStyle(fontSize: 28, fontWeight: FontWeight.w400),
-        headlineSmall: _googleFontTextStyle(fontSize: 24, fontWeight: FontWeight.w400),
-        titleLarge: _googleFontTextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-        titleMedium: _googleFontTextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        titleSmall: _googleFontTextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        labelLarge: _googleFontInterTextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        labelMedium: _googleFontInterTextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        labelSmall: _googleFontInterTextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-        bodyLarge: _googleFontInterTextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-        bodyMedium: _googleFontInterTextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-        bodySmall: _googleFontInterTextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        displayLarge: _googleFontTextStyle(
+          fontSize: 57,
+          fontWeight: FontWeight.w400,
+        ),
+        displayMedium: _googleFontTextStyle(
+          fontSize: 45,
+          fontWeight: FontWeight.w400,
+        ),
+        displaySmall: _googleFontTextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineLarge: _googleFontTextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineMedium: _googleFontTextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w400,
+        ),
+        headlineSmall: _googleFontTextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w400,
+        ),
+        titleLarge: _googleFontTextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+        titleMedium: _googleFontTextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        titleSmall: _googleFontTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        labelLarge: _googleFontInterTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        labelMedium: _googleFontInterTextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        labelSmall: _googleFontInterTextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+        bodyLarge: _googleFontInterTextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        bodyMedium: _googleFontInterTextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        bodySmall: _googleFontInterTextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Color(0xFF0F1419),

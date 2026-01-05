@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
@@ -39,15 +38,60 @@ class _MainScreenState extends State<_MainScreenContentState> {
   bool _hasCheckedLocation = false;
   bool _showingLocationPopup = false;
 
-  List<Widget> get _screens => [
-    Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return HomeScreen();
-      },
-    ),
-    HistoryScreen(),
-    ProfileScreen(),
-  ];
+  List<Widget> get _screens => [HomeScreen(), HistoryScreen(), ProfileScreen()];
+
+  /// Safely get a provider with error handling
+  T? _safeGetProvider<T extends ChangeNotifier>(BuildContext context) {
+    try {
+      return Provider.of<T>(context, listen: false);
+    } catch (e) {
+      debugPrint('Failed to get provider $T: $e');
+      return null;
+    }
+  }
+
+  Widget _buildProviderErrorScreen(String errorMessage) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Error'), backgroundColor: Colors.red),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error, size: 64, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              'Provider Error',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Try to rebuild the widget tree
+                // Use a different approach to avoid context issues
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => MainScreen()),
+                    (Route<dynamic> route) => false,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text('Restart App', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -59,17 +103,22 @@ class _MainScreenState extends State<_MainScreenContentState> {
 
   Future<void> _checkLocationSetup() async {
     if (_hasCheckedLocation || _showingLocationPopup) return;
-    
+
     _hasCheckedLocation = true;
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    
+    final locationProvider = _safeGetProvider<LocationProvider>(context);
+
+    if (locationProvider == null) {
+      debugPrint('LocationProvider not available during location setup check');
+      return;
+    }
+
     // Check if location setup is needed
     if (locationProvider.needsLocationSetup()) {
       _showingLocationPopup = true;
-      
+
       // Use Future.delayed to ensure the main screen is fully built
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       if (mounted) {
         await showDialog(
           context: context,
@@ -82,7 +131,7 @@ class _MainScreenState extends State<_MainScreenContentState> {
             isNewUser: true,
           ),
         );
-        
+
         _showingLocationPopup = false;
       }
     }
@@ -91,7 +140,10 @@ class _MainScreenState extends State<_MainScreenContentState> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [HomeScreen(), HistoryScreen(), ProfileScreen()],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {

@@ -19,8 +19,10 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
     super.initState();
     // Use WidgetsBinding.instance.addPostFrameCallback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ReviewProvider>(context, listen: false)
-          .fetchReviewsForWorker(widget.worker.id);
+      Provider.of<ReviewProvider>(
+        context,
+        listen: false,
+      ).fetchReviewsForWorker(widget.worker.id);
     });
   }
 
@@ -46,18 +48,19 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                   Icon(
                     Icons.rate_review,
                     size: 80,
-                    color: theme.colorScheme.secondary.withOpacity(0.5),
+                    color: theme.colorScheme.secondary.withAlpha(
+                      (0.5 * 255).round(),
+                    ),
                   ),
                   SizedBox(height: 16),
-                  Text(
-                    'No reviews yet',
-                    style: theme.textTheme.titleLarge,
-                  ),
+                  Text('No reviews yet', style: theme.textTheme.titleLarge),
                   SizedBox(height: 8),
                   Text(
                     'Be the first to leave a review!',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withAlpha(
+                        (0.7 * 255).round(),
+                      ),
                     ),
                   ),
                 ],
@@ -113,12 +116,10 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                           ),
                         ],
                       ),
-                      if (review.comment != null && review.comment!.isNotEmpty) ...[
+                      if (review.comment != null &&
+                          review.comment!.isNotEmpty) ...[
                         SizedBox(height: 12),
-                        Text(
-                          review.comment!,
-                          style: theme.textTheme.bodyLarge,
-                        ),
+                        Text(review.comment!, style: theme.textTheme.bodyLarge),
                       ],
                     ],
                   ),

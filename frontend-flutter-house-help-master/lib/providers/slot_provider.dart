@@ -4,31 +4,84 @@ import '../models/slot.dart';
 
 class SlotProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
+
   List<Slot> _slots = [];
   bool _isLoading = false;
+  String? _errorMessage;
 
   List<Slot> get slots => _slots;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  SlotProvider();
 
   Future<void> fetchSlots() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
       final response = await _apiService.get('slots');
       if (response != null) {
         _slots = (response as List).map((i) => Slot.fromJson(i)).toList();
+        notifyListeners();
       }
     } catch (e) {
-      print('Error fetching slots: $e');
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Method to filter slots by worker would be good usually, but backend might not support it yet
-  // For now let's assume we fetch all and filter client side or implement backend filter
-  List<Slot> getSlotsForWorker(String workerId) {
-    return _slots.where((s) => s.workerId == workerId && !s.isBooked).toList();
+  Future<void> fetchSlotsForWorker(String workerId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.get('slots/worker/$workerId');
+      if (response != null) {
+        _slots = (response as List).map((i) => Slot.fromJson(i)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchAvailableSlots(String workerId, DateTime date) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.get(
+        'slots/worker/$workerId/available?date=${date.toIso8601String()}',
+      );
+      if (response != null) {
+        _slots = (response as List).map((i) => Slot.fromJson(i)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearSlots() {
+    _slots = [];
+    notifyListeners();
   }
 }

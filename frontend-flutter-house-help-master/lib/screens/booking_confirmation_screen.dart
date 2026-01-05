@@ -5,7 +5,8 @@ import '../models/booking.dart';
 class BookingConfirmationScreen extends StatelessWidget {
   final Booking booking;
 
-  const BookingConfirmationScreen({Key? key, required this.booking}) : super(key: key);
+  const BookingConfirmationScreen({Key? key, required this.booking})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -21,11 +22,7 @@ class BookingConfirmationScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 100,
-            ),
+            Icon(Icons.check_circle, color: Colors.green, size: 100),
             SizedBox(height: 24),
             Text(
               'Booking Confirmed!',
@@ -49,7 +46,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((0.05 * 255).round()),
                     blurRadius: 10,
                     offset: Offset(0, 4),
                   ),
@@ -59,13 +56,21 @@ class BookingConfirmationScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     leading: Icon(Icons.calendar_today),
-                    title: Text(DateFormat('EEEE, MMMM d, yyyy').format(booking.startTime)),
-                    subtitle: Text('${DateFormat('jm').format(booking.startTime)} - ${DateFormat('jm').format(booking.endTime)}'),
+                    title: Text(
+                      DateFormat(
+                        'EEEE, MMMM d, yyyy',
+                      ).format(booking.startTime),
+                    ),
+                    subtitle: Text(
+                      '${DateFormat('jm').format(booking.startTime)} - ${DateFormat('jm').format(booking.endTime)}',
+                    ),
                   ),
                   Divider(),
                   ListTile(
                     leading: CircleAvatar(child: Icon(Icons.person)),
-                    title: Text('${booking.worker.user.firstName} ${booking.worker.user.lastName}'),
+                    title: Text(
+                      '${booking.worker.user.firstName} ${booking.worker.user.lastName}',
+                    ),
                     subtitle: Text(booking.service.name),
                   ),
                   Divider(),

@@ -16,12 +16,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Use WidgetsBinding.instance.addPostFrameCallback to avoid setState during build
+    // Initialize controllers immediately with empty text
+    _firstNameController = TextEditingController();
+    _lastNameController = TextEditingController();
+    _emailController = TextEditingController();
+
+    // Set initial values after widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
-      _firstNameController = TextEditingController(text: user?.firstName ?? '');
-      _lastNameController = TextEditingController(text: user?.lastName ?? '');
-      _emailController = TextEditingController(text: user?.email ?? '');
+      _firstNameController.text = user?.firstName ?? '';
+      _lastNameController.text = user?.lastName ?? '';
+      _emailController.text = user?.email ?? '';
     });
   }
 
@@ -36,19 +41,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.updateProfile(
-        _firstNameController.text.trim(),
-        _lastNameController.text.trim(),
-        _emailController.text.trim(),
-      );
+      final success = await authProvider.updateProfile({
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'email': _emailController.text.trim(),
+      });
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile updated successfully')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Profile updated successfully')));
         Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage ?? 'Failed to update profile')),
+          SnackBar(
+            content: Text(
+              authProvider.errorMessage ?? 'Failed to update profile',
+            ),
+          ),
         );
       }
     }

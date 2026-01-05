@@ -19,7 +19,7 @@ class ReviewProvider with ChangeNotifier {
         _reviews = (response as List).map((i) => Review.fromJson(i)).toList();
       }
     } catch (e) {
-      print('Error fetching reviews: $e');
+      debugPrint('Error fetching reviews: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -36,7 +36,7 @@ class ReviewProvider with ChangeNotifier {
         return review;
       }
     } catch (e) {
-      print('Error submitting review: $e');
+      debugPrint('Error submitting review: $e');
     }
     return null;
   }

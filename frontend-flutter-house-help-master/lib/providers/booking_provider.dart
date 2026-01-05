@@ -21,7 +21,7 @@ class BookingProvider with ChangeNotifier {
         _bookings.sort((a, b) => b.startTime.compareTo(a.startTime));
       }
     } catch (e) {
-      print('Error fetching bookings: $e');
+      debugPrint('Error fetching bookings: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -38,14 +38,17 @@ class BookingProvider with ChangeNotifier {
         return booking;
       }
     } catch (e) {
-      print('Error creating booking: $e');
+      debugPrint('Error creating booking: $e');
     }
     return null;
   }
 
   Future<bool> cancelBooking(String bookingId) async {
     try {
-      final response = await _apiService.patch('bookings/$bookingId/cancel', {});
+      final response = await _apiService.patch(
+        'bookings/$bookingId/cancel',
+        {},
+      );
       if (response != null) {
         final index = _bookings.indexWhere((b) => b.id == bookingId);
         if (index != -1) {
@@ -55,7 +58,7 @@ class BookingProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error cancelling booking: $e');
+      debugPrint('Error cancelling booking: $e');
     }
     return false;
   }

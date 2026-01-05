@@ -1,53 +1,81 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-  User? _user;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
 
-  User? get user => _user;
+  User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _user != null;
+
+  AuthProvider() {
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      if (token != null) {
+        final userId = await _storage.read(key: 'user_id');
+        if (userId != null) {
+          final response = await _apiService.get('users/$userId');
+          if (response != null) {
+            _currentUser = User.fromJson(response);
+            notifyListeners();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading current user: $e');
+    }
+  }
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-    
-    // Check server connectivity first
-    final isServerAvailable = await _apiService.checkServerHealth();
-    if (!isServerAvailable) {
-      _errorMessage = 'Server is not available. Please check your internet connection and try again.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-    
+
     try {
       final response = await _apiService.post('auth/login', {
         'email': email,
         'password': password,
       });
-      await _apiService.saveToken(response['access_token']);
-      _user = User.fromJson(response['user']);
-      // Store user ID for location services
-      await _apiService.saveUserId(_user!.id.toString());
-      _isLoading = false;
-      notifyListeners();
-      return true;
+
+      if (response != null) {
+        final token = response['access_token'];
+        final user = response['user'];
+
+        if (token != null && user != null) {
+          await _storage.write(key: 'jwt_token', value: token);
+          await _storage.write(key: 'user_id', value: user['id'].toString());
+
+          _currentUser = User.fromJson(user);
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
     }
+
+    _isLoading = false;
+    _errorMessage = 'Invalid credentials';
+    notifyListeners();
+    return false;
   }
 
-  Future<bool> signup(
+  Future<bool> register(
     String email,
     String password,
     String firstName,
@@ -56,89 +84,101 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-    
-    // Check server connectivity first
-    final isServerAvailable = await _apiService.checkServerHealth();
-    if (!isServerAvailable) {
-      _errorMessage = 'Server is not available. Please check your internet connection and try again.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-    
+
     try {
-      final response = await _apiService.post('auth/signup', {
+      final response = await _apiService.post('auth/register', {
         'email': email,
         'password': password,
         'firstName': firstName,
         'lastName': lastName,
+        'role': 'user',
       });
-      await _apiService.saveToken(response['access_token']);
-      _user = User.fromJson(response['user']);
-      // Store user ID for location services
-      await _apiService.saveUserId(_user!.id.toString());
-      _isLoading = false;
-      notifyListeners();
-      return true;
+
+      if (response != null) {
+        final token = response['access_token'];
+        final user = response['user'];
+
+        if (token != null && user != null) {
+          await _storage.write(key: 'jwt_token', value: token);
+          await _storage.write(key: 'user_id', value: user['id'].toString());
+
+          _currentUser = User.fromJson(user);
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
     }
+
+    _isLoading = false;
+    _errorMessage = 'Registration failed';
+    notifyListeners();
+    return false;
   }
 
   Future<void> logout() async {
-    await _apiService.clearToken();
-    await _apiService.clearUserId();
-    _user = null;
-    notifyListeners();
-  }
-
-  Future<bool> updateProfile(String firstName, String lastName, String email) async {
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
+
     try {
-      final response = await _apiService.patch('auth/profile', {
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-      });
-      _user = User.fromJson(response);
-      _isLoading = false;
-      notifyListeners();
-      return true;
+      await _storage.delete(key: 'jwt_token');
+      await _storage.delete(key: 'user_id');
+      _currentUser = null;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      debugPrint('Error during logout: $e');
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
+
+  Future<bool> updateProfile(Map<String, dynamic> updateData) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.patch(
+        'users/${_currentUser!.id}',
+        updateData,
+      );
+
+      if (response != null) {
+        _currentUser = User.fromJson(response);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+
+  bool get isAuthenticated => _currentUser != null;
+
+  // Compatibility methods for existing code
+  User? get user => _currentUser;
 
   Future<void> checkAuth() async {
-    final token = await _apiService.getToken();
-    if (token != null) {
-      try {
-        // Check server connectivity first
-        final isServerAvailable = await _apiService.checkServerHealth();
-        if (!isServerAvailable) {
-          // Server is not available, but we have a token
-          // This might be an offline scenario, so we can still set the user
-          // based on stored data if available, or just return
-          return;
-        }
-        
-        final response = await _apiService.get('auth/profile');
-        _user = User.fromJson(response);
-        // Store user ID for location services
-        await _apiService.saveUserId(_user!.id.toString());
-        notifyListeners();
-      } catch (e) {
-        // Token might be invalid, clear it
-        await logout();
-      }
-    }
+    await _loadCurrentUser();
+  }
+
+  Future<bool> signup(
+    String email,
+    String password,
+    String firstName,
+    String lastName,
+  ) async {
+    return await register(email, password, firstName, lastName);
   }
 }

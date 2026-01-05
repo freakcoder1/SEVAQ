@@ -9,7 +9,8 @@ import 'worker_details_screen.dart';
 class ServiceDetailsScreen extends StatefulWidget {
   final Service service;
 
-  const ServiceDetailsScreen({Key? key, required this.service}) : super(key: key);
+  const ServiceDetailsScreen({Key? key, required this.service})
+    : super(key: key);
 
   @override
   _ServiceDetailsScreenState createState() => _ServiceDetailsScreenState();
@@ -21,9 +22,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.service.name),
-      ),
+      appBar: AppBar(title: Text(widget.service.name)),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(24),
         child: Column(
@@ -33,7 +32,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             Container(
               height: 150,
               decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.1),
+                color: theme.primaryColor.withAlpha((0.1 * 255).round()),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
@@ -87,10 +86,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               ),
             ),
             SizedBox(height: 8),
-            Text(
-              widget.service.description,
-              style: theme.textTheme.bodyLarge,
-            ),
+            Text(widget.service.description, style: theme.textTheme.bodyLarge),
             SizedBox(height: 30),
             // Available Workers
             Text(
@@ -106,7 +102,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   return Center(child: CircularProgressIndicator());
                 }
                 final availableWorkers = provider.workers
-                    .where((worker) => worker.services.any((s) => s.id == widget.service.id))
+                    .where(
+                      (worker) =>
+                          worker.services.any((s) => s.id == widget.service.id),
+                    )
                     .toList();
 
                 if (availableWorkers.isEmpty) {

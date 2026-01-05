@@ -1,63 +1,80 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_house_help/models/user.dart';
-import 'package:flutter_house_help/services/api_service.dart';
+import '../services/api_service.dart';
+import '../models/user.dart';
 
 class UserProvider with ChangeNotifier {
-  User? _user;
+  final ApiService _apiService = ApiService();
+
+  User? _currentUser;
   bool _isLoading = false;
-  String? _error;
+  String? _errorMessage;
 
-  User? get user => _user;
+  User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  String? get error => _error;
+  String? get errorMessage => _errorMessage;
 
-  Future<void> fetchUser(String userId) async {
+  UserProvider();
+
+  void setUser(User user) {
+    _currentUser = user;
+    notifyListeners();
+  }
+
+  Future<void> fetchCurrentUser() async {
     _isLoading = true;
-    _error = null;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      final apiService = ApiService();
-      final response = await apiService.get('users/$userId');
-      
-      _user = User.fromJson(response);
+      final token = await _apiService.getToken();
+      if (token != null) {
+        final response = await _apiService.get('auth/profile');
+        if (response != null) {
+          _currentUser = User.fromJson(response);
+          notifyListeners();
+        }
+      }
     } catch (e) {
-      _error = e.toString();
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> updateUser(User updatedUser) async {
+  Future<bool> updateProfile(Map<String, dynamic> updateData) async {
     _isLoading = true;
-    _error = null;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      final apiService = ApiService();
-      final response = await apiService.patch('users/${updatedUser.id}', {
-        'firstName': updatedUser.firstName,
-        'lastName': updatedUser.lastName,
-        'email': updatedUser.email,
-      });
+      final response = await _apiService.patch(
+        'users/${_currentUser?.id}',
+        updateData,
+      );
 
-      _user = User.fromJson(response);
+      if (response != null) {
+        _currentUser = User.fromJson(response);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
     } catch (e) {
-      _error = e.toString();
-    } finally {
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
+      return false;
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   void clearUser() {
-    _user = null;
-    notifyListeners();
-  }
-
-  void setUser(User user) {
-    _user = user;
+    _currentUser = null;
     notifyListeners();
   }
 }

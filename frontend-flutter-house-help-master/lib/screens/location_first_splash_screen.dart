@@ -8,17 +8,19 @@ import 'location_setup_screen.dart';
 
 class LocationFirstSplashScreen extends StatefulWidget {
   @override
-  _LocationFirstSplashScreenState createState() => _LocationFirstSplashScreenState();
+  _LocationFirstSplashScreenState createState() =>
+      _LocationFirstSplashScreenState();
 }
 
-class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> with TickerProviderStateMixin {
+class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _logoAnimation;
   late Animation<double> _textAnimation;
   late Animation<Color?> _bgColorAnimation;
   bool _themeInitialized = false;
   late Animation<double> _fadeAnimation;
-  
+
   @override
   void initState() {
     super.initState();
@@ -26,40 +28,46 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    
+
     _logoAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
-    
+
     _textAnimation = Tween<double>(begin: 30, end: 0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _animationController.forward();
-    
+
     // Initialize theme-dependent animations after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-      }
+      if (mounted) {}
     });
-    
+
     _checkExistingLocation();
   }
-  
-  
+
   void _checkExistingLocation() async {
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     // Check if user has already set location
     if (locationProvider.currentLocationData != null) {
       // Check service availability
-      await locationProvider.checkServiceAvailability();
-      
+      if (locationProvider.currentLocationData != null) {
+        await locationProvider.checkServiceAvailability(
+          locationProvider.currentLocationData!.latitude ?? 0.0,
+          locationProvider.currentLocationData!.longitude ?? 0.0,
+        );
+      }
+
       if (locationProvider.availabilityStatus?.isAvailable == true) {
         // Navigate to main screen
         Future.delayed(const Duration(seconds: 2), () {
@@ -93,23 +101,23 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
       });
     }
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Initialize theme-dependent animations if not already done
     if (!_themeInitialized) {
       _initializeThemeDependentAnimations(theme);
       _themeInitialized = true;
     }
-    
+
     return Scaffold(
       backgroundColor: _bgColorAnimation.value,
       body: Stack(
@@ -119,8 +127,8 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.primaryColor.withOpacity(0.1),
-                  theme.colorScheme.surface.withOpacity(0.95),
+                  theme.primaryColor.withAlpha((0.1 * 255).round()),
+                  theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
                   theme.colorScheme.surface,
                 ],
                 begin: Alignment.topCenter,
@@ -128,7 +136,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
               ),
             ),
           ),
-          
+
           // Content
           Center(
             child: Column(
@@ -162,7 +170,9 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.shadow.withOpacity(0.2),
+                              color: theme.colorScheme.shadow.withAlpha(
+                                (0.2 * 255).round(),
+                              ),
                               blurRadius: 20,
                               offset: Offset(0, 10),
                             ),
@@ -177,9 +187,9 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Title with animation
                 AnimatedBuilder(
                   animation: _textAnimation,
@@ -199,7 +209,9 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                       color: theme.primaryColor,
                       shadows: [
                         Shadow(
-                          color: theme.colorScheme.shadow.withOpacity(0.3),
+                          color: theme.colorScheme.shadow.withAlpha(
+                            (0.3 * 255).round(),
+                          ),
                           blurRadius: 10,
                           offset: Offset(0, 4),
                         ),
@@ -207,9 +219,9 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Subtitle
                 Text(
                   'Your trusted home services partner',
@@ -218,9 +230,9 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 40),
-                
+
                 // Loading indicator
                 AnimatedBuilder(
                   animation: _animationController,
@@ -233,11 +245,15 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surface.withOpacity(0.8),
+                      color: theme.colorScheme.surface.withAlpha(
+                        (0.8 * 255).round(),
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.shadow.withOpacity(0.1),
+                          color: theme.colorScheme.shadow.withAlpha(
+                            (0.1 * 255).round(),
+                          ),
                           blurRadius: 8,
                           offset: Offset(0, 4),
                         ),
@@ -264,7 +280,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
               ],
             ),
           ),
-          
+
           // Trust and speed messaging
           Positioned(
             bottom: 40,
@@ -273,10 +289,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
             child: AnimatedBuilder(
               animation: _fadeAnimation,
               builder: (context, child) {
-                return Opacity(
-                  opacity: _fadeAnimation.value,
-                  child: child,
-                );
+                return Opacity(opacity: _fadeAnimation.value, child: child);
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -292,15 +305,11 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
       ),
     );
   }
-  
+
   Widget _buildTrustBadge(IconData icon, String text) {
     return Column(
       children: [
-        Icon(
-          icon,
-          color: Theme.of(context).primaryColor,
-          size: 20,
-        ),
+        Icon(icon, color: Theme.of(context).primaryColor, size: 20),
         const SizedBox(height: 4),
         Text(
           text,
@@ -312,7 +321,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen> w
       ],
     );
   }
-  
+
   void _initializeThemeDependentAnimations(ThemeData theme) {
     _bgColorAnimation = ColorTween(
       begin: Colors.white,

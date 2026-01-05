@@ -12,7 +12,8 @@ class WorkerDetailsScreen extends StatefulWidget {
   final Worker worker;
   final Service? service;
 
-  const WorkerDetailsScreen({Key? key, required this.worker, this.service}) : super(key: key);
+  const WorkerDetailsScreen({Key? key, required this.worker, this.service})
+    : super(key: key);
 
   @override
   _WorkerDetailsScreenState createState() => _WorkerDetailsScreenState();
@@ -26,7 +27,10 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
     super.initState();
     // Use WidgetsBinding.instance.addPostFrameCallback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SlotProvider>(context, listen: false).fetchSlots();
+      Provider.of<SlotProvider>(
+        context,
+        listen: false,
+      ).fetchSlotsForWorker(widget.worker.id);
     });
   }
 
@@ -47,15 +51,14 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allSlots = Provider.of<SlotProvider>(
-      context,
-    ).getSlotsForWorker(widget.worker.id);
+    final allSlots = Provider.of<SlotProvider>(context).slots;
 
-    // Filter slots by selected date
+    // Filter slots by selected date and worker
     final slots = allSlots.where((slot) {
-      return slot.startTime.year == _selectedDate.year &&
-             slot.startTime.month == _selectedDate.month &&
-             slot.startTime.day == _selectedDate.day;
+      return slot.workerId == widget.worker.id &&
+          slot.startTime.year == _selectedDate.year &&
+          slot.startTime.month == _selectedDate.month &&
+          slot.startTime.day == _selectedDate.day;
     }).toList();
 
     return Scaffold(
@@ -92,7 +95,9 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withOpacity(0.2),
+                          color: theme.colorScheme.secondary.withAlpha(
+                            (0.2 * 255).round(),
+                          ),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -118,7 +123,8 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ReviewsScreen(worker: widget.worker),
+                              builder: (_) =>
+                                  ReviewsScreen(worker: widget.worker),
                             ),
                           );
                         },
@@ -181,22 +187,22 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                               ),
                               backgroundColor: theme.colorScheme.surface,
                               side: BorderSide(
-                                color: theme.colorScheme.primary.withOpacity(
-                                  0.2,
+                                color: theme.colorScheme.primary.withAlpha(
+                                  (0.2 * 255).round(),
                                 ),
                               ),
                               onPressed: () {
-                                 Navigator.push(
-                                   context,
-                                   MaterialPageRoute(
-                                     builder: (_) => BookingScreen(
-                                       worker: widget.worker,
-                                       slot: slot,
-                                       service: widget.service,
-                                     ),
-                                   ),
-                                 );
-                               },
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BookingScreen(
+                                      worker: widget.worker,
+                                      slot: slot,
+                                      service: widget.service,
+                                    ),
+                                  ),
+                                );
+                              },
                             );
                           }).toList(),
                         ),

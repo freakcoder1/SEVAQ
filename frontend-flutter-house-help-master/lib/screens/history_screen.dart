@@ -57,7 +57,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withAlpha((0.05 * 255).round()),
                       blurRadius: 10,
                       offset: Offset(0, 4),
                     ),
@@ -84,34 +84,56 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     context: context,
                                     builder: (context) => AlertDialog(
                                       title: Text('Cancel Booking'),
-                                      content: Text('Are you sure you want to cancel this booking?'),
+                                      content: Text(
+                                        'Are you sure you want to cancel this booking?',
+                                      ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
                                           child: Text('No'),
                                         ),
                                         TextButton(
-                                          onPressed: () => Navigator.pop(context, true),
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
                                           child: Text('Yes'),
                                         ),
                                       ],
                                     ),
                                   );
                                   if (confirmed == true) {
-                                    final success = await Provider.of<BookingProvider>(context, listen: false)
-                                        .cancelBooking(booking.id);
+                                    final success =
+                                        await Provider.of<BookingProvider>(
+                                          context,
+                                          listen: false,
+                                        ).cancelBooking(booking.id);
                                     if (success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Booking cancelled successfully')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Booking cancelled successfully',
+                                          ),
+                                        ),
                                       );
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Failed to cancel booking')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to cancel booking',
+                                          ),
+                                        ),
                                       );
                                     }
                                   }
                                 },
-                                child: Text('Cancel', style: TextStyle(color: Colors.red)),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ),
                             Container(
                               padding: EdgeInsets.symmetric(
@@ -121,7 +143,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               decoration: BoxDecoration(
                                 color: _getStatusColor(
                                   booking.status,
-                                ).withOpacity(0.1),
+                                ).withAlpha((0.1 * 255).round()),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

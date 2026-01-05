@@ -1,400 +1,266 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../models/location.dart';
 import '../services/api_service.dart';
-
-typedef Placemark = geocoding.Placemark;
-
-class LocationAvailability {
-  final bool isAvailable;
-  final int workerCount;
-  final int estimatedWaitTime;
-  final List<MicroZone> nearbyZones;
-  final bool highDemand;
-
-  LocationAvailability({
-    required this.isAvailable,
-    required this.workerCount,
-    required this.estimatedWaitTime,
-    required this.nearbyZones,
-    required this.highDemand,
-  });
-
-  factory LocationAvailability.fromJson(Map<String, dynamic> json) {
-    return LocationAvailability(
-      isAvailable: json['isAvailable'] ?? false,
-      workerCount: json['workerCount'] ?? 0,
-      estimatedWaitTime: json['estimatedWaitTime'] ?? 120,
-      nearbyZones: (json['nearbyZones'] as List)
-          .map((zone) => MicroZone.fromJson(zone))
-          .toList(),
-      highDemand: json['highDemand'] ?? false,
-    );
-  }
-}
-
-class MicroZone {
-  final String id;
-  final String name;
-  final double centerLat;
-  final double centerLng;
-  final double radiusKm;
-  final String zoneType;
-
-  MicroZone({
-    required this.id,
-    required this.name,
-    required this.centerLat,
-    required this.centerLng,
-    required this.radiusKm,
-    required this.zoneType,
-  });
-
-  factory MicroZone.fromJson(Map<String, dynamic> json) {
-    return MicroZone(
-      id: json['id'],
-      name: json['name'],
-      centerLat: json['centerLat'],
-      centerLng: json['centerLng'],
-      radiusKm: json['radiusKm'],
-      zoneType: json['zoneType'],
-    );
-  }
-}
+import '../models/location.dart';
 
 class LocationProvider with ChangeNotifier {
-  String _currentLocation = 'Fetching location...';
-  Location? _currentLocationData;
-  Position? _currentPosition;
-  bool _isLoading = true;
-  List<Location> _recentLocations = [];
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  bool _hasShownLocationPopup = false;
-  
-  // New location-based service availability
-  LocationAvailability? _availabilityStatus;
-  List<MicroZone> _nearbyZones = [];
-  bool _isCheckingAvailability = false;
-  bool _hasHighDemand = false;
-  bool _isOnWaitlist = false;
+  final ApiService _apiService = ApiService();
 
-  String get currentLocation => _currentLocation;
-  Location? get currentLocationData => _currentLocationData;
-  Position? get currentPosition => _currentPosition;
-  bool get isLoading => _isLoading;
+  Location? _currentLocation;
+  List<Location> _recentLocations = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+  bool _hasCompletedLocationSetup = false;
+  bool _hasShownLocationPopup = false;
+  dynamic _availabilityStatus;
+
+  Location? get currentLocation => _currentLocation;
   List<Location> get recentLocations => _recentLocations;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  bool get hasCompletedLocationSetup => _hasCompletedLocationSetup;
   bool get hasShownLocationPopup => _hasShownLocationPopup;
-  
-  // New availability properties
-  LocationAvailability? get availabilityStatus => _availabilityStatus;
-  List<MicroZone> get nearbyZones => _nearbyZones;
-  bool get isCheckingAvailability => _isCheckingAvailability;
-  bool get hasHighDemand => _hasHighDemand;
-  bool get isOnWaitlist => _isOnWaitlist;
+  dynamic get availabilityStatus => _availabilityStatus;
 
   LocationProvider() {
-    _loadRecentLocations();
-    _loadPopupState();
-    _getCurrentLocation();
+    _loadLocationHistory();
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<void> _loadLocationHistory() async {
+    // Load recent locations from storage or API
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _currentLocation = 'Location services are disabled. Please enable GPS in your device settings.';
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _currentLocation = 'Location permissions are denied. Please grant location access in app settings.';
-          _isLoading = false;
-          notifyListeners();
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _currentLocation = 'Location permissions are permanently denied. Please enable location access in app settings.';
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-      await _getAddressFromLatLng(_currentPosition!);
-    } catch (e) {
-      if (e is TimeoutException) {
-        _currentLocation = 'Location request timed out. Please try again or check your GPS signal.';
-      } else if (e is Exception) {
-        _currentLocation = 'Location service error: ${e.toString()}';
-      } else {
-        _currentLocation = 'Unable to get location. Please check your internet connection and GPS.';
-      }
-      _isLoading = false;
+      // This would typically load from local storage or API
+      // For now, we'll just initialize with empty list
+      _recentLocations = [];
       notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading location history: $e');
     }
   }
 
-  Future<void> _getAddressFromLatLng(Position position) async {
+  Future<bool> requestLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _errorMessage = 'Location services are disabled.';
+      notifyListeners();
+      return false;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _errorMessage = 'Location permissions are denied';
+        notifyListeners();
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _errorMessage =
+          'Location permissions are permanently denied, we cannot request permissions.';
+      notifyListeners();
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> getCurrentLocation() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
-      List<Placemark> placemarks = await geocoding.placemarkFromCoordinates(
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: AndroidSettings(accuracy: LocationAccuracy.high),
+      );
+
+      // Convert Position to Location
+      final placemarks = await geocoding.placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
-      Placemark place = placemarks[0];
-      _currentLocationData = Location.fromPlacemark(place, lat: position.latitude, lng: position.longitude);
-      _currentLocation = _currentLocationData!.address;
+
+      _currentLocation = Location(
+        address: placemarks.isNotEmpty
+            ? placemarks.first.toString()
+            : 'Lat: ${position.latitude}, Lng: ${position.longitude}',
+        latitude: position.latitude,
+        longitude: position.longitude,
+        city: placemarks.isNotEmpty ? placemarks.first.locality : null,
+        state: placemarks.isNotEmpty
+            ? placemarks.first.administrativeArea
+            : null,
+        country: placemarks.isNotEmpty ? placemarks.first.country : null,
+      );
+
+      // Add to recent locations
+      _recentLocations.add(_currentLocation!);
+      if (_recentLocations.length > 10) {
+        _recentLocations.removeAt(0);
+      }
+
       _isLoading = false;
-      
-      // Check service availability after getting location
-      await checkServiceAvailability();
-      
       notifyListeners();
     } catch (e) {
-      _currentLocation = 'Unable to get address.';
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> setManualLocation(Location location) async {
-    _currentLocationData = location;
-    _currentLocation = location.address;
-    _addToRecentLocations(location);
-    
-    // Check service availability for new location
-    await checkServiceAvailability();
-    
+  Future<bool> checkServiceAvailability(
+    double lat,
+    double lng, [
+    double radius = 5.0,
+  ]) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.checkServiceAvailability(
+        lat,
+        lng,
+        radius,
+      );
+      _isLoading = false;
+      notifyListeners();
+      return response != null && response['available'] == true;
+    } catch (e) {
+      _errorMessage = 'Error checking service availability';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<List<dynamic>> getAvailableServices(
+    double lat,
+    double lng, [
+    double radius = 5.0,
+  ]) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getAvailableServices(lat, lng, radius);
+      _isLoading = false;
+      notifyListeners();
+      return response ?? [];
+    } catch (e) {
+      _errorMessage = 'Error fetching available services';
+      _isLoading = false;
+      notifyListeners();
+      return [];
+    }
+  }
+
+  Future<void> addToWaitlist(
+    double lat,
+    double lng,
+    int estimatedWaitTime,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiService.addToWaitlist(lat, lng, estimatedWaitTime);
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error adding to waitlist';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updatePreferredLocation(
+    String userId,
+    double lat,
+    double lng,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiService.updatePreferredLocation(userId, lat, lng);
+      _hasCompletedLocationSetup = true;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error updating preferred location';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  bool needsLocationSetup() {
+    return _currentLocation == null || _recentLocations.isEmpty;
+  }
+
+  void clearLocationData() {
+    _currentLocation = null;
+    _recentLocations.clear();
+    _hasCompletedLocationSetup = false;
     notifyListeners();
   }
 
-  Future<void> _loadRecentLocations() async {
-    try {
-      final stored = await _storage.read(key: 'recent_locations');
-      if (stored != null) {
-        final List<dynamic> locationsJson = jsonDecode(stored);
-        _recentLocations = locationsJson.map((json) => Location.fromJson(json)).toList();
-      }
-    } catch (e) {
-      _recentLocations = [];
-    }
+  void setLocationSetupComplete() {
+    _hasCompletedLocationSetup = true;
+    notifyListeners();
   }
 
-  Future<void> _saveRecentLocations() async {
-    try {
-      final locationsJson = _recentLocations.map((loc) => loc.toJson()).toList();
-      await _storage.write(key: 'recent_locations', value: jsonEncode(locationsJson));
-    } catch (e) {
-      // Handle error silently
-    }
+  // Compatibility methods for existing code
+  Location? get currentLocationData => _currentLocation;
+
+  void markPopupShown() {
+    _hasShownLocationPopup = true;
+    notifyListeners();
   }
 
-  void _addToRecentLocations(Location location) {
-    _recentLocations.removeWhere((loc) => loc.address == location.address);
-    _recentLocations.insert(0, location);
-    if (_recentLocations.length > 5) {
-      _recentLocations = _recentLocations.sublist(0, 5);
-    }
-    _saveRecentLocations();
-  }
-
-  Future<List<Location>> searchLocations(String query) async {
-    if (query.isEmpty) return [];
-    try {
-      List<geocoding.Location> locations = await geocoding.locationFromAddress(query);
-      List<Location> result = [];
-      for (var loc in locations) {
-        try {
-          List<Placemark> placemarks = await geocoding.placemarkFromCoordinates(loc.latitude!, loc.longitude!);
-          if (placemarks.isNotEmpty) {
-            result.add(Location.fromPlacemark(placemarks[0], lat: loc.latitude, lng: loc.longitude));
-          }
-        } catch (e) {
-          // If placemark fails, create basic location
-          result.add(Location.fromGeocodingLocation(loc));
-        }
-      }
-      return result;
-    } catch (e) {
-      return [];
-    }
+  void markLocationSetupComplete() {
+    _hasCompletedLocationSetup = true;
+    notifyListeners();
   }
 
   Future<void> refreshLocation() async {
-    _isLoading = true;
+    await getCurrentLocation();
+  }
+
+  Future<void> setManualLocation(Location location) async {
+    _currentLocation = location;
+    _recentLocations.add(location);
+    if (_recentLocations.length > 10) {
+      _recentLocations.removeAt(0);
+    }
+    _hasCompletedLocationSetup = true;
     notifyListeners();
-    
-    try {
-      await _getCurrentLocation();
-      
-      // Check if location was successfully obtained
-      if (_currentLocationData == null) {
-        _currentLocation = 'Unable to get current location. Please try again.';
-        _isLoading = false;
-        notifyListeners();
-      }
-    } catch (e) {
-      _currentLocation = 'Failed to get location: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
-  // New location-based service availability methods
-  Future<void> checkServiceAvailability() async {
-    if (_currentLocationData == null) return;
-    
-    _isCheckingAvailability = true;
-    notifyListeners();
-    
-    try {
-      final apiService = ApiService();
-      final response = await apiService.checkServiceAvailability(
-        _currentLocationData!.latitude!,
-        _currentLocationData!.longitude!,
-        5.0, // 5km radius
-      );
-      
-      _availabilityStatus = LocationAvailability.fromJson(response);
-      _nearbyZones = _availabilityStatus!.nearbyZones;
-      _hasHighDemand = _availabilityStatus!.highDemand;
-      _isCheckingAvailability = false;
-      
-      // Auto-add to waitlist if needed
-      if (_hasHighDemand && _currentLocationData != null) {
-        await addToWaitlist();
-      }
-      
-      notifyListeners();
-    } catch (e) {
-      print('Failed to check availability: $e');
-      _isCheckingAvailability = false;
-      notifyListeners();
-    }
-  }
-  
-  Future<void> addToWaitlist() async {
-    if (_currentLocationData == null || _availabilityStatus == null) return;
-    
-    try {
-      final apiService = ApiService();
-      await apiService.addToWaitlist(
-        _currentLocationData!.latitude!,
-        _currentLocationData!.longitude!,
-        _availabilityStatus!.estimatedWaitTime,
-      );
-      _isOnWaitlist = true;
-      notifyListeners();
-    } catch (e) {
-      print('Failed to add to waitlist: $e');
-    }
-  }
-  
-  Future<void> removeFromWaitlist() async {
-    try {
-      final apiService = ApiService();
-      await apiService.removeFromWaitlist();
-      _isOnWaitlist = false;
-      notifyListeners();
-    } catch (e) {
-      print('Failed to remove from waitlist: $e');
-    }
-  }
-
-  // Enhanced new user detection with location-based logic
-  Future<bool> isNewUser() async {
-    try {
-      final hasLocation = _currentLocationData != null;
-      final hasRecentLocations = _recentLocations.isNotEmpty;
-      final hasShownPopup = await _storage.read(key: 'has_shown_location_popup') == 'true';
-      final hasCompletedSetup = await _storage.read(key: 'has_completed_location_setup') == 'true';
-      
-      return !hasLocation && !hasRecentLocations && !hasShownPopup && !hasCompletedSetup;
-    } catch (e) {
-      return true; // Default to new user if there's an error
-    }
-  }
-
-  Future<void> markPopupShown() async {
-    try {
-      await _storage.write(key: 'has_shown_location_popup', value: 'true');
-      _hasShownLocationPopup = true;
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
-  Future<void> markLocationSetupComplete() async {
-    try {
-      await _storage.write(key: 'has_completed_location_setup', value: 'true');
-      await _storage.write(key: 'has_shown_location_popup', value: 'true');
-      _hasShownLocationPopup = true;
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
-  Future<void> _loadPopupState() async {
-    try {
-      final hasShown = await _storage.read(key: 'has_shown_location_popup');
-      final hasCompleted = await _storage.read(key: 'has_completed_location_setup');
-      _hasShownLocationPopup = hasShown == 'true' || hasCompleted == 'true';
-    } catch (e) {
-      _hasShownLocationPopup = false;
-    }
-  }
-
-  // Method to check if location setup is needed
-  bool needsLocationSetup() {
-    return _currentLocationData == null && _recentLocations.isEmpty;
-  }
-  
-  // Method to get available services in current location
-  Future<List<dynamic>> getAvailableServices() async {
-    if (_currentLocationData == null) return [];
-    
-    try {
-      final apiService = ApiService();
-      final response = await apiService.getAvailableServices(
-        _currentLocationData!.latitude!,
-        _currentLocationData!.longitude!,
+  Future<void> checkCurrentServiceAvailability() async {
+    if (_currentLocation != null) {
+      _availabilityStatus = await checkServiceAvailability(
+        _currentLocation!.latitude ?? 0.0,
+        _currentLocation!.longitude ?? 0.0,
         5.0,
       );
-      return response;
-    } catch (e) {
-      print('Failed to get available services: $e');
-      return [];
+      notifyListeners();
     }
   }
-  
-  // Method to get nearby micro-zones
-  Future<List<MicroZone>> getNearbyZones() async {
-    if (_currentLocationData == null) return [];
-    
+
+  Future<List<dynamic>> searchLocations(String query) async {
     try {
-      final apiService = ApiService();
-      final response = await apiService.getNearbyZones(
-        _currentLocationData!.latitude!,
-        _currentLocationData!.longitude!,
-      );
-      return (response as List).map((zone) => MicroZone.fromJson(zone)).toList();
+      final locations = await geocoding.locationFromAddress(query);
+      return locations
+          .map((loc) => Location.fromGeocodingLocation(loc))
+          .toList();
     } catch (e) {
-      print('Failed to get nearby zones: $e');
       return [];
     }
   }

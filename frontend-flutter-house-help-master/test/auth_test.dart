@@ -1,8 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/services/api_service.dart';
-import 'package:frontend/providers/auth_provider.dart';
+import '../lib/services/api_service.dart';
+import '../lib/providers/auth_provider.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('Auth Provider Tests', () {
     late AuthProvider authProvider;
     late ApiService apiService;
@@ -15,15 +16,21 @@ void main() {
     test('Login with valid credentials should succeed', () async {
       // This test would require a running backend server
       // For now, we'll test the structure and error handling
-      final result = await authProvider.login('test@example.com', 'password123');
-      
+      final result = await authProvider.login(
+        'test@example.com',
+        'password123',
+      );
+
       // The test will likely fail due to no running server,
       // but this verifies the login flow structure
       expect(result, isA<bool>());
     });
 
     test('Login with invalid credentials should fail', () async {
-      final result = await authProvider.login('invalid@example.com', 'wrongpassword');
+      final result = await authProvider.login(
+        'invalid@example.com',
+        'wrongpassword',
+      );
       expect(result, false);
       expect(authProvider.errorMessage, isNotNull);
     });
@@ -33,7 +40,7 @@ void main() {
         'newuser@example.com',
         'password123',
         'John',
-        'Doe'
+        'Doe',
       );
       expect(result, isA<bool>());
     });
@@ -41,10 +48,10 @@ void main() {
     test('Logout should clear user data', () async {
       // Simulate a logged-in state
       authProvider.login('test@example.com', 'password123');
-      
+
       // Then logout
       await authProvider.logout();
-      
+
       expect(authProvider.user, isNull);
       expect(authProvider.isAuthenticated, false);
     });
@@ -71,7 +78,7 @@ void main() {
       await apiService.saveToken('test_token');
       final token = await apiService.getToken();
       expect(token, 'test_token');
-      
+
       await apiService.clearToken();
       final clearedToken = await apiService.getToken();
       expect(clearedToken, isNull);

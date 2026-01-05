@@ -19,7 +19,8 @@ class LocationSelectionPopup extends StatefulWidget {
   State<LocationSelectionPopup> createState() => _LocationSelectionPopupState();
 }
 
-class _LocationSelectionPopupState extends State<LocationSelectionPopup> with TickerProviderStateMixin {
+class _LocationSelectionPopupState extends State<LocationSelectionPopup>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -27,21 +28,21 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations for smooth entrance
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     // Start animations
     _animationController.forward();
   }
@@ -62,7 +63,7 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
           // Use current GPS location
           await locationProvider.refreshLocation();
           break;
-        
+
         case 'new':
           // Open search dialog for new address
           await showDialog(
@@ -70,13 +71,13 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
             builder: (context) => const LocationPickerDialog(),
           );
           break;
-        
+
         case 'saved':
           // Show saved locations in a bottom sheet
           await _showSavedLocationsBottomSheet(locationProvider);
           break;
       }
-      
+
       // Check if location was successfully set
       if (locationProvider.currentLocationData != null) {
         widget.onLocationSelected();
@@ -96,9 +97,11 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
     }
   }
 
-  Future<void> _showSavedLocationsBottomSheet(LocationProvider locationProvider) async {
+  Future<void> _showSavedLocationsBottomSheet(
+    LocationProvider locationProvider,
+  ) async {
     final savedLocations = locationProvider.recentLocations;
-    
+
     if (savedLocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -171,14 +174,18 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withAlpha((0.2 * 255).round()),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -188,25 +195,30 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                               children: [
                                 Text(
                                   location.address,
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(fontWeight: FontWeight.w500),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (location.city != null && location.state != null)
+                                if (location.city != null &&
+                                    location.state != null)
                                   Text(
                                     '${location.city}, ${location.state}',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
                                   ),
                               ],
                             ),
                           ),
                           Icon(
                             Icons.chevron_right,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             size: 20,
                           ),
                         ],
@@ -245,9 +257,7 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
     final theme = Theme.of(context);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: Colors.transparent,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -261,12 +271,18 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surface.withOpacity(0.95),
+                    color: theme.colorScheme.surface.withAlpha(
+                      (0.95 * 255).round(),
+                    ),
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    border: Border.all(
+                      color: Colors.white.withAlpha((0.3 * 255).round()),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.2),
+                        color: theme.colorScheme.shadow.withAlpha(
+                          (0.2 * 255).round(),
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -290,15 +306,16 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  widget.isNewUser ? 'Welcome!' : 'Select Location',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  widget.isNewUser
+                                      ? 'Welcome!'
+                                      : 'Select Location',
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                                 Text(
-                                  widget.isNewUser 
-                                    ? 'Let\'s set your location to get started' 
-                                    : 'Choose how you\'d like to set your location',
+                                  widget.isNewUser
+                                      ? 'Let\'s set your location to get started'
+                                      : 'Choose how you\'d like to set your location',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
@@ -315,7 +332,7 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 24),
 
                       // Location Options
@@ -332,8 +349,12 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                       _buildOptionCard(
                         icon: Icons.my_location,
                         title: 'Use Current Location',
-                        subtitle: 'Detect your location automatically using GPS',
-                        onTap: () => _handleLocationSelection('current', locationProvider),
+                        subtitle:
+                            'Detect your location automatically using GPS',
+                        onTap: () => _handleLocationSelection(
+                          'current',
+                          locationProvider,
+                        ),
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(height: 12),
@@ -342,7 +363,8 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                         icon: Icons.search,
                         title: 'Add New Address',
                         subtitle: 'Search for and select a specific address',
-                        onTap: () => _handleLocationSelection('new', locationProvider),
+                        onTap: () =>
+                            _handleLocationSelection('new', locationProvider),
                         color: theme.colorScheme.secondary,
                       ),
                       const SizedBox(height: 12),
@@ -351,8 +373,12 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
                         _buildOptionCard(
                           icon: Icons.history,
                           title: 'Choose from Saved',
-                          subtitle: 'Select from your previously saved locations',
-                          onTap: () => _handleLocationSelection('saved', locationProvider),
+                          subtitle:
+                              'Select from your previously saved locations',
+                          onTap: () => _handleLocationSelection(
+                            'saved',
+                            locationProvider,
+                          ),
                           color: theme.colorScheme.tertiary,
                         ),
 
@@ -405,10 +431,12 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(
+            color: Colors.white.withAlpha((0.2 * 255).round()),
+          ),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.shadow.withOpacity(0.1),
+              color: theme.colorScheme.shadow.withAlpha((0.1 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -420,15 +448,11 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup> with Ti
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha((0.1 * 255).round()),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withAlpha((0.3 * 255).round())),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
+              child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
