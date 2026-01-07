@@ -2,13 +2,13 @@ import 'user.dart';
 import 'worker.dart';
 
 class Review {
-  final int id;
+  final String id;
   final int rating;
   final String? comment;
   final User user;
   final Worker? worker;
-  final int userId;
-  final int workerId;
+  final String userId;
+  final String workerId;
 
   Review({
     required this.id,
@@ -22,14 +22,13 @@ class Review {
 
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
-      id: json['id'],
-      rating: json['rating'],
+      id: json['id']?.toString() ?? '',
+      rating: json['rating'] ?? 0,
       comment: json['comment'],
-      user: User.fromJson(json['user']),
+      user: User.fromJson(json['user'] ?? {}),
       worker: json['worker'] != null ? Worker.fromJson(json['worker']) : null,
-      userId: json['userId'],
-      workerId: json['workerId'],
+      userId: json['userId']?.toString() ?? '',
+      workerId: json['workerId']?.toString() ?? '',
     );
   }
-
 }

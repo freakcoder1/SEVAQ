@@ -68,7 +68,8 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup>
           // Open search dialog for new address
           await showDialog(
             context: context,
-            builder: (context) => const LocationPickerDialog(),
+            builder: (context) =>
+                LocationPickerDialog(locationProvider: locationProvider),
           );
           break;
 

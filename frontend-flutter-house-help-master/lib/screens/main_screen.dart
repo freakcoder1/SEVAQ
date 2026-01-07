@@ -4,41 +4,47 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
-import '../providers/theme_provider.dart';
 import '../widgets/location_selection_popup.dart';
 
-class MainScreen extends StatelessWidget {
+/// MainScreen - A simple navigation wrapper that provides tab navigation.
+///
+/// This widget has been simplified to remove the unnecessary nested wrapper classes.
+/// It should ONLY be used when the user is authenticated AND location is set.
+///
+/// All auth/location gating is handled by AuthWrapper.
+class MainScreen extends StatefulWidget {
+  final int initialIndex;
+
+  const MainScreen({super.key, this.initialIndex = 0});
+
   @override
-  Widget build(BuildContext context) {
-    return _MainScreenContent();
-  }
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenContent extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _MainScreenContentStatefulWidget();
-  }
-}
-
-class _MainScreenContentStatefulWidget extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _MainScreenContentState();
-  }
-}
-
-class _MainScreenContentState extends StatefulWidget {
-  @override
-  _MainScreenState createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<_MainScreenContentState> {
+class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   bool _hasCheckedLocation = false;
   bool _showingLocationPopup = false;
 
   List<Widget> get _screens => [HomeScreen(), HistoryScreen(), ProfileScreen()];
+
+  List<NavigationDestination> get _destinations => [
+    NavigationDestination(
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home),
+      label: 'Home',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.calendar_today_outlined),
+      selectedIcon: Icon(Icons.calendar_today),
+      label: 'Bookings',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.person_outline),
+      selectedIcon: Icon(Icons.person),
+      label: 'Profile',
+    ),
+  ];
 
   /// Safely get a provider with error handling
   T? _safeGetProvider<T extends ChangeNotifier>(BuildContext context) {
@@ -72,13 +78,11 @@ class _MainScreenState extends State<_MainScreenContentState> {
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // Try to rebuild the widget tree
-                // Use a different approach to avoid context issues
+                // Use pop() to return to AuthWrapper which will re-evaluate state
+                // and handle navigation appropriately based on auth/location status.
+                // Never push MainScreen directly - it bypasses AuthWrapper's provider scope
                 if (mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => MainScreen()),
-                    (Route<dynamic> route) => false,
-                  );
+                  Navigator.of(context).pop();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -96,6 +100,7 @@ class _MainScreenState extends State<_MainScreenContentState> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkLocationSetup();
     });
@@ -140,10 +145,7 @@ class _MainScreenState extends State<_MainScreenContentState> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [HomeScreen(), HistoryScreen(), ProfileScreen()],
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -151,23 +153,7 @@ class _MainScreenState extends State<_MainScreenContentState> {
             _currentIndex = index;
           });
         },
-        destinations: [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
-            label: 'Bookings',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        destinations: _destinations,
       ),
     );
   }

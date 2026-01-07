@@ -21,14 +21,14 @@ class ProfileScreen extends StatelessWidget {
                 radius: 50,
                 backgroundColor: theme.primaryColor,
                 child: Text(
-                  user?.firstName[0] ?? "U",
+                  user?.firstName?[0] ?? "U",
                   style: TextStyle(fontSize: 40, color: Colors.white),
                 ),
               ),
             ),
             SizedBox(height: 16),
             Text(
-              '${user?.firstName} ${user?.lastName}',
+              '${user?.firstName ?? ''} ${user?.lastName ?? ''}',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -60,7 +60,11 @@ class ProfileScreen extends StatelessWidget {
             Consumer<ThemeProvider>(
               builder: (context, themeProvider, _) {
                 return SwitchListTile(
-                  secondary: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
+                  secondary: Icon(
+                    themeProvider.isDarkMode
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
+                  ),
                   title: Text('Dark Mode'),
                   value: themeProvider.isDarkMode,
                   onChanged: (value) {

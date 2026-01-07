@@ -21,6 +21,35 @@ export class ServicesService {
     return await this.servicesRepository.find();
   }
 
+  async getCategoryAvailability(): Promise<any[]> {
+    const services = await this.servicesRepository.find();
+    
+    // Group services by category
+    const categoryMap = new Map<string, { servicesCount: number }>();
+    
+    for (const service of services) {
+      const existing = categoryMap.get(service.category);
+      if (existing) {
+        existing.servicesCount++;
+      } else {
+        categoryMap.set(service.category, { servicesCount: 1 });
+      }
+    }
+    
+    // Convert to array format expected by frontend
+    const result: any[] = [];
+    for (const [name, data] of categoryMap) {
+      result.push({
+        name,
+        isAvailable: true,
+        availableServicesCount: data.servicesCount,
+        availableWorkersCount: Math.ceil(data.servicesCount / 2), // Estimate workers based on services
+      });
+    }
+    
+    return result;
+  }
+
   async findOne(id: string) {
     return await this.servicesRepository.findOne({ where: { id } });
   }

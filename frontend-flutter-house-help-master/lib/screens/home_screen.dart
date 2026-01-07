@@ -1,48 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_house_help/models/service.dart';
-import 'package:flutter_house_help/models/category_availability.dart';
-import 'package:flutter_house_help/providers/location_provider.dart';
-import 'package:flutter_house_help/providers/theme_provider.dart';
-import 'package:flutter_house_help/providers/user_provider.dart';
-import 'package:flutter_house_help/providers/provider_manager.dart';
-import 'package:flutter_house_help/screens/category_screen.dart';
-import 'package:flutter_house_help/screens/service_details_screen.dart';
-import 'package:flutter_house_help/services/api_service.dart';
-import 'package:flutter_house_help/widgets/category_card.dart';
-import 'package:flutter_house_help/widgets/search_bar.dart' as CustomSearchBar;
-import 'package:flutter_house_help/widgets/service_card.dart';
+import '../models/service.dart';
+import '../models/category_availability.dart';
+import '../models/worker.dart';
+import '../models/user.dart';
+import '../providers/provider_manager.dart';
+import '../providers/location_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/user_provider.dart';
+import '../providers/service_provider.dart';
+import '../providers/worker_provider.dart';
+import '../providers/recommendation_provider.dart';
+import '../models/recommendation.dart';
+import 'category_screen.dart';
+import 'service_details_screen.dart';
+import '../services/api_service.dart';
+import '../widgets/trust_header.dart';
+import '../widgets/primary_recommendation.dart';
+import '../widgets/smart_suggestions.dart';
+import '../widgets/memory_section.dart';
+import '../widgets/category_card.dart';
+import '../widgets/service_card.dart';
+import '../widgets/search_bar.dart' as CustomSearchBar;
+import '../widgets/location_picker_dialog.dart';
 import 'package:provider/provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final locationProvider = Provider.of<LocationProvider>(context);
-
-    return _HomeScreenContent(
-      themeProvider: themeProvider,
-      locationProvider: locationProvider,
-    );
-  }
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenContent extends StatefulWidget {
-  final ThemeProvider themeProvider;
-  final LocationProvider locationProvider;
-
-  const _HomeScreenContent({
-    Key? key,
-    required this.themeProvider,
-    required this.locationProvider,
-  }) : super(key: key);
-
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<_HomeScreenContent> {
+class HomeScreenState extends State<HomeScreen> {
   late ApiService apiService;
   List<Service> services = [];
   List<Service> filteredServices = [];
@@ -51,23 +40,39 @@ class _HomeScreenState extends State<_HomeScreenContent> {
   String searchQuery = '';
   bool isLoading = true;
   String errorMessage = '';
+  ServiceProvider? _serviceProvider;
+  WorkerProvider? _workerProvider;
+  RecommendationProvider? _recommendationProvider;
+
+  // New state for the 5-section layout
+  SystemStatusData? _systemStatus;
+  Recommendation? _currentRecommendation;
+  List<Suggestion> _suggestions = [];
+  UserHistory? _userHistory;
 
   @override
   void initState() {
     super.initState();
     apiService = ApiService();
     _loadHomeData();
+    // Defer recommendation loading to avoid setState() during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRecommendations();
+    });
   }
 
   Future<void> _loadHomeData() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
       errorMessage = '';
     });
 
     try {
-      // Load services
       final response = await apiService.get('services');
+
+      if (!mounted) return;
 
       setState(() {
         services = (response as List)
@@ -76,9 +81,9 @@ class _HomeScreenState extends State<_HomeScreenContent> {
         filteredServices = services;
         isLoading = false;
       });
-
-      // Note: We'll check location availability in build() method where context is available
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         isLoading = false;
         errorMessage = e.toString();
@@ -86,57 +91,146 @@ class _HomeScreenState extends State<_HomeScreenContent> {
     }
   }
 
-  Future<void> _loadCategoryAvailability(
-    LocationProvider locationProvider,
-  ) async {
+  Future<void> _loadRecommendations() async {
+    final locationProvider = ProviderManager.safeGetProvider<LocationProvider>(
+      context,
+    );
+    final workerProvider = ProviderManager.safeGetProvider<WorkerProvider>(
+      context,
+    );
+    final serviceProvider = ProviderManager.safeGetProvider<ServiceProvider>(
+      context,
+    );
+    final userProvider = ProviderManager.safeGetProvider<UserProvider>(context);
+    final recommendationProvider =
+        ProviderManager.safeGetProvider<RecommendationProvider>(context);
+
+    if (locationProvider == null ||
+        workerProvider == null ||
+        serviceProvider == null ||
+        userProvider == null ||
+        recommendationProvider == null) {
+      return;
+    }
+
     try {
-      // Try to load category availability from API
-      final response = await apiService.get('categories/availability');
+      await recommendationProvider.generateRecommendations(
+        workerProvider: workerProvider,
+        serviceProvider: serviceProvider,
+        locationProvider: locationProvider,
+        userProvider: userProvider,
+      );
+
+      print('HomeScreen: Recommendations generated');
+      print(
+        'Current recommendation: ${recommendationProvider.currentRecommendation != null ? 'Available' : 'Null'}',
+      );
+      print('Suggestions count: ${recommendationProvider.suggestions.length}');
+      print(
+        'User history: ${recommendationProvider.userHistory != null ? 'Available' : 'Null'}',
+      );
+
+      setState(() {
+        _currentRecommendation = recommendationProvider.currentRecommendation;
+        _suggestions = recommendationProvider.suggestions;
+        _userHistory = recommendationProvider.userHistory;
+        _systemStatus = _generateSystemStatus(recommendationProvider);
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to load recommendations: $e';
+      });
+    }
+  }
+
+  SystemStatusData _generateSystemStatus(
+    RecommendationProvider recommendationProvider,
+  ) {
+    // Generate system status based on available workers and recommendations
+    final availableWorkers =
+        recommendationProvider.currentRecommendation?.worker != null ? 1 : 0;
+
+    if (availableWorkers > 0) {
+      return SystemStatusData(
+        status: SystemStatus.allOnTrack,
+        availableWorkers: availableWorkers,
+        estimatedWaitTime:
+            recommendationProvider
+                .currentRecommendation
+                ?.estimatedArrivalTime ??
+            30,
+        message: 'All services on track',
+      );
+    } else {
+      return SystemStatusData(
+        status: SystemStatus.limitedAvailability,
+        availableWorkers: 0,
+        estimatedWaitTime: 60,
+        message: 'Limited availability',
+      );
+    }
+  }
+
+  Future<void> _loadCategoryAvailability(BuildContext context) async {
+    final locationProvider = ProviderManager.safeGetProvider<LocationProvider>(
+      context,
+    );
+
+    if (locationProvider == null ||
+        locationProvider.currentLocationData == null) {
+      return;
+    }
+
+    try {
+      final response = await apiService.get('services/categories/availability');
       if (response is List) {
+        if (mounted) {
+          setState(() {
+            categoryAvailability = response
+                .map((item) => CategoryAvailability.fromJson(item))
+                .toList();
+            _hasLoadedCategories = true;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          categoryAvailability = response
-              .map((item) => CategoryAvailability.fromJson(item))
-              .toList();
+          categoryAvailability = [
+            CategoryAvailability(
+              name: 'Cleaning',
+              isAvailable: true,
+              availableServicesCount: 5,
+              availableWorkersCount: 3,
+            ),
+            CategoryAvailability(
+              name: 'Cooking',
+              isAvailable: true,
+              availableServicesCount: 3,
+              availableWorkersCount: 2,
+            ),
+            CategoryAvailability(
+              name: 'Electrician',
+              isAvailable: true,
+              availableServicesCount: 2,
+              availableWorkersCount: 1,
+            ),
+            CategoryAvailability(
+              name: 'Plumber',
+              isAvailable: true,
+              availableServicesCount: 2,
+              availableWorkersCount: 1,
+            ),
+            CategoryAvailability(
+              name: 'Caretaker',
+              isAvailable: true,
+              availableServicesCount: 4,
+              availableWorkersCount: 2,
+            ),
+          ];
           _hasLoadedCategories = true;
         });
       }
-    } catch (e) {
-      // If API endpoint doesn't exist or fails, use fallback categories
-      setState(() {
-        categoryAvailability = [
-          CategoryAvailability(
-            name: 'Cleaning',
-            isAvailable: true,
-            availableServicesCount: 5,
-            availableWorkersCount: 3,
-          ),
-          CategoryAvailability(
-            name: 'Cooking',
-            isAvailable: true,
-            availableServicesCount: 3,
-            availableWorkersCount: 2,
-          ),
-          CategoryAvailability(
-            name: 'Electrician',
-            isAvailable: true,
-            availableServicesCount: 2,
-            availableWorkersCount: 1,
-          ),
-          CategoryAvailability(
-            name: 'Plumber',
-            isAvailable: true,
-            availableServicesCount: 2,
-            availableWorkersCount: 1,
-          ),
-          CategoryAvailability(
-            name: 'Caretaker',
-            isAvailable: true,
-            availableServicesCount: 4,
-            availableWorkersCount: 2,
-          ),
-        ];
-        _hasLoadedCategories = true;
-      });
     }
   }
 
@@ -158,58 +252,156 @@ class _HomeScreenState extends State<_HomeScreenContent> {
     });
   }
 
-  void _navigateToServiceDetails(Service service) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ServiceDetailsScreen(service: service),
-      ),
-    );
+  void _handlePrimaryRecommendation() {
+    if (_currentRecommendation != null) {
+      _navigateToServiceDetails(_currentRecommendation!.service);
+    }
   }
 
-  void _navigateToCategory(String category) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CategoryScreen(category: category),
-      ),
-    );
+  void _handleSuggestionTap(Suggestion suggestion) {
+    // Handle suggestion tap - navigate to appropriate screen
+    if (suggestion.type == SuggestionType.repeatService) {
+      // Navigate to repeat booking
+      _handlePrimaryRecommendation();
+    } else {
+      // Navigate to service details or category
+      _navigateToCategory(
+        context,
+        _currentRecommendation?.service.category ?? 'Cleaning',
+      );
+    }
+  }
+
+  void _handleRepeatBooking() {
+    if (_userHistory?.hasFavoriteWorker == true) {
+      // Navigate to book favorite worker
+      _handlePrimaryRecommendation();
+    } else {
+      // Navigate to repeat last booking
+      _handlePrimaryRecommendation();
+    }
+  }
+
+  void _navigateToServiceDetails(Service service) {
+    final workerProvider = _workerProvider;
+
+    if (workerProvider != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ServiceDetailsScreen(
+            service: service,
+            workerProvider: workerProvider,
+          ),
+        ),
+      );
+    } else {
+      final fallbackProvider = ProviderManager.safeGetProvider<WorkerProvider>(
+        context,
+      );
+      if (fallbackProvider != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ServiceDetailsScreen(
+              service: service,
+              workerProvider: fallbackProvider,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ServiceDetailsScreen(
+              service: service,
+              workerProvider: WorkerProvider(),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _navigateToCategory(BuildContext context, String category) {
+    final serviceProvider = _serviceProvider;
+    final workerProvider = _workerProvider;
+
+    if (serviceProvider != null && workerProvider != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CategoryScreen(
+            category: category,
+            serviceProvider: serviceProvider,
+            workerProvider: workerProvider,
+          ),
+        ),
+      );
+    } else {
+      final fallbackServiceProvider =
+          ProviderManager.safeGetProvider<ServiceProvider>(context);
+      final fallbackWorkerProvider =
+          ProviderManager.safeGetProvider<WorkerProvider>(context);
+      if (fallbackServiceProvider != null && fallbackWorkerProvider != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CategoryScreen(
+              category: category,
+              serviceProvider: fallbackServiceProvider,
+              workerProvider: fallbackWorkerProvider,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CategoryScreen(
+              category: category,
+              serviceProvider: ServiceProvider(),
+              workerProvider: WorkerProvider(),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationProvider = widget.locationProvider;
-    final themeProvider = widget.themeProvider;
+    final themeProvider = ProviderManager.safeGetProvider<ThemeProvider>(
+      context,
+    );
+    final locationProvider = ProviderManager.safeGetProvider<LocationProvider>(
+      context,
+    );
+    _serviceProvider = ProviderManager.safeGetProvider<ServiceProvider>(
+      context,
+    );
+    _workerProvider = ProviderManager.safeGetProvider<WorkerProvider>(context);
+    _recommendationProvider =
+        ProviderManager.safeGetProvider<RecommendationProvider>(context);
 
-    final isDarkMode = themeProvider.isDarkMode;
+    final isDarkMode = themeProvider?.isDarkMode ?? false;
+
+    if (!_hasLoadedCategories &&
+        locationProvider?.currentLocationData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadCategoryAvailability(context);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'House Help',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (locationProvider.currentLocationData != null)
-              Text(
-                locationProvider.currentLocationData!.address,
-                style: TextStyle(
-                  color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
-                  fontSize: 12,
-                ),
-              )
-            else if (!locationProvider.isLoading)
-              Text(
-                'Location not set',
-                style: TextStyle(color: Colors.orange, fontSize: 12),
-              ),
-          ],
+        title: Text(
+          'House Help',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         elevation: 0,
@@ -217,7 +409,7 @@ class _HomeScreenState extends State<_HomeScreenContent> {
           IconButton(
             icon: Icon(
               Icons.location_on,
-              color: locationProvider.currentLocationData != null
+              color: locationProvider?.currentLocationData != null
                   ? Colors.green
                   : Colors.red,
               size: 24,
@@ -233,7 +425,7 @@ class _HomeScreenState extends State<_HomeScreenContent> {
           ? _buildLoadingIndicator()
           : errorMessage.isNotEmpty
           ? _buildErrorWidget()
-          : _buildHomeContent(locationProvider),
+          : _buildNewHomeContent(locationProvider ?? LocationProvider()),
     );
   }
 
@@ -283,307 +475,157 @@ class _HomeScreenState extends State<_HomeScreenContent> {
     );
   }
 
-  Widget _buildHomeContent(LocationProvider locationProvider) {
-    // Check if we need to load category availability
-    if (locationProvider.currentLocationData != null && !_hasLoadedCategories) {
-      _loadCategoryAvailability(locationProvider);
-    }
-
+  Widget _buildNewHomeContent(LocationProvider locationProvider) {
     return RefreshIndicator(
-      onRefresh: _loadHomeData,
+      onRefresh: () async {
+        await _loadHomeData();
+        await _loadRecommendations();
+      },
       child: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Location Status Section
-            _buildLocationStatus(locationProvider),
+            // Section 1: Trust Header (always show if location is available)
+            if (locationProvider.currentLocationData != null)
+              TrustHeader(
+                location: locationProvider.currentLocationData!.address,
+                systemStatus:
+                    _systemStatus ??
+                    SystemStatusData(
+                      status: SystemStatus.allOnTrack,
+                      availableWorkers: 0,
+                      estimatedWaitTime: 30,
+                      message: 'All services on track',
+                    ),
+                availableWorkers: _systemStatus?.availableWorkers ?? 0,
+              ),
+
             SizedBox(height: 16),
 
-            // Search Bar
-            CustomSearchBar.SearchBar(
-              onSearch: _filterServices,
-              hintText: 'Search services...',
-            ),
-            SizedBox(height: 16),
-
-            // "Book in 15-30 mins" Badge
-            _buildFastBookingBadge(locationProvider),
-
-            // Service Availability Status
-            if (locationProvider.availabilityStatus != null)
-              _buildServiceAvailabilityStatus(locationProvider),
-
-            // Core Categories
-            Text(
-              'Categories',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 12),
-            _buildCategories(locationProvider),
-
-            // Available Services
-            if (filteredServices.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 24),
-                  Text(
-                    'Available Services',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 12),
-                  _buildServicesGrid(),
-                ],
+            // Section 2: Primary Recommendation (show if available, otherwise show fallback)
+            if (_currentRecommendation != null)
+              PrimaryRecommendation(
+                recommendation: _currentRecommendation!,
+                onAccept: _handlePrimaryRecommendation,
               )
-            else if (locationProvider.currentLocationData != null)
-              _buildNoServicesFound(locationProvider),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLocationStatus(LocationProvider locationProvider) {
-    if (locationProvider.isLoading) {
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.secondary.withAlpha((0.1 * 255).round()),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Theme.of(context).primaryColor,
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Setting up your location...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
+            else if (services.isNotEmpty)
+              // Fallback primary recommendation using first available service
+              PrimaryRecommendation(
+                recommendation: Recommendation(
+                  service: services.first,
+                  worker: Worker(
+                    id: 'fallback-worker-001',
+                    user: User(
+                      id: 'fallback-user-001',
+                      email: 'fallback@example.com',
+                      firstName: 'Available',
+                      lastName: 'Professional',
+                      role: 'worker',
+                    ),
+                    bio: 'Available professional',
+                    rating: 4.5,
+                    reviewCount: 10,
+                    services: [],
+                  ),
+                  estimatedArrivalTime: 30,
+                  reliabilityScore: 0.8,
+                  reasoning: 'Popular service in your area',
+                  title: 'Recommended service',
                 ),
+                onAccept: () => _navigateToServiceDetails(services.first),
               ),
-            ),
-          ],
-        ),
-      );
-    }
 
-    if (locationProvider.currentLocationData == null) {
-      return Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.orange.withAlpha((0.1 * 255).round()),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.orange, width: 1),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.location_off, color: Colors.orange, size: 20),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Please set your location to find services near you',
-                style: TextStyle(fontSize: 14, color: Colors.orange[800]),
+            // Section 3: Smart Suggestions (show if available, otherwise show fallback)
+            if (_suggestions.isNotEmpty)
+              SmartSuggestions(
+                suggestions: _suggestions,
+                onSuggestionTap: _handleSuggestionTap,
+              )
+            else if (services.isNotEmpty)
+              // Fallback suggestions
+              SmartSuggestions(
+                suggestions: [
+                  Suggestion.usuallyBooked(
+                    serviceType: services.first.name,
+                    onTap: () => _navigateToServiceDetails(services.first),
+                  ),
+                  Suggestion.safeOption(
+                    serviceType: 'Professional service',
+                    onTap: () => _navigateToServiceDetails(services.first),
+                  ),
+                ],
+                onSuggestionTap: (suggestion) =>
+                    _navigateToServiceDetails(services.first),
               ),
-            ),
-            SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () => _showLocationDialog(context, locationProvider),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+
+            // Section 4: Memory Section (show if available, otherwise show generic message)
+            if (_userHistory != null &&
+                (_userHistory!.hasFavoriteWorker ||
+                    _userHistory!.hasRecentBooking))
+              MemorySection(
+                userHistory: _userHistory!,
+                onRepeatBooking: _handleRepeatBooking,
+              )
+            else
+              // Fallback memory section
+              MemorySection(
+                userHistory: UserHistory(
+                  totalBookings: 0,
+                  favoriteWorker: null,
+                  lastBookedService: null,
+                  lastBookingDate: null,
                 ),
+                onRepeatBooking: () {},
               ),
-              child: Text(
-                'Set Location',
-                style: TextStyle(fontSize: 12, color: Colors.white),
-              ),
-            ),
+
+            // Section 5: Traditional services grid (always show as fallback)
+            _buildTraditionalServicesSection(locationProvider),
           ],
         ),
-      );
-    }
-
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.withAlpha((0.1 * 255).round()),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green, width: 1),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.location_on, color: Colors.green, size: 20),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Location: ${locationProvider.currentLocationData!.address}',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.green[800],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (locationProvider.availabilityStatus != null)
-            _buildAvailabilityIndicator(locationProvider),
-        ],
       ),
     );
   }
 
-  Widget _buildAvailabilityIndicator(LocationProvider locationProvider) {
-    final availability = locationProvider.availabilityStatus;
-    if (availability == null) return SizedBox();
-
-    Color indicatorColor = availability.isAvailable ? Colors.green : Colors.red;
-    String statusText = availability.isAvailable
-        ? 'Available'
-        : 'Not Available';
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: indicatorColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: indicatorColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: 6),
-          Text(
-            statusText,
-            style: TextStyle(
-              fontSize: 12,
-              color: indicatorColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceAvailabilityStatus(LocationProvider locationProvider) {
-    final availability = locationProvider.availabilityStatus;
-    if (availability == null) return SizedBox();
-
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 12),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: availability.isAvailable
-            ? Colors.green.withAlpha((0.1 * 255).round())
-            : Colors.red.withAlpha((0.1 * 255).round()),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: availability.isAvailable ? Colors.green : Colors.red,
-          width: 1,
+  Widget _buildTraditionalServicesSection(LocationProvider locationProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search Bar
+        CustomSearchBar.SearchBar(
+          onSearch: _filterServices,
+          hintText: 'Search services...',
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        SizedBox(height: 16),
+
+        // "Book in 15-30 mins" Badge
+        _buildFastBookingBadge(locationProvider),
+
+        // Core Categories
+        Text(
+          'Categories',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 12),
+        _buildCategories(locationProvider),
+
+        // Available Services
+        if (filteredServices.isNotEmpty)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                availability.isAvailable ? Icons.check_circle : Icons.cancel,
-                color: availability.isAvailable ? Colors.green : Colors.red,
-                size: 20,
-              ),
-              SizedBox(width: 8),
+              SizedBox(height: 24),
               Text(
-                availability.isAvailable
-                    ? 'Services Available'
-                    : 'No Services Available',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: availability.isAvailable
-                      ? Colors.green[800]
-                      : Colors.red[800],
-                ),
+                'Available Services',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              SizedBox(height: 12),
+              _buildServicesGrid(),
             ],
-          ),
-          SizedBox(height: 8),
-          if (availability.isAvailable)
-            Text(
-              'Workers: ${availability.workerCount} • Wait Time: ${availability.estimatedWaitTime} mins',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
-              ),
-            )
-          else
-            Text(
-              'No service providers available in your area. Try adjusting your location.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoServicesFound(LocationProvider locationProvider) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 20),
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.secondary.withAlpha((0.1 * 255).round()),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.search_off, size: 48, color: Colors.grey),
-          SizedBox(height: 12),
-          Text(
-            'No services found',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Try searching for a different service or check back later.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).textTheme.bodyMedium?.color,
-            ),
-          ),
-          SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => _showLocationDialog(context, locationProvider),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: Text(
-              'Change Location',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+          )
+        else if (locationProvider.currentLocationData != null)
+          _buildNoServicesFound(locationProvider),
+      ],
     );
   }
 
@@ -616,67 +658,24 @@ class _HomeScreenState extends State<_HomeScreenContent> {
 
   void _showLocationDialog(
     BuildContext context,
-    LocationProvider locationProvider,
+    LocationProvider? locationProvider,
   ) {
+    final provider = locationProvider ?? LocationProvider();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Location Settings'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Current Location:'),
-              SizedBox(height: 8),
-              Text(
-                locationProvider.currentLocationData != null
-                    ? locationProvider.currentLocationData!.address
-                    : 'Not set',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: locationProvider.currentLocationData != null
-                      ? Colors.green[800]
-                      : Colors.orange,
-                ),
-              ),
-              SizedBox(height: 16),
-              Text('Would you like to change your location?'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Navigate to location selection screen
-                // This would typically navigate to a location picker screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Location selection feature would open here'),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-              ),
-              child: Text(
-                'Change Location',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
+        return LocationPickerDialog(locationProvider: provider);
       },
-    );
+    ).then((_) {
+      if (provider.currentLocationData != null) {
+        _loadCategoryAvailability(context);
+        _loadRecommendations();
+      }
+    });
   }
 
   Widget _buildCategories(LocationProvider locationProvider) {
-    // Filter categories based on availability
     final availableCategories =
         _hasLoadedCategories && categoryAvailability.isNotEmpty
         ? categoryAvailability
@@ -725,7 +724,7 @@ class _HomeScreenState extends State<_HomeScreenContent> {
       itemBuilder: (context, index) {
         return CategoryCard(
           category: availableCategories[index],
-          onTap: () => _navigateToCategory(availableCategories[index]),
+          onTap: () => _navigateToCategory(context, availableCategories[index]),
         );
       },
     );
@@ -749,6 +748,50 @@ class _HomeScreenState extends State<_HomeScreenContent> {
           onTap: () => _navigateToServiceDetails(service),
         );
       },
+    );
+  }
+
+  Widget _buildNoServicesFound(LocationProvider locationProvider) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 20),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.secondary.withAlpha((0.1 * 255).round()),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.search_off, size: 48, color: Colors.grey),
+          SizedBox(height: 12),
+          Text(
+            'No services found',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Try searching for a different service or check back later.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => _showLocationDialog(context, locationProvider),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(
+              'Change Location',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

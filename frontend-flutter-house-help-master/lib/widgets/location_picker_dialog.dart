@@ -4,7 +4,9 @@ import '../providers/location_provider.dart';
 import '../models/location.dart' as models;
 
 class LocationPickerDialog extends StatefulWidget {
-  const LocationPickerDialog({super.key});
+  final LocationProvider locationProvider;
+
+  const LocationPickerDialog({super.key, required this.locationProvider});
 
   @override
   State<LocationPickerDialog> createState() => _LocationPickerDialogState();
@@ -37,11 +39,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     });
 
     try {
-      final locationProvider = Provider.of<LocationProvider>(
-        context,
-        listen: false,
-      );
-      final results = await locationProvider.searchLocations(query);
+      final results = await widget.locationProvider.searchLocations(query);
       setState(() {
         _searchResults = results.cast<models.Location>();
         _isSearching = false;
@@ -56,17 +54,13 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   }
 
   void _selectLocation(models.Location location) {
-    final locationProvider = Provider.of<LocationProvider>(
-      context,
-      listen: false,
-    );
-    locationProvider.setManualLocation(location);
+    widget.locationProvider.setManualLocation(location);
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationProvider = Provider.of<LocationProvider>(context);
+    final locationProvider = widget.locationProvider;
     final theme = Theme.of(context);
 
     return Dialog(

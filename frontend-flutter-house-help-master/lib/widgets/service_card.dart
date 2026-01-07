@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_house_help/models/service.dart';
+import '../models/service.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
   final VoidCallback onTap;
 
-  const ServiceCard({
-    Key? key,
-    required this.service,
-    required this.onTap,
-  }) : super(key: key);
+  const ServiceCard({Key? key, required this.service, required this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -43,7 +38,7 @@ class ServiceCard extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 8),
-              
+
               // Service Name
               Text(
                 service.name,
@@ -55,20 +50,17 @@ class ServiceCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               SizedBox(height: 4),
-              
+
               // Category
               Text(
                 service.category,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
-              
+
               SizedBox(height: 8),
-              
+
               // Price
               Row(
                 children: [
@@ -81,7 +73,7 @@ class ServiceCard extends StatelessWidget {
                     ),
                   ),
                   Spacer(),
-                  
+
                   // Fast booking badge
                   if (service.isFastBooking)
                     Container(
@@ -107,9 +99,9 @@ class ServiceCard extends StatelessWidget {
                     ),
                 ],
               ),
-              
+
               SizedBox(height: 4),
-              
+
               // Availability indicator
               if (service.isAvailable)
                 Row(
@@ -118,10 +110,7 @@ class ServiceCard extends StatelessWidget {
                     SizedBox(width: 4),
                     Text(
                       'Available',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.green,
-                      ),
+                      style: TextStyle(fontSize: 10, color: Colors.green),
                     ),
                   ],
                 )
@@ -132,10 +121,7 @@ class ServiceCard extends StatelessWidget {
                     SizedBox(width: 4),
                     Text(
                       'Waitlist',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.orange,
-                      ),
+                      style: TextStyle(fontSize: 10, color: Colors.orange),
                     ),
                   ],
                 ),

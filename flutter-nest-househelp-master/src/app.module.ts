@@ -31,16 +31,39 @@ import { Waitlist } from './locations/entities/waitlist.entity';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
+        const host = configService.get('DB_HOST');
+        const port = configService.get<number>('DB_PORT');
+        const username = configService.get('DB_USERNAME');
+        const password = configService.get('DB_PASSWORD');
+        const database = configService.get('DB_NAME');
+
+        // Validate required environment variables
+        if (!host) {
+          throw new Error('Missing required environment variable: DB_HOST');
+        }
+        if (!port) {
+          throw new Error('Missing required environment variable: DB_PORT');
+        }
+        if (!username) {
+          throw new Error('Missing required environment variable: DB_USERNAME');
+        }
+        if (!password) {
+          throw new Error('Missing required environment variable: DB_PASSWORD');
+        }
+        if (!database) {
+          throw new Error('Missing required environment variable: DB_NAME');
+        }
+
         const entities = [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist];
         console.log('TypeORM entities:', entities.map(e => e.name));
         return {
           type: 'postgres',
-          host: configService.get('DB_HOST'),
-          port: configService.get('DB_PORT'),
-          username: configService.get('DB_USERNAME'),
-          password: configService.get('DB_PASSWORD'),
-          database: configService.get('DB_NAME'),
+          host,
+          port,
+          username,
+          password,
+          database,
           entities: entities,
           synchronize: true, // Auto-create tables (dev only)
           logging: true, // Enable logging for connection and queries

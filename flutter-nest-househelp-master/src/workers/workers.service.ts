@@ -16,9 +16,9 @@ export class WorkersService {
 
     async create(userId: string, bio: string, serviceIds: string[]) {
         const worker = this.workersRepository.create({
-            user: { id: userId } as any,
+            user: { id: userId },
             bio,
-            services: serviceIds.map(id => ({ id }) as any),
+            services: serviceIds.map((id) => ({ id })),
         });
         return this.workersRepository.save(worker);
     }

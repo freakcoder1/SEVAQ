@@ -9,6 +9,22 @@ import '../providers/worker_provider.dart';
 import '../providers/slot_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/review_provider.dart';
+import '../screens/auth_wrapper.dart';
+import '../screens/main_screen.dart';
+import '../screens/main_navigation.dart';
+
+/// Navigation scope validation result
+class NavigationScopeValidation {
+  final bool isValid;
+  final String message;
+  final List<String> issues;
+
+  NavigationScopeValidation({
+    required this.isValid,
+    required this.message,
+    this.issues = const [],
+  });
+}
 
 /// Provider diagnostics tool to help identify and resolve Provider issues
 class ProviderDiagnostics {
@@ -484,6 +500,103 @@ class ProviderDiagnostics {
       return 'All providers are healthy';
     } else {
       return 'Found ${_errorLogs.length} provider issues';
+    }
+  }
+
+  // =========================================================================
+  // NAVIGATION SCOPE VALIDATION
+  // =========================================================================
+
+  /// Validates that the current context is within proper provider scope
+  /// for screens that require provider access
+  static NavigationScopeValidation validateNavigationScope(
+    BuildContext context, {
+    bool requireAuthProvider = true,
+    bool requireLocationProvider = true,
+  }) {
+    final issues = <String>[];
+
+    // Check if we have access to AuthProvider
+    if (requireAuthProvider) {
+      try {
+        Provider.of<AuthProvider>(context, listen: false);
+      } catch (e) {
+        issues.add('AuthProvider not available: $e');
+      }
+    }
+
+    // Check if we have access to LocationProvider
+    if (requireLocationProvider) {
+      try {
+        Provider.of<LocationProvider>(context, listen: false);
+      } catch (e) {
+        issues.add('LocationProvider not available: $e');
+      }
+    }
+
+    // Check if we're in a proper navigation context
+    final widget = context.widget;
+    if (widget is MainScreen || widget is MainNavigation) {
+      // Check if we're inside an AuthWrapper
+      bool foundAuthWrapper = false;
+      context.visitAncestorElements((element) {
+        if (element.widget is AuthWrapper) {
+          foundAuthWrapper = true;
+          return false; // Stop visiting
+        }
+        return true; // Continue visiting
+      });
+
+      if (!foundAuthWrapper) {
+        issues.add(
+          'MainScreen/MainNavigation created outside AuthWrapper - '
+          'this will cause ProviderNotFoundException. '
+          'Use AuthWrapper as the home widget instead of direct navigation.',
+        );
+      }
+    }
+
+    if (issues.isEmpty) {
+      return NavigationScopeValidation(
+        isValid: true,
+        message: 'Navigation scope is valid - all required providers available',
+      );
+    }
+
+    return NavigationScopeValidation(
+      isValid: false,
+      message: 'Navigation scope issues detected',
+      issues: issues,
+    );
+  }
+
+  /// Check if a widget is being created outside proper provider scope
+  static bool isOutsideProviderScope(Widget widget, BuildContext context) {
+    if (widget is MainScreen || widget is MainNavigation) {
+      bool foundAuthWrapper = false;
+      context.visitAncestorElements((element) {
+        if (element.widget is AuthWrapper) {
+          foundAuthWrapper = true;
+          return false;
+        }
+        return true;
+      });
+      return !foundAuthWrapper;
+    }
+    return false;
+  }
+
+  /// Assert that the current context has proper provider scope
+  /// Throws an assertion error if screen is created outside provider scope
+  static void assertProperScope(BuildContext context, String screenName) {
+    final validation = validateNavigationScope(context);
+    if (!validation.isValid) {
+      throw AssertionError(
+        '$screenName was created outside proper provider scope.\n'
+        'Issues: ${validation.issues.join("\n")}\n\n'
+        'FIX: Use AuthWrapper as the home widget in MaterialApp. '
+        'Never push MainScreen or MainNavigation directly via Navigator.',
+      );
     }
   }
 }

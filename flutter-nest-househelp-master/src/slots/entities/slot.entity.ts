@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Worker } from '../../workers/entities/worker.entity';
 
 @Entity()
@@ -6,7 +6,8 @@ export class Slot {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @ManyToOne(() => Worker, (worker) => worker.id)
+    @ManyToOne(() => Worker, { nullable: true })
+    @JoinColumn()
     worker: Worker;
 
     @Column()

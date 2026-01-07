@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/service.dart';
 import '../models/worker.dart';
 import '../providers/worker_provider.dart';
@@ -8,9 +7,13 @@ import 'worker_details_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Service service;
+  final WorkerProvider workerProvider;
 
-  const ServiceDetailsScreen({Key? key, required this.service})
-    : super(key: key);
+  const ServiceDetailsScreen({
+    Key? key,
+    required this.service,
+    required this.workerProvider,
+  }) : super(key: key);
 
   @override
   _ServiceDetailsScreenState createState() => _ServiceDetailsScreenState();
@@ -20,6 +23,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Use the passed workerProvider instead of Consumer
+    final provider = widget.workerProvider;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.service.name)),
@@ -96,48 +101,49 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               ),
             ),
             SizedBox(height: 16),
-            Consumer<WorkerProvider>(
-              builder: (context, provider, _) {
-                if (provider.isLoading) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                final availableWorkers = provider.workers
-                    .where(
-                      (worker) =>
-                          worker.services.any((s) => s.id == widget.service.id),
-                    )
-                    .toList();
-
-                if (availableWorkers.isEmpty) {
-                  return Text('No workers available for this service.');
-                }
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  itemCount: availableWorkers.length,
-                  itemBuilder: (context, index) {
-                    return WorkerCard(
-                      worker: availableWorkers[index],
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => WorkerDetailsScreen(
-                              worker: availableWorkers[index],
-                              service: widget.service,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
+            // Use the passed workerProvider directly instead of Consumer
+            _buildWorkersList(provider),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildWorkersList(WorkerProvider provider) {
+    if (provider.isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    final availableWorkers = provider.workers
+        .where(
+          (worker) => worker.services.any((s) => s.id == widget.service.id),
+        )
+        .toList();
+
+    if (availableWorkers.isEmpty) {
+      return Text('No workers available for this service.');
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: availableWorkers.length,
+      itemBuilder: (context, index) {
+        return WorkerCard(
+          worker: availableWorkers[index],
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WorkerDetailsScreen(
+                  worker: availableWorkers[index],
+                  service: widget.service,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

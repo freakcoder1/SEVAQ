@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
-import '../providers/auth_provider.dart';
-import 'main_screen.dart';
 import 'location_setup_screen.dart';
 
+/// LocationFirstSplashScreen - A splash screen shown when location is not set.
+///
+/// IMPORTANT: This screen should NOT push MainScreen directly via Navigator.
+/// Instead, when location is set, it should just pop() and let AuthWrapper
+/// handle the transition based on provider state changes.
+///
+/// The AuthWrapper watches the LocationProvider and will automatically
+/// transition to MainNavigation when needsLocationSetup() returns false.
 class LocationFirstSplashScreen extends StatefulWidget {
+  const LocationFirstSplashScreen({super.key});
+
   @override
   _LocationFirstSplashScreenState createState() =>
       _LocationFirstSplashScreenState();
@@ -17,9 +25,10 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
   late AnimationController _animationController;
   late Animation<double> _logoAnimation;
   late Animation<double> _textAnimation;
-  late Animation<Color?> _bgColorAnimation;
+  Animation<Color?>? _bgColorAnimation; // Made nullable for safety
   bool _themeInitialized = false;
   late Animation<double> _fadeAnimation;
+  bool _hasCheckedLocation = false;
 
   @override
   void initState() {
@@ -52,48 +61,59 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
   }
 
   void _checkExistingLocation() async {
+    debugPrint('LocationFirstSplashScreen._checkExistingLocation: called');
+
+    // Prevent multiple simultaneous checks
+    if (_hasCheckedLocation) {
+      debugPrint(
+        'LocationFirstSplashScreen._checkExistingLocation: Already checked, skipping',
+      );
+      return;
+    }
+
+    _hasCheckedLocation = true;
+
     final locationProvider = Provider.of<LocationProvider>(
       context,
       listen: false,
     );
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    debugPrint(
+      'LocationFirstSplashScreen: currentLocation=${locationProvider.currentLocationData}',
+    );
+    debugPrint(
+      'LocationFirstSplashScreen: needsLocationSetup=${locationProvider.needsLocationSetup()}',
+    );
 
     // Check if user has already set location
     if (locationProvider.currentLocationData != null) {
-      // Check service availability
-      if (locationProvider.currentLocationData != null) {
-        await locationProvider.checkServiceAvailability(
-          locationProvider.currentLocationData!.latitude ?? 0.0,
-          locationProvider.currentLocationData!.longitude ?? 0.0,
-        );
-      }
+      debugPrint(
+        'LocationFirstSplashScreen: Location exists, marking setup complete immediately',
+      );
+      // Mark location setup complete IMMEDIATELY - AuthWrapper will automatically transition
+      // DO NOT use Future.delayed - it causes race conditions and blank screens
+      locationProvider.markLocationSetupComplete();
 
-      if (locationProvider.availabilityStatus?.isAvailable == true) {
-        // Navigate to main screen
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => MainScreen()),
-            );
-          }
-        });
-      } else {
-        // Handle high demand scenario - redirect to main screen
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => MainScreen()),
-            );
-          }
-        });
-      }
+      // Check service availability in background (doesn't block UI)
+      await locationProvider.checkServiceAvailability(
+        locationProvider.currentLocationData!.latitude ?? 0.0,
+        locationProvider.currentLocationData!.longitude ?? 0.0,
+      );
+      debugPrint(
+        'LocationFirstSplashScreen: Availability check complete, AuthWrapper will transition',
+      );
     } else {
-      // Show location setup after splash
+      debugPrint(
+        'LocationFirstSplashScreen: No location, navigating to LocationSetupScreen',
+      );
+      // Navigate to location setup - this pushes on top of the current screen
+      // When LocationSetupScreen completes, we return here and rebuild will check location again
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
-          Navigator.pushReplacement(
+          debugPrint('LocationFirstSplashScreen: Pushing LocationSetupScreen');
+          // Reset the check flag so we check location again when we return
+          _hasCheckedLocation = false;
+          Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => LocationSetupScreen()),
           );
@@ -112,14 +132,38 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Watch location provider to trigger rebuild when location changes
+    // This ensures we check location again when returning from LocationSetupScreen
+    final locationProvider = context.watch<LocationProvider>();
+    final currentLocation = locationProvider.currentLocationData;
+    final hasCompletedSetup = locationProvider.hasCompletedLocationSetup;
+
+    debugPrint(
+      'LocationFirstSplashScreen.build: START, location=$currentLocation, completed=$hasCompletedSetup',
+    );
+
+    // Check location on every build (not just first time)
+    // This handles the case when returning from LocationSetupScreen
+    _checkExistingLocation();
+
     // Initialize theme-dependent animations if not already done
     if (!_themeInitialized) {
       _initializeThemeDependentAnimations(theme);
       _themeInitialized = true;
+      debugPrint('LocationFirstSplashScreen.build: Theme initialized');
     }
 
+    // Safety check - ensure animation is not null
+    final bgColor = _bgColorAnimation?.value ?? theme.scaffoldBackgroundColor;
+    debugPrint(
+      'LocationFirstSplashScreen.build: bgColor=$bgColor, location=$currentLocation',
+    );
+
+    // If location is now set and setup is complete, show the splash content (transition will happen via AuthWrapper)
+    // Otherwise, show the location setup UI
+
     return Scaffold(
-      backgroundColor: _bgColorAnimation.value,
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           // Background gradient
@@ -323,9 +367,16 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
   }
 
   void _initializeThemeDependentAnimations(ThemeData theme) {
+    debugPrint(
+      'LocationFirstSplashScreen._initializeThemeDependentAnimations: START',
+    );
+    // Initialize with a default color to prevent null values on first build
     _bgColorAnimation = ColorTween(
-      begin: Colors.white,
+      begin: theme.scaffoldBackgroundColor,
       end: theme.scaffoldBackgroundColor,
     ).animate(_animationController);
+    debugPrint(
+      'LocationFirstSplashScreen._initializeThemeDependentAnimations: END - _bgColorAnimation.value=${_bgColorAnimation?.value}',
+    );
   }
 }

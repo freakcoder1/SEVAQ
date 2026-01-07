@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'auth_wrapper.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,6 +17,21 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final auth = context.watch<AuthProvider>();
+
+    // Debug: Check auth state
+    debugPrint(
+      'LoginScreen.build: isAuthenticated=${auth.isAuthenticated}, isLoading=${auth.isLoading}',
+    );
+
+    // Auto-navigate when authenticated (after successful login)
+    if (auth.isAuthenticated && !auth.isLoading) {
+      debugPrint(
+        'LoginScreen: User authenticated, triggering rebuild via AuthWrapper',
+      );
+      // AuthWrapper will automatically rebuild and show the appropriate screen
+      // We don't need to navigate manually - just let the rebuild happen
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -60,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         context,
                         listen: false,
                       ).login(_emailController.text, _passwordController.text);
+                      debugPrint('LoginScreen: login result=$success');
                       if (!success && mounted) {
                         ScaffoldMessenger.of(
                           context,

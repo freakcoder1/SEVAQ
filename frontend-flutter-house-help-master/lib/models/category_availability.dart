@@ -6,7 +6,9 @@ class CategoryAvailabilityResponse {
   factory CategoryAvailabilityResponse.fromJson(Map<String, dynamic> json) {
     final categoriesList = json['categories'] as List;
     return CategoryAvailabilityResponse(
-      categories: categoriesList.map((item) => CategoryAvailability.fromJson(item)).toList(),
+      categories: categoriesList
+          .map((item) => CategoryAvailability.fromJson(item))
+          .toList(),
     );
   }
 }
@@ -26,10 +28,10 @@ class CategoryAvailability {
 
   factory CategoryAvailability.fromJson(Map<String, dynamic> json) {
     return CategoryAvailability(
-      name: json['name'],
-      isAvailable: json['isAvailable'],
-      availableServicesCount: json['availableServicesCount'],
-      availableWorkersCount: json['availableWorkersCount'],
+      name: json['name'] ?? 'Unknown Category',
+      isAvailable: json['isAvailable'] ?? false,
+      availableServicesCount: json['availableServicesCount'] ?? 0,
+      availableWorkersCount: json['availableWorkersCount'] ?? 0,
     );
   }
 }

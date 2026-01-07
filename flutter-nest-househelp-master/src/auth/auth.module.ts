@@ -16,7 +16,12 @@ import { JwtAuthGuard } from './jwt-auth.guard';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
-        console.log('JWT_SECRET loaded:', secret ? 'YES' : 'NO', secret);
+        
+        if (!secret) {
+          throw new Error('Missing required environment variable: JWT_SECRET');
+        }
+        
+        console.log('JWT_SECRET loaded: YES (length: ${secret.length})');
         return {
           secret,
           signOptions: { expiresIn: '60m' },

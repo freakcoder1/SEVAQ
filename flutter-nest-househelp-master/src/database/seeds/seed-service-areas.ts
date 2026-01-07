@@ -1,11 +1,16 @@
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ServiceArea } from '../../locations/entities/service_area.entity';
 import { MicroZone } from '../../locations/entities/micro_zone.entity';
+import { Logger } from '@nestjs/common';
 
 export class SeedServiceAreas {
+  private readonly logger = new Logger(SeedServiceAreas.name);
+
   async run(dataSource: DataSource): Promise<void> {
     const serviceAreaRepository = dataSource.getRepository(ServiceArea);
     const microZoneRepository = dataSource.getRepository(MicroZone);
+
+    this.logger.log('Starting service area seeding...');
 
     // Check if 201306 area already exists
     const existingArea = await serviceAreaRepository.findOne({
@@ -15,12 +20,15 @@ export class SeedServiceAreas {
     });
 
     if (existingArea) {
-      console.log('201306 service area already exists');
+      this.logger.log('201306 service area already exists, skipping creation');
+      await this.verifySeedData(serviceAreaRepository, microZoneRepository);
       return;
     }
 
+    this.logger.log('Creating 201306 service area with approximate coordinates for Noida/Greater Noida region');
+
     // Create 201306 service area
-    // Coordinates for 201306 postal code area (approximate)
+    // Coordinates for 201306 postal code area (Noida/Greater Noida region, India)
     const serviceArea201306 = serviceAreaRepository.create({
       name: '201306 Area',
       minLat: 28.6100,  // Approximate latitude for 201306
@@ -41,7 +49,7 @@ export class SeedServiceAreas {
     });
 
     await serviceAreaRepository.save(serviceArea201306);
-    console.log('Created 201306 service area');
+    this.logger.log('Created 201306 service area');
 
     // Create micro-zones within the 201306 area
     const microZones = [
@@ -87,9 +95,30 @@ export class SeedServiceAreas {
       });
 
       await microZoneRepository.save(microZone);
-      console.log(`Created micro-zone: ${zoneData.name}`);
+      this.logger.log(`Created micro-zone: ${zoneData.name} at (${zoneData.centerLat}, ${zoneData.centerLng})`);
     }
 
-    console.log('Service area seeding completed for 201306');
+    this.logger.log('Service area seeding completed for 201306');
+    await this.verifySeedData(serviceAreaRepository, microZoneRepository);
+  }
+
+  private async verifySeedData(serviceAreaRepository: Repository<ServiceArea>, microZoneRepository: Repository<MicroZone>): Promise<void> {
+    this.logger.log('Verifying seeded data...');
+
+    const serviceAreas = await serviceAreaRepository.find({ where: { isActive: true } });
+    this.logger.log(`Found ${serviceAreas.length} active service areas`);
+    
+    const microZones = await microZoneRepository.find({ where: { isActive: true } });
+    this.logger.log(`Found ${microZones.length} active micro-zones`);
+
+    for (const area of serviceAreas) {
+      this.logger.debug(`Service Area: ${area.name} - bounds: [${area.minLat}, ${area.maxLat}] x [${area.minLng}, ${area.maxLng}]`);
+    }
+
+    for (const zone of microZones) {
+      this.logger.debug(`Micro Zone: ${zone.name} - center: (${zone.centerLat}, ${zone.centerLng}), radius: ${zone.radiusKm}km`);
+    }
+
+    this.logger.log('Seed data verification completed');
   }
 }

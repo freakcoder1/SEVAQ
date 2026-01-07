@@ -20,6 +20,9 @@ export class Service {
     @Column('decimal')
     basePrice: number;
 
+    @Column({ nullable: true })
+    imageUrl: string;
+
     @CreateDateColumn()
     createdAt: Date;
 

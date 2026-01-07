@@ -17,6 +17,11 @@ export class ServicesController {
     return this.servicesService.findAll();
   }
 
+  @Get('categories/availability')
+  async getCategoryAvailability() {
+    return this.servicesService.getCategoryAvailability();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.servicesService.findOne(id);

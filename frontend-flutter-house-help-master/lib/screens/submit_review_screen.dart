@@ -41,11 +41,14 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
       final reviewData = {
         'rating': _rating,
         'comment': _commentController.text.trim(),
-        'userId': int.parse(user.id),
-        'workerId': int.parse(widget.worker.id),
+        'userId': user.id,
+        'workerId': widget.worker.id,
       };
 
-      final reviewProvider = Provider.of<ReviewProvider>(context, listen: false);
+      final reviewProvider = Provider.of<ReviewProvider>(
+        context,
+        listen: false,
+      );
       final result = await reviewProvider.submitReview(reviewData);
 
       if (result != null) {
@@ -70,16 +73,14 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Write a Review'),
-      ),
+      appBar: AppBar(title: Text('Write a Review')),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Rate ${widget.worker.user.firstName}',
+              'Rate ${widget.worker.user.firstName ?? 'Worker'}',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -142,12 +143,17 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Text(
                         'Submit Review',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
               ),
             ),

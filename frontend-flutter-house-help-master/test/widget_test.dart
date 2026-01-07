@@ -8,18 +8,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/main.dart';
 import '../lib/providers/theme_provider.dart';
+import '../lib/providers/auth_provider.dart';
+import '../lib/providers/location_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+    // Mock SharedPreferences
+    SharedPreferences.setMockInitialValues({});
+
+    // Get the mocked SharedPreferences instance
+    final prefs = await SharedPreferences.getInstance();
+
+    // Build our app and trigger a frame with all required providers
     await tester.pumpWidget(
-      Provider<ThemeProvider>(
-        create: (_) => ThemeProvider(),
-        child: SevaqApp(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => LocationProvider(prefs: prefs)),
+        ],
+        child: SevaqApp(prefs: prefs),
       ),
     );
 

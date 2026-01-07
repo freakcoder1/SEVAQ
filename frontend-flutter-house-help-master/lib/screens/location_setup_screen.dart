@@ -3,9 +3,15 @@ import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
 import '../widgets/location_picker_dialog.dart';
-import 'main_screen.dart';
 
+/// LocationSetupScreen - Screen for setting up user location.
+///
+/// IMPORTANT: This screen should NOT push MainScreen directly via Navigator.
+/// When location is set successfully, it should mark the location as complete
+/// and pop() to let AuthWrapper handle the transition based on provider state changes.
 class LocationSetupScreen extends StatefulWidget {
+  const LocationSetupScreen({super.key});
+
   @override
   _LocationSetupScreenState createState() => _LocationSetupScreenState();
 }
@@ -54,6 +60,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
     String option,
     LocationProvider locationProvider,
   ) async {
+    debugPrint('LocationSetupScreen._handleLocationSelection: option=$option');
     try {
       switch (option) {
         case 'current':
@@ -65,7 +72,8 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
           // Open search dialog for new address
           await showDialog(
             context: context,
-            builder: (context) => const LocationPickerDialog(),
+            builder: (context) =>
+                LocationPickerDialog(locationProvider: locationProvider),
           );
           break;
 
@@ -75,9 +83,14 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
           break;
       }
 
+      debugPrint(
+        'LocationSetupScreen: currentLocationData=${locationProvider.currentLocationData}',
+      );
+
       // Check if location was successfully set
       if (locationProvider.currentLocationData != null) {
-        // Mark location setup as complete
+        debugPrint('LocationSetupScreen: Location set, marking as complete');
+        // Mark location setup as complete - AuthWrapper will automatically transition
         locationProvider.markLocationSetupComplete();
 
         // Check service availability
@@ -88,17 +101,12 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
           );
         }
 
-        // Navigate based on availability
-        if (locationProvider.availabilityStatus?.isAvailable == true) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => MainScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => MainScreen()),
-          );
+        debugPrint(
+          'LocationSetupScreen: Location setup complete, popping to return',
+        );
+        // Pop back to LocationFirstSplashScreen which will check location and transition
+        if (mounted) {
+          Navigator.of(context).pop();
         }
       }
     } catch (e) {
@@ -267,6 +275,10 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
   Widget build(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
     final theme = Theme.of(context);
+
+    debugPrint(
+      'LocationSetupScreen.build: called, recentLocations=${locationProvider.recentLocations.length}',
+    );
 
     return Scaffold(
       backgroundColor: theme.colorScheme.background,

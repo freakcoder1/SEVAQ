@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:geocoding/geocoding.dart' as geocoding;
 
 typedef Placemark = geocoding.Placemark;
@@ -19,7 +20,11 @@ class Location {
     this.country,
   });
 
-  factory Location.fromPlacemark(Placemark placemark, {double? lat, double? lng}) {
+  factory Location.fromPlacemark(
+    Placemark placemark, {
+    double? lat,
+    double? lng,
+  }) {
     return Location(
       address: [
         placemark.street,
@@ -81,4 +86,18 @@ class Location {
 
   @override
   int get hashCode => address.hashCode;
+
+  // Persistence methods
+  String toJsonString() {
+    return jsonEncode(toJson());
+  }
+
+  static Location? fromJsonString(String? jsonString) {
+    if (jsonString == null || jsonString.isEmpty) return null;
+    try {
+      return Location.fromJson(jsonDecode(jsonString));
+    } catch (e) {
+      return null;
+    }
+  }
 }
