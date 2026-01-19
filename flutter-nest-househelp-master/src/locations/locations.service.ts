@@ -124,13 +124,17 @@ export class LocationService {
       this.logger.debug(`Found ${workers.length} total active workers`);
 
       const availableWorkers = workers.filter(worker => {
-        if (!worker.currentLat || !worker.currentLng) {
-          this.logger.debug(`Worker ${worker.id}: no current location set`);
+        // Fallback to user location if worker current location is not set
+        const workerLat = worker.currentLat || worker.latitude;
+        const workerLng = worker.currentLng || worker.longitude;
+        
+        if (!workerLat || !workerLng) {
+          this.logger.debug(`Worker ${worker.id}: no location data available (neither current nor base location)`);
           return false;
         }
 
-        const distance = this.calculateDistance(lat, lng, worker.currentLat, worker.currentLng);
-        const effectiveRadius = Math.min(radiusKm, worker.serviceRadiusKm);
+        const distance = this.calculateDistance(lat, lng, workerLat, workerLng);
+        const effectiveRadius = Math.min(radiusKm, worker.serviceRadiusKm || 10); // Default 10km if not set
         const isAvailable = distance <= effectiveRadius;
 
         this.logger.debug(`Worker ${worker.id}: distance=${distance.toFixed(2)}km, effectiveRadius=${effectiveRadius}km, available=${isAvailable}`);
@@ -325,12 +329,28 @@ export class LocationService {
         where: { isActive: true },
       });
 
+      // First try to find exact covering areas
       const coveringAreas = areas.filter(area => {
         const covers = lat >= area.minLat && lat <= area.maxLat &&
           lng >= area.minLng && lng <= area.maxLng;
         this.logger.debug(`Area ${area.name}: minLat=${area.minLat}, maxLat=${area.maxLat}, minLng=${area.minLng}, maxLng=${area.maxLng}, covers=${covers}`);
         return covers;
       });
+
+      // If no exact coverage, find nearest areas as fallback
+      if (coveringAreas.length === 0) {
+        this.logger.warn(`No exact service area coverage found for lat=${lat}, lng=${lng}. Finding nearest areas...`);
+        
+        const nearestAreas = areas.map(area => {
+          const centerLat = (area.minLat + area.maxLat) / 2;
+          const centerLng = (area.minLng + area.maxLng) / 2;
+          const distance = this.calculateDistance(lat, lng, centerLat, centerLng);
+          return { area, distance };
+        }).sort((a, b) => a.distance - b.distance).slice(0, 3); // Get 3 nearest areas
+
+        this.logger.log(`Found ${nearestAreas.length} nearest service areas as fallback`);
+        return nearestAreas.map(item => item.area);
+      }
 
       this.logger.log(`Found ${coveringAreas.length} service areas covering lat=${lat}, lng=${lng}`);
       return coveringAreas;

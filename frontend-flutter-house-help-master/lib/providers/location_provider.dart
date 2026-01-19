@@ -396,7 +396,7 @@ class LocationProvider with ChangeNotifier {
 
       _currentLocation = Location(
         address: placemarks.isNotEmpty
-            ? placemarks.first.toString()
+            ? _formatAddress(placemarks.first)
             : 'Lat: ${position.latitude}, Lng: ${position.longitude}',
         latitude: position.latitude,
         longitude: position.longitude,
@@ -627,5 +627,39 @@ class LocationProvider with ChangeNotifier {
     } catch (e) {
       return [];
     }
+  }
+
+  // Helper method to format address from placemark
+  String _formatAddress(geocoding.Placemark placemark) {
+    final parts = <String>[];
+
+    // Add locality (city/town) if available
+    if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+      parts.add(placemark.locality!);
+    }
+
+    // Add subLocality if available (neighborhood/area)
+    if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+      parts.add(placemark.subLocality!);
+    }
+
+    // Add administrativeArea (state/province) if available
+    if (placemark.administrativeArea != null &&
+        placemark.administrativeArea!.isNotEmpty) {
+      parts.add(placemark.administrativeArea!);
+    }
+
+    // Add country if available
+    if (placemark.country != null && placemark.country!.isNotEmpty) {
+      parts.add(placemark.country!);
+    }
+
+    // Return formatted address or fallback
+    if (parts.isNotEmpty) {
+      return parts.join(', ');
+    }
+
+    // Fallback to toString if no components found
+    return placemark.toString();
   }
 }

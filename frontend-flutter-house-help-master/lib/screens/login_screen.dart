@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     // Auto-navigate when authenticated (after successful login)
-    if (auth.isAuthenticated && !auth.isLoading) {
+    if (auth.isFullyAuthenticated && !auth.isLoading) {
       debugPrint(
         'LoginScreen: User authenticated, triggering rebuild via AuthWrapper',
       );

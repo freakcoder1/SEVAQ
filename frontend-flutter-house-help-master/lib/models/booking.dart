@@ -13,6 +13,7 @@ class Booking {
   final DateTime endTime;
   final BookingStatus status;
   final bool isPaid;
+  final double? amount;
 
   Booking({
     required this.id,
@@ -23,6 +24,7 @@ class Booking {
     required this.endTime,
     required this.status,
     required this.isPaid,
+    this.amount,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Booking {
         orElse: () => BookingStatus.pending,
       ),
       isPaid: json['isPaid'] ?? false,
+      amount: json['amount']?.toDouble(),
     );
   }
 }

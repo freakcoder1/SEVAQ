@@ -24,11 +24,10 @@ export class User {
     lastName: string;
 
     @Column({
-        type: 'enum',
-        enum: UserRole,
-        default: UserRole.USER,
+        type: 'varchar',
+        default: 'user',
     })
-    role: UserRole;
+    role: string;
 
     @Column({ nullable: true })
     address: string;

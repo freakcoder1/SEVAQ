@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
-
-import '../providers/slot_provider.dart';
-import 'booking_screen.dart';
-import 'reviews_screen.dart';
 
 class WorkerDetailsScreen extends StatefulWidget {
   final Worker worker;
@@ -20,197 +14,324 @@ class WorkerDetailsScreen extends StatefulWidget {
 }
 
 class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
-  DateTime _selectedDate = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    // Use WidgetsBinding.instance.addPostFrameCallback to avoid setState during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SlotProvider>(
-        context,
-        listen: false,
-      ).fetchSlotsForWorker(widget.worker.id);
-    });
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 30)),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allSlots = Provider.of<SlotProvider>(context).slots;
-
-    // Filter slots by selected date and worker
-    final slots = allSlots.where((slot) {
-      return slot.workerId == widget.worker.id &&
-          slot.startTime.year == _selectedDate.year &&
-          slot.startTime.month == _selectedDate.month &&
-          slot.startTime.day == _selectedDate.day;
-    }).toList();
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 250,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: Colors.grey[300], // Placeholder for image
-                child: Center(
-                  child: Icon(Icons.person, size: 100, color: Colors.grey[600]),
+      appBar: AppBar(
+        title: Text('Professional Information'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Professional Header
+            Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${widget.worker.user.firstName} ${widget.worker.user.lastName}',
+                        style: theme.textTheme.displayMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Verified Sevaq Professional',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black54,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: theme.colorScheme.secondary,
+                            size: 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${widget.worker.rating} (${widget.worker.reviewCount} reviews)',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 24),
+
+            // About Section
+            Text(
+              'About',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+            SizedBox(height: 8),
+            Text(
+              widget.worker.bio.isNotEmpty
+                  ? widget.worker.bio
+                  : 'This professional is verified by Sevaq and has undergone our quality assurance process.',
+              style: theme.textTheme.bodyLarge,
+            ),
+
+            SizedBox(height: 24),
+
+            // Service Information
+            if (widget.service != null) ...[
+              Text(
+                'Assigned Service',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.primaryColor.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.service!.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      widget.service!.description,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.attach_money,
+                          color: theme.colorScheme.secondary,
+                          size: 16,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Base Price: ₹${widget.service!.basePrice.toStringAsFixed(2)}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 24),
+            ],
+
+            // SevaQ Guarantee
+            Text(
+              'SevaQ Guarantee',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: const Color(0xFF2E7D32),
+                        size: 16,
+                      ),
+                      SizedBox(width: 8),
                       Text(
-                        '${widget.worker.user.firstName} ${widget.worker.user.lastName}',
-                        style: theme.textTheme.displayMedium,
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withAlpha(
-                            (0.2 * 255).round(),
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.star,
-                              color: theme.colorScheme.secondary,
-                              size: 20,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              widget.worker.rating.toString(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ReviewsScreen(worker: widget.worker),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'View Reviews (${widget.worker.reviewCount})',
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        'Verified professional',
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: const Color(0xFF2E7D32),
+                        size: 16,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Service monitoring',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: const Color(0xFF2E7D32),
+                        size: 16,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Quality guarantee',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: const Color(0xFF2E7D32),
+                        size: 16,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Support throughout',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 32),
+
+            // Contact Support
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'About',
-                    style: theme.textTheme.titleLarge?.copyWith(
+                    'Need Assistance?',
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    widget.worker.bio.isNotEmpty
-                        ? widget.worker.bio
-                        : 'No bio available.',
-                    style: theme.textTheme.bodyLarge,
+                    'If you have any questions about your service or professional assignment, our support team is here to help.',
+                    style: theme.textTheme.bodyMedium,
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Available Slots',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            // Handle call support
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Call support would be initiated',
+                                ),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: theme.primaryColor),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.call, size: 16),
+                              SizedBox(width: 8),
+                              Text('Call Support'),
+                            ],
+                          ),
                         ),
                       ),
-                      TextButton.icon(
-                        onPressed: () => _selectDate(context),
-                        icon: Icon(Icons.calendar_today),
-                        label: Text(DateFormat('MMM d').format(_selectedDate)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Handle chat support
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Chat support would be opened'),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble, size: 16),
+                              SizedBox(width: 8),
+                              Text('Chat Support'),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  slots.isEmpty
-                      ? Text('No slots available.')
-                      : Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: slots.map((slot) {
-                            return ActionChip(
-                              label: Text(
-                                '${DateFormat('MMM d').format(slot.startTime)}\n${DateFormat('jm').format(slot.startTime)}',
-                                textAlign: TextAlign.center,
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              backgroundColor: theme.colorScheme.surface,
-                              side: BorderSide(
-                                color: theme.colorScheme.primary.withAlpha(
-                                  (0.2 * 255).round(),
-                                ),
-                              ),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => BookingScreen(
-                                      worker: widget.worker,
-                                      slot: slot,
-                                      service: widget.service,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          }).toList(),
-                        ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

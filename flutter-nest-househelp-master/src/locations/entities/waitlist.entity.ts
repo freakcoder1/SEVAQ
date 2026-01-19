@@ -20,7 +20,7 @@ export class Waitlist {
     @Column({ type: 'timestamp' })
     requestedAt: Date;
 
-    @Column({ type: 'enum', enum: ['pending', 'notified', 'cancelled'] })
+    @Column({ type: 'varchar', default: 'pending' })
     status: string;
 
     @Column({ type: 'timestamp', nullable: true })

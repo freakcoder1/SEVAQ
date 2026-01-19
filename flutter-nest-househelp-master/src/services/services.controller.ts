@@ -1,14 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { AdminCreateServiceDto } from './dto/admin-create-service.dto';
+import { AdminUpdateServiceDto } from './dto/admin-update-service.dto';
+import { AdminGuard } from '../auth/admin.guard';
 
 @Controller('services')
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class ServicesController {
   constructor(private readonly servicesService: ServicesService) { }
 
   @Post()
-  create(@Body() createServiceDto: CreateServiceDto) {
+  @UseGuards(AdminGuard)
+  create(@Body() createServiceDto: AdminCreateServiceDto) {
     return this.servicesService.create(createServiceDto);
   }
 
@@ -28,11 +33,13 @@ export class ServicesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateServiceDto: UpdateServiceDto) {
+  @UseGuards(AdminGuard)
+  update(@Param('id') id: string, @Body() updateServiceDto: AdminUpdateServiceDto) {
     return this.servicesService.update(id, updateServiceDto);
   }
 
   @Delete(':id')
+  @UseGuards(AdminGuard)
   remove(@Param('id') id: string) {
     return this.servicesService.remove(id);
   }

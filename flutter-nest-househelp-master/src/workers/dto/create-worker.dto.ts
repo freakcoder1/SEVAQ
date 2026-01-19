@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsUUID, IsNumber, Min, Max } from 'class-validator';
 
 export class CreateWorkerDto {
     @IsUUID()
@@ -12,4 +12,16 @@ export class CreateWorkerDto {
     @IsArray()
     @IsUUID('4', { each: true })
     serviceIds: string[];
+
+    @IsNumber()
+    @IsNotEmpty()
+    @Min(-90)
+    @Max(90)
+    latitude: number;
+
+    @IsNumber()
+    @IsNotEmpty()
+    @Min(-180)
+    @Max(180)
+    longitude: number;
 }

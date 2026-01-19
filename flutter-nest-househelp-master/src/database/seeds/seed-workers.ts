@@ -33,7 +33,7 @@ export class SeedWorkers {
 
     this.logger.log(`Found ${services.length} services`);
 
-    // Create sample workers for 201306 area
+    // Create enhanced sample workers for Greater Noida area with better coverage
     const workers = [
       {
         firstName: 'Amit',
@@ -44,9 +44,9 @@ export class SeedWorkers {
         bio: 'Professional cleaner with 5 years of experience. Expert in deep cleaning and sanitization.',
         rating: 4.5,
         reviewCount: 127,
-        serviceRadiusKm: 5,
-        currentLat: 28.6150,
-        currentLng: 77.3650,
+        serviceRadiusKm: 25, // Increased from 5 to 25km for better coverage
+        currentLat: 28.5805083,
+        currentLng: 77.4392111,
         isActive: true,
         services: [services[0], services[1]].filter(Boolean),
         availabilitySchedule: [
@@ -66,9 +66,9 @@ export class SeedWorkers {
         bio: 'Experienced cook specializing in North Indian and South Indian cuisine. Home chef with passion.',
         rating: 4.8,
         reviewCount: 89,
-        serviceRadiusKm: 4,
-        currentLat: 28.6200,
-        currentLng: 77.3700,
+        serviceRadiusKm: 25, // Increased from 4 to 25km for better coverage
+        currentLat: 28.5812345,
+        currentLng: 77.4389876,
         isActive: true,
         services: [services[2], services[3]].filter(Boolean),
         availabilitySchedule: [
@@ -89,9 +89,9 @@ export class SeedWorkers {
         bio: 'Reliable driver and errand runner. Safe driver with clean record.',
         rating: 4.3,
         reviewCount: 64,
-        serviceRadiusKm: 8,
-        currentLat: 28.6180,
-        currentLng: 77.3680,
+        serviceRadiusKm: 25, // Increased from 8 to 25km for better coverage
+        currentLat: 28.5798765,
+        currentLng: 77.4401234,
         isActive: true,
         services: [services[4], services[5]].filter(Boolean),
         availabilitySchedule: [
@@ -106,16 +106,16 @@ export class SeedWorkers {
       },
       {
         firstName: 'Sunita',
-        lastName: ' Devi',
+        lastName: 'Devi',
         email: 'sunita.devi@househelp.com',
         password: 'password123',
         phone: '+919876543213',
         bio: 'Expert in laundry and ironing services. Quick and efficient.',
         rating: 4.6,
         reviewCount: 45,
-        serviceRadiusKm: 3,
-        currentLat: 28.6220,
-        currentLng: 77.3720,
+        serviceRadiusKm: 25, // Increased from 3 to 25km for better coverage
+        currentLat: 28.5820000,
+        currentLng: 77.4370000,
         isActive: true,
         services: [services[1], services[6]].filter(Boolean),
         availabilitySchedule: [
@@ -135,9 +135,9 @@ export class SeedWorkers {
         bio: 'Full-time house help. Expert in all household chores and gardening.',
         rating: 4.4,
         reviewCount: 112,
-        serviceRadiusKm: 5,
-        currentLat: 28.6160,
-        currentLng: 77.3660,
+        serviceRadiusKm: 25, // Increased from 5 to 25km for better coverage
+        currentLat: 28.5780000,
+        currentLng: 77.4420000,
         isActive: true,
         services: services.slice(0, 3),
         availabilitySchedule: [
@@ -148,6 +148,146 @@ export class SeedWorkers {
           { day: 4, startTime: '06:00', endTime: '20:00' },
           { day: 5, startTime: '06:00', endTime: '20:00' },
           { day: 6, startTime: '06:00', endTime: '14:00' },
+        ]
+      },
+      {
+        firstName: 'Neha',
+        lastName: 'Patel',
+        email: 'neha.patel@househelp.com',
+        password: 'password123',
+        phone: '+919876543215',
+        bio: 'Professional babysitter and nanny with 6 years of experience. Certified childcare provider.',
+        rating: 4.7,
+        reviewCount: 95,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5830000,
+        currentLng: 77.4360000,
+        isActive: true,
+        services: [services[7]].filter(Boolean), // Childcare service
+        availabilitySchedule: [
+          { day: 1, startTime: '08:00', endTime: '20:00' },
+          { day: 2, startTime: '08:00', endTime: '20:00' },
+          { day: 3, startTime: '08:00', endTime: '20:00' },
+          { day: 4, startTime: '08:00', endTime: '20:00' },
+          { day: 5, startTime: '08:00', endTime: '20:00' },
+          { day: 6, startTime: '09:00', endTime: '18:00' },
+        ]
+      },
+      {
+        firstName: 'Sanjay',
+        lastName: 'Yadav',
+        email: 'sanjay.yadav@househelp.com',
+        password: 'password123',
+        phone: '+919876543216',
+        bio: 'Gardening and landscaping expert. 8 years of experience in maintaining beautiful gardens.',
+        rating: 4.6,
+        reviewCount: 78,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5770000,
+        currentLng: 77.4430000,
+        isActive: true,
+        services: [services[8]].filter(Boolean), // Gardening service
+        availabilitySchedule: [
+          { day: 1, startTime: '07:00', endTime: '17:00' },
+          { day: 2, startTime: '07:00', endTime: '17:00' },
+          { day: 3, startTime: '07:00', endTime: '17:00' },
+          { day: 4, startTime: '07:00', endTime: '17:00' },
+          { day: 5, startTime: '07:00', endTime: '17:00' },
+          { day: 6, startTime: '08:00', endTime: '14:00' },
+        ]
+      },
+      {
+        firstName: 'Anita',
+        lastName: 'Gupta',
+        email: 'anita.gupta@househelp.com',
+        password: 'password123',
+        phone: '+919876543217',
+        bio: 'Senior care specialist with medical background. Compassionate and experienced caregiver.',
+        rating: 4.8,
+        reviewCount: 67,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5840000,
+        currentLng: 77.4350000,
+        isActive: true,
+        services: [services[9]].filter(Boolean), // Senior care service
+        availabilitySchedule: [
+          { day: 0, startTime: '08:00', endTime: '20:00' },
+          { day: 1, startTime: '08:00', endTime: '20:00' },
+          { day: 2, startTime: '08:00', endTime: '20:00' },
+          { day: 3, startTime: '08:00', endTime: '20:00' },
+          { day: 4, startTime: '08:00', endTime: '20:00' },
+          { day: 5, startTime: '08:00', endTime: '20:00' },
+          { day: 6, startTime: '09:00', endTime: '17:00' },
+        ]
+      },
+      {
+        firstName: 'Manoj',
+        lastName: 'Sharma',
+        email: 'manoj.sharma@househelp.com',
+        password: 'password123',
+        phone: '+919876543218',
+        bio: 'Multi-skilled professional offering cleaning, cooking, and general household assistance.',
+        rating: 4.5,
+        reviewCount: 145,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5760000,
+        currentLng: 77.4440000,
+        isActive: true,
+        services: services.slice(0, 4), // Multiple services
+        availabilitySchedule: [
+          { day: 1, startTime: '06:00', endTime: '18:00' },
+          { day: 2, startTime: '06:00', endTime: '18:00' },
+          { day: 3, startTime: '06:00', endTime: '18:00' },
+          { day: 4, startTime: '06:00', endTime: '18:00' },
+          { day: 5, startTime: '06:00', endTime: '18:00' },
+          { day: 6, startTime: '07:00', endTime: '15:00' },
+        ]
+      },
+      {
+        firstName: 'Pooja',
+        lastName: 'Singh',
+        email: 'pooja.singh@househelp.com',
+        password: 'password123',
+        phone: '+919876543219',
+        bio: 'Professional cook specializing in healthy and organic meals. Nutrition certified.',
+        rating: 4.9,
+        reviewCount: 88,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5850000,
+        currentLng: 77.4340000,
+        isActive: true,
+        services: [services[2], services[10]].filter(Boolean), // Cooking and healthy meals
+        availabilitySchedule: [
+          { day: 1, startTime: '09:00', endTime: '21:00' },
+          { day: 2, startTime: '09:00', endTime: '21:00' },
+          { day: 3, startTime: '09:00', endTime: '21:00' },
+          { day: 4, startTime: '09:00', endTime: '21:00' },
+          { day: 5, startTime: '09:00', endTime: '21:00' },
+          { day: 6, startTime: '10:00', endTime: '18:00' },
+        ]
+      },
+      {
+        firstName: 'Deepak',
+        lastName: 'Mehta',
+        email: 'deepak.mehta@househelp.com',
+        password: 'password123',
+        phone: '+919876543220',
+        bio: 'Errands and shopping expert. Reliable and efficient with excellent time management.',
+        rating: 4.4,
+        reviewCount: 102,
+        serviceRadiusKm: 25, // Increased for better coverage
+        currentLat: 28.5750000,
+        currentLng: 77.4450000,
+        isActive: true,
+        services: [services[5], services[11]].filter(Boolean), // Errands and shopping
+        availabilitySchedule: [
+          { day: 1, startTime: '08:00', endTime: '20:00' },
+          { day: 2, startTime: '08:00', endTime: '20:00' },
+          { day: 3, startTime: '08:00', endTime: '20:00' },
+          { day: 4, startTime: '08:00', endTime: '20:00' },
+          { day: 5, startTime: '08:00', endTime: '20:00' },
+          { day: 6, startTime: '09:00', endTime: '17:00' },
+          { day: 0, startTime: '10:00', endTime: '16:00' },
         ]
       }
     ];

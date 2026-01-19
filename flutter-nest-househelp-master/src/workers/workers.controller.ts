@@ -16,11 +16,22 @@ export class WorkersController {
 
     @Post()
     create(@Body() createWorkerDto: CreateWorkerDto) {
-        return this.workersService.create(createWorkerDto.userId, createWorkerDto.bio, createWorkerDto.serviceIds);
+        return this.workersService.create(
+            createWorkerDto.userId,
+            createWorkerDto.bio,
+            createWorkerDto.serviceIds,
+            createWorkerDto.latitude,
+            createWorkerDto.longitude
+        );
     }
 
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.workersService.findOne(id);
+    }
+
+    @Get('service/:serviceId')
+    async findByService(@Param('serviceId') serviceId: string) {
+        return this.workersService.findByService(serviceId);
     }
 }

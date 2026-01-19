@@ -49,7 +49,6 @@ class CategoryScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => ServiceDetailsScreen(
                           service: categoryServices[index],
-                          workerProvider: workerProvider,
                         ),
                       ),
                     );

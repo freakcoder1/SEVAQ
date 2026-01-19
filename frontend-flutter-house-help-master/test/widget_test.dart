@@ -18,7 +18,9 @@ import '../lib/providers/location_provider.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App launches and shows splash screen', (
+    WidgetTester tester,
+  ) async {
     // Mock SharedPreferences
     SharedPreferences.setMockInitialValues({});
 
@@ -37,16 +39,11 @@ void main() {
       ),
     );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Wait for the splash screen to load
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the splash screen is displayed
+    expect(find.text('Welcome to Sevaq'), findsOneWidget);
+    expect(find.text('Your trusted home service partner'), findsOneWidget);
   });
 }

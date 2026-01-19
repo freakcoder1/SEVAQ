@@ -6,6 +6,7 @@ import { SlotsService } from '../slots/slots.service';
 import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
+import { BookingStatus, AssignmentState, BookingType } from './entities/booking.entity';
 
 @Injectable()
 export class BookingsService {
@@ -86,32 +87,139 @@ export class BookingsService {
     }
 
     async create(createBookingDto: any) {
-        let workerId = createBookingDto.worker;
-        const { service: serviceId, user: userId, startTime, endTime } = createBookingDto;
-
-        // If no worker specified, find the best match using AI
-        if (!workerId && serviceId && userId && startTime && endTime) {
-            const user = await this.usersRepository.findOne({ where: { id: userId } });
-            if (!user || !user.latitude || !user.longitude) {
-                throw new BadRequestException('User location not available for matching');
+        try {
+            // Validate user exists
+            const user = await this.usersRepository.findOne({ where: { id: createBookingDto.userId } });
+            if (!user) {
+                throw new BadRequestException('User not found');
             }
 
-            const bestMatch = await this.findBestWorker(serviceId, user.latitude, user.longitude, new Date(startTime), new Date(endTime));
-            workerId = bestMatch.worker.id;
-
-            // Book the slot
-            await this.slotsService.markAsBooked(bestMatch.slot.id);
-        } else if (workerId && startTime && endTime) {
-            // Manual worker selection - check availability
-            const slot = await this.slotsService.findAvailableSlot(workerId, new Date(startTime), new Date(endTime));
-            if (!slot) {
-                throw new BadRequestException('Slot not available for the selected time');
+            // Validate service exists
+            const service = await this.servicesRepository.findOne({ where: { id: createBookingDto.serviceId } });
+            if (!service) {
+                throw new BadRequestException('Service not found');
             }
-            await this.slotsService.markAsBooked(slot.id);
+
+            // Validate time range
+            if (createBookingDto.startTime >= createBookingDto.endTime) {
+                throw new BadRequestException('Start time must be before end time');
+            }
+
+            // Validate time is in future
+            const now = new Date();
+            if (createBookingDto.startTime <= now) {
+                throw new BadRequestException('Start time must be in the future');
+            }
+
+            // Create service request (intent only) - never fail due to worker availability
+            const booking = this.bookingsRepository.create({
+                ...createBookingDto,
+                status: BookingStatus.REQUESTED,
+                worker: null, // No worker assigned yet
+                type: createBookingDto.type || BookingType.ON_DEMAND
+            });
+
+            const savedBooking = await this.bookingsRepository.save(booking);
+            return Array.isArray(savedBooking) ? savedBooking[0] : savedBooking;
+        } catch (error) {
+            // Log the error for debugging
+            console.error('Booking creation error:', error.message, {
+                userId: createBookingDto.userId,
+                serviceId: createBookingDto.serviceId,
+                startTime: createBookingDto.startTime,
+                endTime: createBookingDto.endTime
+            });
+            
+            // Re-throw the error with context
+            throw error;
+        }
+    }
+
+    async attemptAssignment(bookingId: string) {
+        const booking = await this.bookingsRepository.findOne({
+            where: { id: bookingId },
+            relations: ['user', 'service']
+        });
+        if (!booking) {
+            throw new BadRequestException('Booking not found');
         }
 
-        const booking = this.bookingsRepository.create({ ...createBookingDto, worker: { id: workerId } });
-        return this.bookingsRepository.save(booking);
+        if (booking.status !== BookingStatus.REQUESTED) {
+            throw new BadRequestException('Assignment can only be attempted on REQUESTED bookings');
+        }
+
+        // Find the best worker for this booking
+        const user = booking.user;
+        console.log('🔍 User data:', {
+            id: user?.id,
+            latitude: user?.latitude,
+            longitude: user?.longitude,
+            hasUser: !!user
+        });
+        
+        if (!user || !user.latitude || !user.longitude) {
+            // Try to load user separately if relation didn't work
+            const fullUser = await this.usersRepository.findOne({ where: { id: booking.userId } });
+            console.log('🔍 Full user data:', {
+                id: fullUser?.id,
+                latitude: fullUser?.latitude,
+                longitude: fullUser?.longitude,
+                hasUser: !!fullUser
+            });
+            
+            if (!fullUser || !fullUser.latitude || !fullUser.longitude) {
+                throw new BadRequestException('User location not available for matching');
+            }
+            
+            // Use the full user data
+            return await this.attemptAssignmentWithUser(booking, fullUser);
+        }
+        
+        return await this.attemptAssignmentWithUser(booking, user);
+    }
+    
+    private async attemptAssignmentWithUser(booking: Booking, user: User) {
+        try {
+            const bestMatch = await this.findBestWorker(
+                booking.service.id,
+                user.latitude,
+                user.longitude,
+                booking.startTime,
+                booking.endTime
+            );
+
+            // Book the slot and assign worker
+            await this.slotsService.markAsBooked(bestMatch.slot.id);
+            
+            
+            // Update booking with assigned worker
+            booking.worker = bestMatch.worker;
+            booking.status = BookingStatus.PENDING; // Ready for confirmation
+            booking.assignmentState = AssignmentState.ASSIGNED;
+            booking.assignedWorkerId = bestMatch.worker.id;
+            booking.assignmentTimestamp = new Date();
+            booking.assignmentReason = 'Best match found';
+            return await this.bookingsRepository.save(booking);
+        } catch (error) {
+            // Assignment failed - booking remains in REQUESTED state
+            // This is not an error, just no workers available
+            return booking;
+        }
+    }
+
+    async createWithAssignment(createBookingDto: any) {
+        // Create service request first
+        const savedBooking = await this.create(createBookingDto);
+        
+        // Attempt assignment asynchronously
+        try {
+            await this.attemptAssignment(savedBooking.id);
+        } catch (error) {
+            // Assignment failed, but booking was created successfully
+            console.log(`Assignment failed for booking ${savedBooking.id}:`, error.message);
+        }
+
+        return savedBooking;
     }
 
     async findAll(userId?: string, workerId?: string) {
@@ -158,5 +266,30 @@ export class BookingsService {
         }
 
         return this.bookingsRepository.update(id, updateBookingDto);
+    }
+
+    async assignBooking(assignBookingDto: any) {
+        const { bookingId, workerId } = assignBookingDto;
+        
+        if (!bookingId || !workerId) {
+            throw new BadRequestException('Booking ID and Worker ID are required');
+        }
+
+        const booking = await this.findOne(bookingId);
+        if (!booking) {
+            throw new BadRequestException('Booking not found');
+        }
+
+        // Check if worker is available for the booking time
+        const slot = await this.slotsService.findAvailableSlot(workerId, booking.startTime, booking.endTime);
+        if (!slot) {
+            throw new BadRequestException('Worker not available for the booking time');
+        }
+
+        // Mark slot as booked
+        await this.slotsService.markAsBooked(slot.id);
+
+        // Update booking with assigned worker
+        return this.bookingsRepository.update(bookingId, { worker: { id: workerId } });
     }
 }

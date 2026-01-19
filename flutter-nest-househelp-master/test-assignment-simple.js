@@ -1,0 +1,73 @@
+const axios = require('axios');
+
+const API_BASE = 'http://127.0.0.1:3000';
+
+async function testAssignmentSystem() {
+
+  console.log('🧪 TESTING ASSIGNMENT SYSTEM COMPLETE FLOW');
+
+  console.log('=============================================\n');
+
+  try {
+
+    // 1. Test assignment attempt directly
+
+    console.log('1. Testing assignment attempt...');
+
+    const assignmentResponse = await axios.post(`${API_BASE}/bookings/5450c58d-9e74-4558-9890-6cdbc3d4fea1/attempt-assignment`);
+
+    console.log('✅ Assignment attempt result:', assignmentResponse.data);
+
+    // 2. Check assignment status
+
+    console.log('\n2. Checking assignment status...');
+
+    const statusResponse = await axios.get(`${API_BASE}/assignments/5450c58d-9e74-4558-9890-6cdbc3d4fea1/status`);
+
+    console.log('✅ Assignment status:', statusResponse.data);
+
+    // 3. Test payment integration
+
+    console.log('\n3. Testing payment integration...');
+
+    if (assignmentResponse.data.success && assignmentResponse.data.worker) {
+
+      const paymentResponse = await axios.post(`${API_BASE}/payments/create`, {
+
+        bookingId: '5450c58d-9e74-4558-9890-6cdbc3d4fea1',
+
+        amount: 50000, // in paise
+
+        currency: 'INR',
+
+        paymentMethod: 'upi'
+
+      });
+
+      console.log('✅ Payment integration test:', paymentResponse.data);
+
+    } else {
+
+      console.log('⚠️ Assignment not successful, skipping payment test');
+
+    }
+
+    console.log('\n🎉 ASSIGNMENT SYSTEM TEST COMPLETE');
+
+    console.log('=====================================');
+
+  } catch (error) {
+
+    console.error('❌ Test failed:', error.response?.data || error.message);
+
+    if (error.response?.data) {
+
+      console.error('Response data:', error.response.data);
+
+    }
+
+  }
+
+}
+
+testAssignmentSystem();

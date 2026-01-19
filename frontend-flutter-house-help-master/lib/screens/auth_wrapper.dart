@@ -23,14 +23,14 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
   // Navigation debounce: prevent multiple navigation calls
-  static bool _hasNavigated = false;
-  static DateTime _lastBuildTime = DateTime.now();
+  bool _hasNavigated = false;
+  DateTime _lastBuildTime = DateTime.now();
   static const int _DEBOUNCE_MS = 1500; // 1.5 seconds debounce
 
   // Initialization delay to wait for async providers (SharedPreferences) to load
   // This prevents showing LoginScreen briefly during app resume
   static const int _INIT_DELAY_MS = 500;
-  static bool _hasCompletedFirstBuild = false;
+  bool _hasCompletedFirstBuild = false;
 
   @override
   void initState() {
@@ -75,7 +75,7 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     }
 
     // Handle unauthenticated state
-    if (!auth.isAuthenticated) {
+    if (!auth.isFullyAuthenticated) {
       debugPrint('AuthWrapper: Showing LoginScreen');
       _hasNavigated = false;
       return LoginScreen();

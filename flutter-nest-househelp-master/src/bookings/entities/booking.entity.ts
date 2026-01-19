@@ -1,69 +1,119 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
 import { Service } from '../../services/entities/service.entity';
+import { Slot } from '../../slots/entities/slot.entity';
 
 export enum BookingStatus {
-    PENDING = 'pending',
-    CONFIRMED = 'confirmed',
-    CANCELLED = 'cancelled',
-    COMPLETED = 'completed',
+  REQUESTED = 'requested',
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  NO_SHOW = 'no_show',
 }
 
 export enum BookingType {
-    ONE_TIME = 'one_time',
-    SUBSCRIPTION = 'subscription',
+  ON_DEMAND = 'on_demand',
+  SCHEDULED = 'scheduled',
+  SUBSCRIPTION = 'subscription',
 }
 
-@Entity()
+export enum AssignmentState {
+  PENDING = 'pending',
+  ASSIGNED = 'assigned',
+  CONFIRMED = 'confirmed',
+  REASSIGNING = 'reassigning',
+  CANCELLED = 'cancelled'
+}
+
+@Entity('booking')
 export class Booking {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @ManyToOne(() => User)
-    @JoinColumn()
-    user: User;
+  @Column({ name: 'userId', type: 'uuid' })
+  userId: string;
 
-    @ManyToOne(() => Worker)
-    @JoinColumn()
-    worker: Worker;
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
-    @ManyToOne(() => Service)
-    @JoinColumn()
-    service: Service;
+  @Column({ type: 'uuid', nullable: true })
+  workerId: string;
 
-    @Column()
-    startTime: Date;
+  @ManyToOne(() => Worker, { nullable: true })
+  @JoinColumn({ name: 'workerId' })
+  worker: Worker;
 
-    @Column()
-    endTime: Date;
+  @Column({ type: 'uuid', nullable: true })
+  serviceId: string;
 
-    @Column({
-        type: 'enum',
-        enum: BookingStatus,
-        default: BookingStatus.PENDING,
-    })
-    status: BookingStatus;
+  @ManyToOne(() => Service, { nullable: true })
+  @JoinColumn({ name: 'serviceId' })
+  service: Service;
 
-    @Column({
-        type: 'enum',
-        enum: BookingType,
-        default: BookingType.ONE_TIME,
-    })
-    type: BookingType;
+  @Column({ type: 'uuid', nullable: true })
+  slotId: string;
 
-    @Column({ type: 'json', nullable: true })
-    subscriptionDetails: any; // Store frequency, duration etc.
+  @ManyToOne(() => Slot, { nullable: true })
+  @JoinColumn({ name: 'slotId' })
+  slot: Slot;
 
-    @Column({ default: false })
-    isPaid: boolean;
+  @Column({ type: 'timestamp' })
+  startTime: Date;
 
-    @Column({ nullable: true })
-    paymentId: string;
+  @Column({ type: 'timestamp' })
+  endTime: Date;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  amount: number;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @Column({ type: 'boolean', default: false })
+  isPaid: boolean;
+
+  @Column({ type: 'text', default: BookingStatus.PENDING })
+  status: BookingStatus;
+
+  @Column({ type: 'text', default: BookingType.ON_DEMAND })
+  type: BookingType;
+
+  @Column({ type: 'text', nullable: true })
+  notes: string;
+
+  // NEW: Responsibility transfer fields
+  @Column({ default: false })
+  responsibilityTransferred: boolean;
+
+  @Column({ default: false })
+  systemMonitoring: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  protectionStatus: string;
+
+  // NEW: Assignment-specific fields
+  @Column({ type: 'text', default: AssignmentState.PENDING })
+  assignmentState: AssignmentState;
+
+  @Column({ type: 'uuid', nullable: true })
+  assignedWorkerId: string;
+
+  @Column({ type: 'text', nullable: true })
+  assignmentReason: string;
+
+  @Column({ type: 'integer', default: 0 })
+  reassignmentCount: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  assignmentTimestamp: Date;
+
+  @Column({ type: 'text', nullable: true })
+  assignmentMetadata: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

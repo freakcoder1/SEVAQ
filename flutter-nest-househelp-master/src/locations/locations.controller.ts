@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Delete, Query, Body, Param, Req, UseGuards, BadRequestException, Logger } from '@nestjs/common';
 import { LocationService } from './locations.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../auth/admin.guard';
 
 interface LocationAvailabilityDto {
   lat: number;
@@ -208,6 +209,7 @@ export class LocationsController {
   }
 
   // Admin endpoint to update all workers to a specific location (only workers without locations)
+  @UseGuards(AdminGuard)
   @Post('admin/update-worker-locations')
   async updateAllWorkerLocations(@Body() body: { lat: number; lng: number }) {
     this.logger.log(`Admin: Updating all worker locations to lat=${body.lat}, lng=${body.lng} (only workers without existing locations)`);
@@ -215,6 +217,7 @@ export class LocationsController {
   }
 
   // Admin endpoint to FORCE update ALL workers to a specific location (overwrites existing locations)
+  @UseGuards(AdminGuard)
   @Post('admin/force-update-worker-locations')
   async forceUpdateAllWorkerLocations(@Body() body: { lat: number; lng: number }) {
     this.logger.warn(`Admin: FORCE updating ALL worker locations to lat=${body.lat}, lng=${body.lng} (WARNING: will overwrite existing locations!)`);
@@ -254,6 +257,7 @@ export class LocationsController {
   }
 
   // Admin endpoint to expand service area to cover a location
+  @UseGuards(AdminGuard)
   @Post('admin/expand-service-area')
   async expandServiceArea(@Body() body: { lat: number; lng: number; paddingKm?: number }) {
     this.logger.log(`Admin: Expanding service area to cover lat=${body.lat}, lng=${body.lng} with ${body.paddingKm || 5}km padding`);

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -143,7 +144,9 @@ class AuthProvider with ChangeNotifier {
     // If we have token but no cached user, try to refresh from API
     if (_cachedToken != null && _cachedUser == null) {
       _refreshUserFromApi();
-      return true; // Assume authenticated while refreshing
+      // Return false during refresh to prevent premature navigation
+      // AuthWrapper will re-check after refresh completes
+      return false;
     }
 
     // No authentication data found
@@ -225,6 +228,11 @@ class AuthProvider with ChangeNotifier {
         final user = response['user'];
 
         if (token != null && user != null) {
+          debugPrint('AuthProvider: Storing token and user data');
+          debugPrint('AuthProvider: Token length: ${token.length}');
+          debugPrint(
+            'AuthProvider: Token starts with: ${token.substring(0, math.min(20, token.length))}...',
+          );
           await _storage.write(key: 'jwt_token', value: token);
           await _storage.write(key: 'user_id', value: user['id'].toString());
 
@@ -263,7 +271,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.post('auth/register', {
+      final response = await _apiService.post('auth/signup', {
         'email': email,
         'password': password,
         'firstName': firstName,
@@ -361,5 +369,27 @@ class AuthProvider with ChangeNotifier {
     String lastName,
   ) async {
     return await register(email, password, firstName, lastName);
+  }
+
+  // Debug method to test API connectivity
+  Future<void> testApiConnectivity() async {
+    try {
+      final response = await _apiService.checkServerHealth();
+      debugPrint('API Health Check: $response');
+    } catch (e) {
+      debugPrint('API Health Check Failed: $e');
+    }
+  }
+
+  /// Enhanced authentication check that considers initialization state
+  /// This method is more reliable for navigation decisions
+  bool get isFullyAuthenticated {
+    // Must have both token and user data to be fully authenticated
+    return _cachedToken != null && _cachedUser != null;
+  }
+
+  /// Check if authentication is in progress
+  bool get isAuthInProgress {
+    return _isLoading || (!_cacheLoaded && !_isInitialized);
   }
 }

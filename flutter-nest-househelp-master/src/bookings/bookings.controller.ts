@@ -1,13 +1,28 @@
-import { Controller, Get, Post, Body, Param, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Controller('bookings')
 export class BookingsController {
     constructor(private readonly bookingsService: BookingsService) { }
 
     @Post()
-    create(@Body() createBookingDto: any) {
+    @UsePipes(new ValidationPipe({ transform: true }))
+    create(@Body() createBookingDto: CreateBookingDto) {
         return this.bookingsService.create(createBookingDto);
+    }
+
+    @Post(':id/attempt-assignment')
+    attemptAssignment(@Param('id') id: string) {
+        console.log('🔍 Attempting assignment for booking ID:', id);
+        return this.bookingsService.attemptAssignment(id);
+    }
+
+    @Post(':id/create-with-assignment')
+    @UsePipes(new ValidationPipe({ transform: true }))
+    createWithAssignment(@Param('id') id: string, @Body() createBookingDto: CreateBookingDto) {
+        return this.bookingsService.createWithAssignment(createBookingDto);
     }
 
     @Get()
@@ -21,7 +36,13 @@ export class BookingsController {
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateBookingDto: any) {
+    @UsePipes(new ValidationPipe({ transform: true }))
+    update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
         return this.bookingsService.update(id, updateBookingDto);
+    }
+
+    @Post('assign')
+    assignBooking(@Body() assignBookingDto: { bookingId: string; workerId: string }) {
+        return this.bookingsService.assignBooking(assignBookingDto);
     }
 }

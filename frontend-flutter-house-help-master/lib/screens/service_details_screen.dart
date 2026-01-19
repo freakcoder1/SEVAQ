@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/service.dart';
 import '../models/worker.dart';
-import '../providers/worker_provider.dart';
-import '../widgets/worker_card.dart';
-import 'worker_details_screen.dart';
+import '../models/user.dart';
+import 'schedule_pricing_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Service service;
-  final WorkerProvider workerProvider;
 
-  const ServiceDetailsScreen({
-    Key? key,
-    required this.service,
-    required this.workerProvider,
-  }) : super(key: key);
+  const ServiceDetailsScreen({Key? key, required this.service})
+    : super(key: key);
 
   @override
   _ServiceDetailsScreenState createState() => _ServiceDetailsScreenState();
@@ -23,8 +18,6 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Use the passed workerProvider instead of Consumer
-    final provider = widget.workerProvider;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.service.name)),
@@ -93,57 +86,315 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             SizedBox(height: 8),
             Text(widget.service.description, style: theme.textTheme.bodyLarge),
             SizedBox(height: 30),
-            // Available Workers
-            Text(
-              'Available Workers',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+
+            // Service Scope Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Service Scope',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'This service includes comprehensive cleaning of all rooms, kitchen areas, and common spaces. Our professionals use eco-friendly cleaning products and follow strict hygiene protocols.',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'All rooms cleaned',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Kitchen deep cleaning',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Eco-friendly products',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 16),
-            // Use the passed workerProvider directly instead of Consumer
-            _buildWorkersList(provider),
+
+            SizedBox(height: 24),
+
+            // What's Included Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'What\'s Included',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Your service includes:',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Professional assignment',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Service monitoring',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Quality guarantee',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Support throughout',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 30),
+
+            // Managed Service Explanation
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'How SevaQ Works',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'We handle the professional assignment for you. Once you schedule your service, SevaQ will assign the best available professional based on expertise and availability.',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Verified professionals',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Assignment monitoring',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.secondary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Support throughout',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      // Primary CTA - Go to Schedule & Pricing
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SchedulePricingScreen(
+                        worker: _createPlaceholderWorker(),
+                        service: widget.service,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                  textStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: Text('Schedule & Get Price'),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'We\'ll assign a professional and monitor your service',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWorkersList(WorkerProvider provider) {
-    if (provider.isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-
-    final availableWorkers = provider.workers
-        .where(
-          (worker) => worker.services.any((s) => s.id == widget.service.id),
-        )
-        .toList();
-
-    if (availableWorkers.isEmpty) {
-      return Text('No workers available for this service.');
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemCount: availableWorkers.length,
-      itemBuilder: (context, index) {
-        return WorkerCard(
-          worker: availableWorkers[index],
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => WorkerDetailsScreen(
-                  worker: availableWorkers[index],
-                  service: widget.service,
-                ),
-              ),
-            );
-          },
-        );
-      },
+  Worker _createPlaceholderWorker() {
+    return Worker(
+      id: 'placeholder-worker',
+      user: User(
+        id: 'placeholder-user',
+        firstName: 'Sevaq',
+        lastName: 'Professional',
+        email: 'sevaq@sevaq.com',
+        role: 'worker',
+      ),
+      bio:
+          'Your assigned professional will be selected based on availability and expertise.',
+      rating: 4.5,
+      reviewCount: 100,
+      services: [],
     );
   }
 }

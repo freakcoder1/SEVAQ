@@ -7,6 +7,7 @@ import '../models/slot.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
 import 'booking_confirmation_screen.dart';
+import 'assignment_confirmed_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
@@ -58,46 +59,145 @@ class _BookingScreenState extends State<BookingScreen> {
         throw Exception('User not logged in or order ID missing');
       }
 
-      // Prepare booking data
-      final selectedService = widget.service ?? (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
-      final duration = widget.slot.endTime.difference(widget.slot.startTime).inHours;
-      final amount = selectedService != null ? (selectedService.basePrice * duration * 100).toInt() : 50000; // Amount in paise
+      // Check if this booking is part of an assignment flow
+      // If coming from assignment system, we should have assignment data
+      final assignmentData = await _checkAssignmentStatus();
 
-      final bookingData = {
-        'user': user.id,
-        'worker': widget.worker.id,
-        'service': selectedService?.id,
-        'startTime': widget.slot.startTime.toIso8601String(),
-        'endTime': widget.slot.endTime.toIso8601String(),
-        'amount': amount,
-        'currency': 'INR',
-      };
-
-      // Verify payment and create booking
-      final verifyResponse = await _apiService.post('payments/verify', {
-        'razorpayOrderId': _orderId,
-        'razorpayPaymentId': response.paymentId,
-        'signature': response.signature,
-        'bookingData': bookingData,
-      });
-
-      if (verifyResponse != null && verifyResponse['status'] == 'success') {
-        final booking = Booking.fromJson(verifyResponse['booking']);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BookingConfirmationScreen(booking: booking),
-          ),
-        );
+      if (assignmentData != null && assignmentData['status'] == 'assigned') {
+        // This is an assignment-based booking - use assignment data
+        await _handleAssignmentBasedBooking(response, assignmentData);
       } else {
-        throw Exception('Payment verification failed');
+        // This is a direct booking - use original flow
+        await _handleDirectBooking(response);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
       setState(() => _isProcessing = false);
+    }
+  }
+
+  /// Check if there's an active assignment for this booking
+  Future<Map<String, dynamic>?> _checkAssignmentStatus() async {
+    try {
+      final response = await _apiService.get('assignments/status/latest');
+      if (response != null && response['status'] == 'assigned') {
+        return response;
+      }
+      return null;
+    } catch (e) {
+      print('No active assignment found: $e');
+      return null;
+    }
+  }
+
+  /// Handle assignment-based booking flow
+  Future<void> _handleAssignmentBasedBooking(
+    PaymentSuccessResponse response,
+    Map<String, dynamic> assignmentData,
+  ) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user!;
+
+    // Prepare booking data with assignment reference
+    final selectedService =
+        widget.service ??
+        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    final duration = widget.slot.endTime
+        .difference(widget.slot.startTime)
+        .inHours;
+    final amount = selectedService != null
+        ? (selectedService.basePrice * duration * 100).toInt()
+        : 50000;
+
+    final bookingData = {
+      'user': user.id,
+      'worker': assignmentData['worker']['id'],
+      'service': selectedService?.id,
+      'startTime': widget.slot.startTime.toIso8601String(),
+      'endTime': widget.slot.endTime.toIso8601String(),
+      'amount': amount,
+      'currency': 'INR',
+      'assignmentId': assignmentData['assignmentId'],
+      'isFromAssignment': true,
+    };
+
+    // Verify payment and create booking
+    final verifyResponse = await _apiService.post('payments/verify', {
+      'razorpayOrderId': _orderId,
+      'razorpayPaymentId': response.paymentId,
+      'signature': response.signature,
+      'bookingData': bookingData,
+    });
+
+    if (verifyResponse != null && verifyResponse['status'] == 'success') {
+      final booking = Booking.fromJson(verifyResponse['booking']);
+
+      // Navigate to assignment confirmed screen instead of direct booking confirmation
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AssignmentConfirmedScreen(
+            worker: widget.worker,
+            service: selectedService,
+            startTime: widget.slot.startTime,
+            endTime: widget.slot.endTime,
+            amount: (amount / 100), // Convert back to rupees
+            assignmentData: assignmentData,
+          ),
+        ),
+      );
+    } else {
+      throw Exception('Payment verification failed');
+    }
+  }
+
+  /// Handle direct booking flow (original implementation)
+  Future<void> _handleDirectBooking(PaymentSuccessResponse response) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user!;
+
+    // Prepare booking data
+    final selectedService =
+        widget.service ??
+        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    final duration = widget.slot.endTime
+        .difference(widget.slot.startTime)
+        .inHours;
+    final amount = selectedService != null
+        ? (selectedService.basePrice * duration * 100).toInt()
+        : 50000;
+
+    final bookingData = {
+      'user': user.id,
+      'worker': widget.worker.id,
+      'service': selectedService?.id,
+      'startTime': widget.slot.startTime.toIso8601String(),
+      'endTime': widget.slot.endTime.toIso8601String(),
+      'amount': amount,
+      'currency': 'INR',
+    };
+
+    // Verify payment and create booking
+    final verifyResponse = await _apiService.post('payments/verify', {
+      'razorpayOrderId': _orderId,
+      'razorpayPaymentId': response.paymentId,
+      'signature': response.signature,
+      'bookingData': bookingData,
+    });
+
+    if (verifyResponse != null && verifyResponse['status'] == 'success') {
+      final booking = Booking.fromJson(verifyResponse['booking']);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingConfirmationScreen(booking: booking),
+        ),
+      );
+    } else {
+      throw Exception('Payment verification failed');
     }
   }
 
@@ -117,9 +217,17 @@ class _BookingScreenState extends State<BookingScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final selectedService = widget.service ?? (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
-      final duration = widget.slot.endTime.difference(widget.slot.startTime).inHours;
-      final amountInRupees = selectedService != null ? (selectedService.basePrice * duration) : 500.0;
+      final selectedService =
+          widget.service ??
+          (widget.worker.services.isNotEmpty
+              ? widget.worker.services[0]
+              : null);
+      final duration = widget.slot.endTime
+          .difference(widget.slot.startTime)
+          .inHours;
+      final amountInRupees = selectedService != null
+          ? (selectedService.basePrice * duration)
+          : 500.0;
 
       // Create order on backend
       final orderResponse = await _apiService.post('payments/create-order', {
@@ -149,7 +257,9 @@ class _BookingScreenState extends State<BookingScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating payment order: ${e.toString()}')),
+        SnackBar(
+          content: Text('Error creating payment order: ${e.toString()}'),
+        ),
       );
       setState(() => _isProcessing = false);
     }
@@ -158,9 +268,15 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final selectedService = widget.service ?? (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
-    final duration = widget.slot.endTime.difference(widget.slot.startTime).inHours;
-    final totalAmount = selectedService != null ? (selectedService.basePrice * duration) : 500.0;
+    final selectedService =
+        widget.service ??
+        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    final duration = widget.slot.endTime
+        .difference(widget.slot.startTime)
+        .inHours;
+    final totalAmount = selectedService != null
+        ? (selectedService.basePrice * duration)
+        : 500.0;
 
     return Scaffold(
       appBar: AppBar(title: Text('Confirm Booking')),

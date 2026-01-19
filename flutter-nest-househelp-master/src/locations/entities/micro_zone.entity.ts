@@ -9,17 +9,17 @@ export class MicroZone {
     @Column()
     name: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     centerLat: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     centerLng: number;
 
-    @Column({ type: 'decimal', precision: 5, scale: 2 })
+    @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
     radiusKm: number; // 0.5 to 2km
 
-    @Column({ type: 'enum', enum: ['static', 'dynamic', 'hybrid'] })
-    zoneType: string;
+    @Column()
+    zoneType: string; // 'static', 'dynamic', or 'hybrid'
 
     @Column({ default: true })
     isActive: boolean;

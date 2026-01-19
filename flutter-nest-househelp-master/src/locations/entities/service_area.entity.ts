@@ -9,16 +9,16 @@ export class ServiceArea {
     @Column()
     name: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     minLat: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     maxLat: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     minLng: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7 })
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     maxLng: number;
 
     @Column({ default: true })

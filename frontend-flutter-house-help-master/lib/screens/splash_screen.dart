@@ -167,8 +167,16 @@ class _SplashScreenState extends State<SplashScreen>
       debugPrint(
         'SplashScreen: Location exists, marking setup complete immediately',
       );
-      // Mark location setup complete IMMEDIATELY
-      locationProvider.markLocationSetupComplete();
+      debugPrint(
+        'SplashScreen: About to call markLocationSetupComplete after build',
+      );
+      // Mark location setup complete AFTER build to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        locationProvider.markLocationSetupComplete();
+        debugPrint(
+          'SplashScreen: markLocationSetupComplete called after build',
+        );
+      });
 
       // Check service availability in background
       await locationProvider.checkServiceAvailability(

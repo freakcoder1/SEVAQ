@@ -1,31 +1,65 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { Worker } from '../../workers/entities/worker.entity';
 
-@Entity()
+@Entity('service')
 export class Service {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    name: string;
+  @Column({ length: 100 })
+  name: string;
 
-    @Column()
-    description: string;
+  @Column({ type: 'text', nullable: true })
+  description: string;
 
-    @Column()
-    category: string; // e.g., 'Cleaning', 'Cooking'
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  basePrice: number;
 
-    @Column({ nullable: true })
-    subcategory: string; // e.g., 'Deep Cleaning', 'Laundry'
+  @Column({ type: 'text', nullable: true })
+  reassuranceText: string; // "A safe choice for most homes"
 
-    @Column('decimal')
-    basePrice: number;
+  @Column('text', { array: true, default: '{}' })
+  whatWillHappen: string[]; // ["Helper will arrive and confirm task", "Work done with standard tools"]
 
-    @Column({ nullable: true })
-    imageUrl: string;
+  @Column('text', { array: true, default: '{}' })
+  whatWillNotHappen: string[]; // ["No upselling without approval", "No extra work added silently"]
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @Column({ type: 'text', nullable: true })
+  ifSomethingGoesWrong: string; // "Sevaq will replace or refund immediately"
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @Column({ type: 'text', nullable: true })
+  category: string; // Simple string category for now
+
+  @Column({ type: 'text', nullable: true })
+  subcategory: string;
+
+  @Column({ type: 'boolean', default: true })
+  isAvailable: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isFastBooking: boolean;
+
+  @Column({ type: 'integer', nullable: true })
+  estimatedWaitTime: number;
+
+  @Column({ type: 'integer', nullable: true })
+  workerCount: number;
+
+  @Column({ type: 'text', nullable: true })
+  imageUrl: string;
+
+  @ManyToMany(() => Worker, worker => worker.services)
+  @JoinTable({
+    name: 'service_worker',
+    joinColumn: { name: 'serviceId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'workerId', referencedColumnName: 'id' },
+  })
+  workers: Worker[];
+
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

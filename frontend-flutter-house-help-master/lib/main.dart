@@ -1,3 +1,4 @@
+// Hot reload triggered - Flutter app is running on Motorola Edge 60 Fusion
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'providers/service_provider.dart';
 import 'providers/worker_provider.dart';
 import 'providers/slot_provider.dart';
 import 'providers/recommendation_provider.dart';
+import 'providers/monitoring_provider.dart';
 import 'screens/auth_wrapper.dart';
 import 'screens/main_navigation.dart';
 import 'screens/home_screen.dart';
@@ -48,6 +50,7 @@ class SevaqApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WorkerProvider()),
         ChangeNotifierProvider(create: (_) => SlotProvider()),
         ChangeNotifierProvider(create: (_) => RecommendationProvider()),
+        ChangeNotifierProvider(create: (_) => MonitoringProvider()),
       ],
       child: const SevaqAppMaterial(),
     );

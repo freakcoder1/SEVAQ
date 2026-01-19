@@ -3,10 +3,18 @@ import '../models/worker.dart';
 
 class WorkerCard extends StatelessWidget {
   final Worker worker;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // Made optional for informational use
+  final bool isSelectable; // New parameter to control selection behavior
+  final bool
+  isPostAssignment; // New parameter to indicate post-assignment state
 
-  const WorkerCard({Key? key, required this.worker, required this.onTap})
-    : super(key: key);
+  const WorkerCard({
+    Key? key,
+    required this.worker,
+    this.onTap,
+    this.isSelectable = true,
+    this.isPostAssignment = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -14,31 +22,31 @@ class WorkerCard extends StatelessWidget {
 
     return Semantics(
       label:
-          '${worker.user.firstName} ${worker.user.lastName}, rating ${worker.rating} with ${worker.reviewCount} reviews, available',
-      hint: 'Tap to view worker details',
-      button: true,
+          '${worker.user.firstName} ${worker.user.lastName}, rating ${worker.rating} with ${worker.reviewCount} reviews',
+      hint: isSelectable ? 'Tap to view worker details' : null,
+      button: isSelectable,
       child: GestureDetector(
-        onTap: onTap,
+        onTap: isSelectable ? onTap : null,
         child: Container(
           margin: EdgeInsets.only(bottom: 16),
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.surface,
-                theme.colorScheme.surface.withAlpha((0.9 * 255).round()),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: isSelectable
+                ? theme.colorScheme.surface
+                : theme.colorScheme.surface.withOpacity(0.6),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: theme.primaryColor.withAlpha((0.1 * 255).round()),
-                blurRadius: 12,
-                offset: Offset(0, 5),
-              ),
-            ],
+            boxShadow: isSelectable
+                ? [
+                    BoxShadow(
+                      color: theme.primaryColor.withAlpha((0.1 * 255).round()),
+                      blurRadius: 12,
+                      offset: Offset(0, 5),
+                    ),
+                  ]
+                : [],
+            border: isSelectable
+                ? Border.all(color: Colors.transparent)
+                : Border.all(color: Colors.grey[400]!),
           ),
           child: Row(
             children: [
@@ -89,24 +97,38 @@ class WorkerCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (!isSelectable) SizedBox(height: 4),
+                    if (!isSelectable)
+                      Text(
+                        isPostAssignment
+                            ? 'Your assigned professional'
+                            : 'Informational only',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Semantics(
-                    excludeSemantics: true,
-                    child: Text(
-                      'Available', // Can be dynamic
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
+              if (isSelectable)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Semantics(
+                      excludeSemantics: true,
+                      child: Text(
+                        'View Details',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ),

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -40,7 +40,14 @@ export class UsersService {
     return this.usersRepository.update(id, updateUserDto);
   }
 
-  remove(id: string) {
+  async remove(id: string) {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+    if (user.role === 'admin') {
+      throw new ForbiddenException('Cannot delete admin users');
+    }
     return this.usersRepository.delete(id);
   }
 }

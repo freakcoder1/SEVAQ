@@ -1,9 +1,35 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 import '../lib/services/api_service.dart';
 import '../lib/providers/auth_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    // Mock SharedPreferences
+    SharedPreferences.setMockInitialValues({});
+
+    // Mock FlutterSecureStorage
+    const MethodChannel channel = MethodChannel(
+      'plugins.it_nomads.com/flutter_secure_storage',
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          switch (methodCall.method) {
+            case 'read':
+              return 'mock_token';
+            case 'write':
+              return null;
+            case 'delete':
+              return null;
+            default:
+              return null;
+          }
+        });
+  });
+
   group('Auth Provider Tests', () {
     late AuthProvider authProvider;
     late ApiService apiService;
@@ -71,7 +97,7 @@ void main() {
     });
 
     test('Base URL should be configured', () {
-      expect(ApiService.baseUrl, 'http://192.168.29.154:3000');
+      expect(ApiService.baseUrl, 'http://192.168.29.154:45357');
     });
 
     test('Token storage should work', () async {

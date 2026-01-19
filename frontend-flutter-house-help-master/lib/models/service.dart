@@ -25,16 +25,21 @@ class Service {
 
   factory Service.fromJson(Map<String, dynamic> json) {
     return Service(
-      id: json['id'] ?? '',
-      name: json['name'] ?? 'Unknown Service',
-      description: json['description'] ?? 'No description available',
-      category: json['category'] ?? 'General',
-      subcategory: json['subcategory'],
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown Service',
+      description:
+          json['description']?.toString() ?? 'No description available',
+      category: json['category']?.toString() ?? 'General',
+      subcategory: json['subcategory']?.toString(),
       basePrice: double.tryParse(json['basePrice']?.toString() ?? '0') ?? 0.0,
       isAvailable: json['isAvailable'] ?? true,
       isFastBooking: json['isFastBooking'] ?? false,
-      estimatedWaitTime: json['estimatedWaitTime'],
-      workerCount: json['workerCount'],
+      estimatedWaitTime: json['estimatedWaitTime'] != null
+          ? int.tryParse(json['estimatedWaitTime'].toString())
+          : null,
+      workerCount: json['workerCount'] != null
+          ? int.tryParse(json['workerCount'].toString())
+          : null,
     );
   }
 }

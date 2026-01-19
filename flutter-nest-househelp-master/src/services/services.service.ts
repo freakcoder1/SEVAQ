@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateServiceDto } from './dto/create-service.dto';
@@ -12,27 +12,48 @@ export class ServicesService {
     private readonly servicesRepository: Repository<Service>,
   ) { }
 
+  private validateServicePricing(basePrice: number) {
+    if (basePrice <= 0) {
+      throw new BadRequestException('Service price must be positive');
+    }
+    if (basePrice > 10000) {
+      throw new BadRequestException('Service price cannot exceed 10000');
+    }
+  }
+
   async create(createServiceDto: CreateServiceDto) {
+    this.validateServicePricing(createServiceDto.basePrice);
     const service = this.servicesRepository.create(createServiceDto);
     return await this.servicesRepository.save(service);
   }
 
   async findAll() {
-    return await this.servicesRepository.find();
+    return await this.servicesRepository.find({
+      where: [
+        { category: 'Cleaning' },
+        { category: 'Cooking' }
+      ]
+    });
   }
 
   async getCategoryAvailability(): Promise<any[]> {
-    const services = await this.servicesRepository.find();
+    const services = await this.servicesRepository.find({
+      where: [
+        { category: 'Cleaning' },
+        { category: 'Cooking' }
+      ]
+    });
     
-    // Group services by category
+    // Group services by category name
     const categoryMap = new Map<string, { servicesCount: number }>();
     
     for (const service of services) {
-      const existing = categoryMap.get(service.category);
+      const categoryName = service.category || 'Unknown';
+      const existing = categoryMap.get(categoryName);
       if (existing) {
         existing.servicesCount++;
       } else {
-        categoryMap.set(service.category, { servicesCount: 1 });
+        categoryMap.set(categoryName, { servicesCount: 1 });
       }
     }
     
@@ -60,6 +81,13 @@ export class ServicesService {
   }
 
   async remove(id: string) {
+    const service = await this.findOne(id);
+    if (!service) {
+      throw new ForbiddenException('Service not found');
+    }
+    if (service.category === 'Cleaning' || service.category === 'Cooking') {
+      throw new ForbiddenException('Cannot delete critical services');
+    }
     await this.servicesRepository.delete(id);
     return { deleted: true };
   }

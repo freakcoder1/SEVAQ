@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend_flutter_house_help/widgets/trust_header.dart';
-import 'package:frontend_flutter_house_help/models/recommendation.dart';
+import 'package:flutter_house_help/widgets/trust_header.dart';
+import 'package:flutter_house_help/models/recommendation.dart';
 
 void main() {
   group('TrustHeader Widget', () {
