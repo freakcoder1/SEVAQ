@@ -8,6 +8,7 @@ class ServiceOption {
   final String description;
   final IconData icon;
   final ServiceType type;
+  final double basePrice;
 
   const ServiceOption({
     required this.id,
@@ -15,6 +16,7 @@ class ServiceOption {
     required this.description,
     required this.icon,
     required this.type,
+    required this.basePrice,
   });
 
   /// Predefined service options for the clarification page
@@ -22,9 +24,10 @@ class ServiceOption {
     ServiceOption(
       id: 'maid',
       name: 'Maid / House Help',
-      description: 'Ongoing daily household assistance',
-      icon: Icons.home_repair_service,
+      description: 'Ongoing household assistance',
+      icon: Icons.person,
       type: ServiceType.maid,
+      basePrice: 1500.0,
     ),
     ServiceOption(
       id: 'cleaning',
@@ -32,6 +35,7 @@ class ServiceOption {
       description: 'Used for one-time or periodic cleaning',
       icon: Icons.cleaning_services,
       type: ServiceType.cleaning,
+      basePrice: 500.0, // Matches Home Cleaning (ID: 1) base price
     ),
     ServiceOption(
       id: 'cooking',
@@ -39,6 +43,7 @@ class ServiceOption {
       description: 'Used for daily meal preparation or kitchen assistance',
       icon: Icons.restaurant,
       type: ServiceType.cooking,
+      basePrice: 400.0, // Matches Cooking (ID: 3) base price
     ),
   ];
 
@@ -47,7 +52,7 @@ class ServiceOption {
   String getReassuranceBadge() {
     switch (type) {
       case ServiceType.maid:
-        return '🟢 Typically assigned for regular household needs';
+        return '🟢 Most customers choose monthly service for daily needs';
       case ServiceType.cleaning:
         return 'Used for one-time or periodic cleaning';
       case ServiceType.cooking:
@@ -97,4 +102,14 @@ class ServiceOption {
 }
 
 /// Service type enum for categorization
-enum ServiceType { cleaning, cooking, maid, errands }
+enum ServiceType {
+  cleaning,
+  cooking,
+  maid,
+  errands,
+  driving,
+  laundry,
+  childcare,
+  gardening,
+  care,
+}

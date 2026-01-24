@@ -170,7 +170,8 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
 
       final serviceRequestData = {
         'serviceId':
-            service?.id ?? ServiceMapper.getRepresentativeBackendId('maid'),
+            (service?.id != null ? service!.id : null) ??
+            ServiceMapper.getRepresentativeBackendId('maid'),
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate!),
         'timeWindow': _selectedTimeWindow!.id,
         'location': {
@@ -311,7 +312,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Schedule your service',
+          'Schedule a one-time visit',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -319,7 +320,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Choose a preferred time window. We’ll handle assignment and monitoring.',
+          'Choose a preferred time window. This is a single visit, not a recurring service.',
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
         ),
       ],
@@ -580,7 +581,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '₹${_calculatedPrice!.toStringAsFixed(0)} per visit',
+                      '₹${_calculatedPrice!.toStringAsFixed(0)} — one-time visit',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -588,7 +589,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Includes professional assignment, monitoring & support',
+                      'Includes professional assignment, monitoring, and support',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.black54,
                       ),
