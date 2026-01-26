@@ -43,6 +43,7 @@ class _AssignmentInProgressScreenState
   bool _hasError = false;
   bool _showTimeoutMessage = false;
   Timer? _timeoutTimer;
+  Timer? _checkStatusTimer;
   static const int ASSIGNMENT_TIMEOUT_MINUTES = 3; // 3 minutes timeout
 
   @override
@@ -55,7 +56,7 @@ class _AssignmentInProgressScreenState
     _startTimeoutTimer();
 
     // Check assignment status once after a short delay
-    Future.delayed(const Duration(seconds: 3), () {
+    _checkStatusTimer = Timer(const Duration(seconds: 3), () {
       _checkAssignmentStatus();
     });
   }
@@ -73,6 +74,7 @@ class _AssignmentInProgressScreenState
   @override
   void dispose() {
     _timeoutTimer?.cancel();
+    _checkStatusTimer?.cancel();
     super.dispose();
   }
 
@@ -245,6 +247,34 @@ class _AssignmentInProgressScreenState
 
               const SizedBox(height: 24),
 
+              // Reassurance Text
+              if (_isAssigned)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'If anything changes, we’ll handle it and keep you informed.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'If assignment takes longer than expected, we’ll continue working on it and keep you updated.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
               // E. Support Entry (Always Visible)
               SupportSection(onHelpPressed: _showSupportOptions),
 
@@ -285,7 +315,7 @@ class _AssignmentInProgressScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Finding a professional',
+          'Assigning a professional',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -293,7 +323,7 @@ class _AssignmentInProgressScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'We’re assigning a verified professional for your scheduled service.',
+          'We’re assigning a verified professional for your service.',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
@@ -317,7 +347,7 @@ class _AssignmentInProgressScreenState
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Professional assigned!',
+                'Assignment complete',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF2E7D32),
@@ -332,11 +362,16 @@ class _AssignmentInProgressScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Progress bar
-        LinearProgressIndicator(
-          backgroundColor: Colors.grey[200],
-          color: const Color(0xFF2E7D32),
-          minHeight: 8,
+        // Pulsing indicator instead of linear progress bar
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+              strokeWidth: 4,
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -348,7 +383,7 @@ class _AssignmentInProgressScreenState
         ),
         const SizedBox(height: 4),
         Text(
-          'This usually takes a few minutes.',
+          'This usually takes a few minutes. We’re handling this for you.',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: Colors.black54),
@@ -420,7 +455,7 @@ class ServiceSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '₹${amount.toStringAsFixed(0)} per visit',
+                      'Estimated price: ₹${amount.toStringAsFixed(0)} per visit',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF2E7D32),
@@ -473,8 +508,8 @@ class WhatHappensNextSection extends StatelessWidget {
           const SizedBox(height: 12),
           _buildNextStep(
             context,
-            icon: Icons.person,
-            text: 'We assign a verified professional',
+            icon: Icons.assignment,
+            text: 'Your booking is being prepared',
           ),
           const SizedBox(height: 8),
           _buildNextStep(

@@ -65,15 +65,11 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
               : null);
 
       final bookingData = {
-        'user': user.id,
-        'worker': widget.worker.id,
-        'service': service?.id,
+        'userId': user.id,
+        'workerId': widget.worker.id,
+        'serviceId': service?.id,
         'startTime': widget.startTime.toIso8601String(),
         'endTime': widget.endTime.toIso8601String(),
-        'amount': (widget.amount * 100).toInt(), // Convert to paise
-        'currency': 'INR',
-        'status': 'confirmed',
-        'isPaid': true,
         'assignmentId': widget.assignmentData['assignmentId'],
       };
 
@@ -111,10 +107,6 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
     final service =
         widget.service ??
         (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
-    final professionalName =
-        widget.assignmentData['professionalName'] ??
-        widget.assignmentData['worker']?['user']?['firstName'] ??
-        '${widget.worker.user.firstName} ${widget.worker.user.lastName}';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -127,7 +119,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +146,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Professional assigned!',
+                          'Professional assigned',
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -162,7 +154,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Your service is confirmed and ready to go.',
+                          'Your service has been scheduled and is ready for confirmation.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.black54,
                           ),
@@ -175,7 +167,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
 
               const SizedBox(height: 32),
 
-              // Professional details
+              // Assignment card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -186,54 +178,18 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your Professional',
+                      'Assigned professional',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: const Color(0xFFE8F5E9),
-                          child: Text(
-                            professionalName.isNotEmpty
-                                ? professionalName[0]
-                                : 'P',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E7D32),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                professionalName,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.worker.bio,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.black54,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'A verified SEVAQ professional has been assigned to your service.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
@@ -281,7 +237,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                                 ),
                               ),
                               Text(
-                                '${DateFormat('jm').format(widget.startTime)} - ${DateFormat('jm').format(widget.endTime)}',
+                                '${DateFormat('jm').format(widget.startTime)} – ${DateFormat('jm').format(widget.endTime)}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Colors.black54,
                                 ),
@@ -339,7 +295,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Payment requested to confirm booking',
+                      'Confirm to proceed',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
@@ -347,7 +303,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your professional is ready and waiting for your confirmation.',
+                      'Payment confirms your booking. We’ll take care of everything else.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.black54,
                       ),
@@ -403,7 +359,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text('Proceed to payment'),
+                            : const Text('Confirm & pay'),
                       ),
                     ),
                   ],
