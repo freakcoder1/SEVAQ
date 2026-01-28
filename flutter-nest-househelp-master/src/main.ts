@@ -39,6 +39,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   console.log('After NestFactory.create');
   
+  // Set global API prefix
+  app.setGlobalPrefix('api');
+  
   // Global validation pipe for better error handling
   app.useGlobalPipes(
     new ValidationPipe({
@@ -62,9 +65,10 @@ async function bootstrap() {
   // Global exception filter for better error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
   
-  const port = process.env.PORT ?? 3000;
+  const port = process.env.PORT ?? 45357;
   await app.listen(port, '0.0.0.0');
   console.log(`✅ Application is listening on http://0.0.0.0:${port}`);
   console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ API prefix: /api`);
 }
 bootstrap();

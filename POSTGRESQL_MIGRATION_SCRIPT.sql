@@ -62,9 +62,9 @@ CREATE TABLE "worker" (
 
 -- Create Service Worker junction table
 CREATE TABLE "service_worker" (
-    "workerId" INTEGER NOT NULL REFERENCES "worker"(id) ON DELETE CASCADE,
-    "serviceId" INTEGER NOT NULL REFERENCES "service"(id) ON DELETE CASCADE,
-    PRIMARY KEY ("workerId", "serviceId")
+    "worker_id" INTEGER NOT NULL REFERENCES "worker"(id) ON DELETE CASCADE,
+    "service_id" INTEGER NOT NULL REFERENCES "service"(id) ON DELETE CASCADE,
+    PRIMARY KEY ("worker_id", "service_id")
 );
 
 -- Create City table
@@ -487,49 +487,49 @@ INSERT INTO "worker" ("userId", "bio", "rating", "reviewCount", "serviceRadiusKm
 
 -- Assign services to workers
 -- Amit Kumar (Worker 1) - Home Cleaning, Deep Cleaning
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (1, 1), (1, 2);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (1, 1), (1, 2);
 
 -- Sunita Devi (Worker 2) - Deep Cleaning, Laundry
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (2, 2), (2, 7);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (2, 2), (2, 7);
 
 -- Vikram Singh (Worker 3) - All cleaning services
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (3, 1), (3, 2), (3, 7);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (3, 1), (3, 2), (3, 7);
 
 -- Manoj Sharma (Worker 4) - All services
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (4, 1), (4, 2), (4, 3), (4, 4), (4, 7);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (4, 1), (4, 2), (4, 3), (4, 4), (4, 7);
 
 -- Rita Gupta (Worker 5) - Home Cleaning, Deep Cleaning
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (5, 1), (5, 2);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (5, 1), (5, 2);
 
 -- Priya Sharma (Worker 6) - Cooking, Meal Preparation
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (6, 3), (6, 4);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (6, 3), (6, 4);
 
 -- Pooja Singh (Worker 7) - Cooking, Healthy Meals
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (7, 3), (7, 11);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (7, 3), (7, 11);
 
 -- Ramesh Patel (Worker 8) - Cooking, Meal Preparation
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (8, 3), (8, 4);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (8, 3), (8, 4);
 
 -- Rajesh Verma (Worker 9) - Driver, Errands
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (9, 5), (9, 6);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (9, 5), (9, 6);
 
 -- Deepak Mehta (Worker 10) - Errands, Shopping
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (10, 6), (10, 12);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (10, 6), (10, 12);
 
 -- Sanjay Yadav (Worker 11) - Gardening
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (11, 9);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (11, 9);
 
 -- Neha Patel (Worker 12) - Babysitting
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (12, 8);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (12, 8);
 
 -- Anita Gupta (Worker 13) - Senior Care
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (13, 10);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (13, 10);
 
 -- Lata Mishra (Worker 14) - Cooking, Meal Preparation
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (14, 3), (14, 4);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (14, 3), (14, 4);
 
 -- Kamal Singh (Worker 15) - All services
-INSERT INTO "service_worker" ("workerId", "serviceId") VALUES (15, 1), (15, 2), (15, 3), (15, 4), (15, 5);
+INSERT INTO "service_worker" ("worker_id", "service_id") VALUES (15, 1), (15, 2), (15, 3), (15, 4), (15, 5);
 
 -- Create some sample slots for today and next few days
 INSERT INTO "slot" ("date", "startTime", "endTime", "isAvailable", "maxBookings", "currentBookings") VALUES

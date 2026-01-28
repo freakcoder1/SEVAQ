@@ -35,7 +35,7 @@ export class ReviewsService {
         return this.reviewsRepository.find({ relations: ['user', 'worker'] });
     }
 
-    findByWorker(workerId: string) {
+    findByWorker(workerId: number) {
         return this.reviewsRepository.find({ where: { worker: { id: workerId } }, relations: ['user'] });
     }
 }

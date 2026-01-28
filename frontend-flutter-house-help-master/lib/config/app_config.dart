@@ -5,25 +5,32 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   // API Configuration
   static String get apiBaseUrl {
-    // Use computer's IP for physical device connection
-    final url = 'http://192.168.29.154:45357';
-    debugPrint('AppConfig: apiBaseUrl = $url');
-    return url;
+    // Use localhost for Chrome browser (web)
+    if (kIsWeb) {
+      final url = 'http://localhost:45357/api';
+      debugPrint('AppConfig: apiBaseUrl = $url');
+      return url;
+    } else {
+      // Use computer's IP address for physical Android devices
+      final url = 'http://192.168.1.45:45357/api';
+      debugPrint('AppConfig: apiBaseUrl = $url');
+      return url;
+    }
   }
 
   // For development, you might want to use localhost
   static String get localApiBaseUrl {
-    return 'http://localhost:3000';
+    return 'http://localhost:45357/api';
   }
 
   // For testing with a different IP
   static String get testApiBaseUrl {
-    return 'http://192.168.29.154:3000'; // Local machine IP for physical device
+    return 'http://192.168.1.45:45357/api'; // Local machine IP for physical device
   }
 
   // Alternative IP addresses for different scenarios
   static String get alternativeApiBaseUrl {
-    return 'http://192.168.29.154:3000'; // Current computer's IP address
+    return 'http://192.168.1.45:45357/api'; // Current computer's IP address
   }
 
   // App Configuration

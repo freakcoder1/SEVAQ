@@ -6,7 +6,7 @@ async function testHomeScreen() {
     console.log('Testing home screen endpoint...');
     
     // Test with Delhi coordinates
-    const response = await axios.get('http://localhost:3000/home/screen', {
+    const response = await axios.get('http://localhost:45357/home/screen', {
       params: {
         lat: 28.5804579,
         lng: 77.4392951,
@@ -39,7 +39,7 @@ async function testSystemReadiness() {
   try {
     console.log('\nTesting system readiness endpoint...');
     
-    const response = await axios.get('http://localhost:3000/system/readiness');
+    const response = await axios.get('http://localhost:45357/system/readiness');
     
     console.log('System readiness response:', JSON.stringify(response.data, null, 2));
     

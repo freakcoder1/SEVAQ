@@ -18,7 +18,7 @@ export class MetricsController {
   }
 
   @Get('workers/:workerId')
-  async getWorkerMetrics(@Param('workerId') workerId: string): Promise<WorkerMetrics> {
+  async getWorkerMetrics(@Param('workerId') workerId: number): Promise<WorkerMetrics> {
     return this.metricsService.getWorkerMetrics(workerId);
   }
 

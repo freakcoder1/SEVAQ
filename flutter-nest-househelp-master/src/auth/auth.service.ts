@@ -69,7 +69,7 @@ export class AuthService {
         return this.login(user);
     }
 
-    async updateProfile(userId: string, updateUserDto: UpdateUserDto) {
+    async updateProfile(userId: number, updateUserDto: UpdateUserDto) {
         return this.usersService.update(userId, updateUserDto);
     }
 }

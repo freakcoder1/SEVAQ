@@ -21,7 +21,7 @@ class PrimaryRecommendation extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
@@ -36,7 +36,7 @@ class PrimaryRecommendation extends StatelessWidget {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              color: theme.colorScheme.onSurface,
               letterSpacing: 0.5,
             ),
           ),
@@ -61,6 +61,7 @@ class PrimaryRecommendation extends StatelessWidget {
   }
 
   Widget _buildServiceDetails(BuildContext context) {
+    final theme = Theme.of(context);
     final service = recommendation.service;
     final worker = recommendation.worker;
 
@@ -92,7 +93,7 @@ class PrimaryRecommendation extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -103,7 +104,10 @@ class PrimaryRecommendation extends StatelessWidget {
               Text(
                 service.description ??
                     'Professional service with guaranteed quality',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -131,7 +135,7 @@ class PrimaryRecommendation extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       Row(
@@ -142,7 +146,7 @@ class PrimaryRecommendation extends StatelessWidget {
                             '${worker.rating.toStringAsFixed(1)}★',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           SizedBox(width: 4),
@@ -150,7 +154,7 @@ class PrimaryRecommendation extends StatelessWidget {
                             '(${worker.reviewCount})',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -167,12 +171,14 @@ class PrimaryRecommendation extends StatelessWidget {
   }
 
   Widget _buildMetaChips(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       children: [
         _buildMetaChip(
           text: '${recommendation.estimatedArrivalTime} min',
           icon: Icons.timer,
-          color: Colors.green,
+          color: theme.colorScheme.primary,
         ),
 
         SizedBox(width: 8),
@@ -180,7 +186,7 @@ class PrimaryRecommendation extends StatelessWidget {
         _buildMetaChip(
           text: '${(recommendation.reliabilityScore * 100).toInt()}% reliable',
           icon: Icons.check_circle,
-          color: Colors.green,
+          color: theme.colorScheme.primary,
         ),
 
         SizedBox(width: 8),
@@ -200,22 +206,21 @@ class PrimaryRecommendation extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 14, color: color),
           SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
               color: color,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -224,13 +229,15 @@ class PrimaryRecommendation extends StatelessWidget {
   }
 
   Widget _buildPrimaryCTA(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: onAccept,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green[600],
-          foregroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
           padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -244,7 +251,7 @@ class PrimaryRecommendation extends StatelessWidget {
             Icon(Icons.check_circle, size: 20),
             SizedBox(width: 8),
             Text(
-              'We’ll handle this',
+              'Confirm & Continue',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

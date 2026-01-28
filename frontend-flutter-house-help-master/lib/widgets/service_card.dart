@@ -10,6 +10,8 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -45,7 +47,7 @@ class ServiceCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -56,7 +58,10 @@ class ServiceCard extends StatelessWidget {
               // Category
               Text(
                 service.category,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
 
               SizedBox(height: 8),
@@ -69,7 +74,7 @@ class ServiceCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green[600],
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   Spacer(),
@@ -79,18 +84,22 @@ class ServiceCard extends StatelessWidget {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.green[100],
+                        color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.timer, size: 12, color: Colors.green[700]),
+                          Icon(
+                            Icons.timer,
+                            size: 12,
+                            color: theme.colorScheme.primary,
+                          ),
                           SizedBox(width: 2),
                           Text(
                             '15-30 min',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Colors.green[700],
+                              color: theme.colorScheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -106,11 +115,18 @@ class ServiceCard extends StatelessWidget {
               if (service.isAvailable)
                 Row(
                   children: [
-                    Icon(Icons.check_circle, size: 12, color: Colors.green),
+                    Icon(
+                      Icons.check_circle,
+                      size: 12,
+                      color: theme.colorScheme.primary,
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'Available',
-                      style: TextStyle(fontSize: 10, color: Colors.green),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
                   ],
                 )

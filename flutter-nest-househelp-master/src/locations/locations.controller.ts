@@ -10,8 +10,8 @@ interface LocationAvailabilityDto {
 }
 
 interface WaitlistDto {
-  userId: string;
-  serviceId: string;
+  userId: number;
+  serviceId: number;
   lat: number;
   lng: number;
   estimatedWaitTime: number;
@@ -127,7 +127,7 @@ export class LocationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('waitlist/status/:userId')
-  async getWaitlistStatus(@Req() req, @Param('userId') userId: string) {
+  async getWaitlistStatus(@Req() req, @Param('userId') userId: number) {
     this.logger.debug(`Getting waitlist status for user: ${userId}`);
 
     // Allow users to only check their own waitlist status
@@ -142,7 +142,7 @@ export class LocationsController {
   @Post('user/:userId/location')
   async updatePreferredLocation(
     @Req() req,
-    @Param('userId') userId: string,
+    @Param('userId') userId: number,
     @Body() locationDto: LocationAvailabilityDto,
   ) {
     this.logger.log(`Updating preferred location for user ${userId}: lat=${locationDto.lat}, lng=${locationDto.lng}`);
@@ -166,7 +166,7 @@ export class LocationsController {
   @Post('worker/:workerId/location')
   async updateWorkerLocation(
     @Req() req,
-    @Param('workerId') workerId: string,
+    @Param('workerId') workerId: number,
     @Body() locationDto: LocationAvailabilityDto,
   ) {
     this.logger.log(`Updating location for worker ${workerId}: lat=${locationDto.lat}, lng=${locationDto.lng}`);

@@ -2,40 +2,62 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // DEEP GREEN PRIMARY (Trust, Safety, Grounded)
-  static const Color primaryColor = Color(0xFF2E7D32); // Deep Green
+  // SEVAQ BRAND COLORS - FINAL & CLOSED
+
+  // Core Neutrals (≥85% of any screen)
+  static const Color charcoalBlack = Color(
+    0xFF111315,
+  ); // Primary text, headers, logo
+  static const Color fogWhite = Color(0xFFF6F7F5); // Backgrounds, main surfaces
+  static const Color stoneGray = Color(
+    0xFFE4E6E3,
+  ); // Secondary surfaces, borders, disabled states
+
+  // Primary Accent (≈10% max)
+  static const Color deepTeal = Color(
+    0xFF2A5C5C,
+  ); // Primary CTA, active selection, system confidence signals
+
+  // Functional Colors (≤5% combined, state-only)
+  static const Color controlledAmber = Color(0xFFB58B2E); // Pending / warning
+  static const Color deepRust = Color(
+    0xFF8C3B2E,
+  ); // Error / destructive actions
+  static const Color successGreen = Color(
+    0xFF3A6B5F,
+  ); // Final confirmation only
+
+  // Theme Color Properties
+  static const Color primaryColor = deepTeal;
   static const Color onPrimary = Colors.white;
-  static const Color primaryContainer = Color(0xFFE8F5E9); // Light Green
-  static const Color onPrimaryContainer = Color(0xFF1B5E20); // Dark Green
+  static const Color primaryContainer = Color(
+    0xFFD6E4E0,
+  ); // Light teal container
+  static const Color onPrimaryContainer = Color(
+    0xFF1A3C3C,
+  ); // Dark teal text on container
 
-  // SECONDARY GREY (Support, Calm)
-  static const Color secondaryColor = Color(0xFF535F70); // Support Grey
-  static const Color onSecondary = Colors.white;
-  static const Color secondaryContainer = Color(0xFFE6E9ED); // Light Grey
-  static const Color onSecondaryContainer = Color(0xFF3A4657); // Dark Grey
+  // Secondary Colors (using core neutrals)
+  static const Color secondaryColor = stoneGray;
+  static const Color onSecondary = charcoalBlack;
+  static const Color secondaryContainer = Color(0xFFF0F1EF); // Very light gray
+  static const Color onSecondaryContainer = Color(0xFF333537); // Dark gray text
 
-  // INFO BLUE (Information only, not primary)
-  static const Color infoColor = Color(0xFF0061A4); // Blue for info
-  static const Color onInfo = Colors.white;
-  static const Color infoContainer = Color(0xFFE3F2FD); // Light Blue
-  static const Color onInfoContainer = Color(0xFF0D47A1); // Dark Blue
-
-  // BACKGROUND & SURFACE (Warm Neutrals)
-  static const Color backgroundColor = Color(0xFFFEFBFF); // Warm White
-  static const Color surfaceColor = Color(0xFFFEFBFF); // Warm Surface
-  static const Color surfaceVariant = Color(0xFFF5F7FA); // Subtle Depth
-  static const Color onSurface = Color(0xFF1A1C1E); // Dark Charcoal
-  static const Color onSurfaceVariant = Color(0xFF41484D); // Medium Grey
-  static const Color secondaryText = Color(0xFF6B7280); // Soft Grey
+  // BACKGROUND & SURFACE
+  static const Color backgroundColor = fogWhite;
+  static const Color surfaceColor = fogWhite;
+  static const Color surfaceVariant = stoneGray;
+  static const Color onSurface = charcoalBlack;
+  static const Color onSurfaceVariant = Color(0xFF4A4C4E); // Medium gray
+  static const Color secondaryText = Color(0xFF6C6E70); // Soft gray text
 
   // SEMANTIC COLORS
-  static const Color successColor = Color(0xFF2E7D32); // Confident Green
-  static const Color errorColor = Color(0xFFBA1A1A); // Clear Warning
-  static const Color warningColor = Color(0xFFEF6C00); // Attention
-  static const Color infoTextColor = Color(0xFF0277BD); // Guidance
+  static const Color successColor = successGreen;
+  static const Color errorColor = deepRust;
+  static const Color warningColor = controlledAmber;
+  static const Color infoTextColor = deepTeal; // Using primary for info
 
-  // ACCENT COLORS
-  static const Color tertiaryColor = Color(0xFF6B5778); // Premium Purple
+  // NO ACCENT COLORS - Only use deepTeal as primary accent
 
   // SHADOWS & DEPTH
   static const Color shadowColor = Colors.black;
@@ -92,25 +114,25 @@ class AppTheme {
         onSecondary: onSecondary,
         secondaryContainer: secondaryContainer,
         onSecondaryContainer: onSecondaryContainer,
-        tertiary: tertiaryColor,
-        onTertiary: Colors.white,
-        tertiaryContainer: Color(0xFFF2DAFF),
-        onTertiaryContainer: Color(0xFF251431),
+        tertiary: stoneGray, // Using neutral as tertiary
+        onTertiary: charcoalBlack,
+        tertiaryContainer: stoneGray,
+        onTertiaryContainer: charcoalBlack,
         error: errorColor,
         onError: Colors.white,
-        errorContainer: Color(0xFFFFDAD6),
-        onErrorContainer: Color(0xFF410002),
+        errorContainer: Color(0xFFF5D6D4), // Light rust container
+        onErrorContainer: Color(0xFF4C1510), // Dark rust text
         surface: surfaceColor,
         onSurface: onSurface,
-        surfaceContainerHighest: Color(0xFFDDE3EA),
+        surfaceContainerHighest: stoneGray,
         onSurfaceVariant: onSurfaceVariant,
-        outline: Color(0xFF71787E),
-        outlineVariant: Color(0xFFC1C7CE),
-        shadow: shadowColor,
+        outline: Color(0xFFA0A3A5), // Neutral outline
+        outlineVariant: Color(0xFFC5C7C4), // Subtle outline
+        shadow: charcoalBlack,
         scrim: Colors.black,
-        inverseSurface: Color(0xFF2E3133),
-        onInverseSurface: Color(0xFFF0F0F4),
-        inversePrimary: Color(0xFF9ECAFF),
+        inverseSurface: Color(0xFF222426),
+        onInverseSurface: fogWhite,
+        inversePrimary: Color(0xFF8FB8B8), // Light teal for inverse
         surfaceTint: primaryColor,
       ),
       textTheme: TextTheme(
@@ -236,11 +258,11 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: infoColor,
+          foregroundColor: deepTeal,
           textStyle: _googleFontTextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: infoColor,
+            color: deepTeal,
           ),
           // Slow, confident animations
           animationDuration: Duration(milliseconds: 350),

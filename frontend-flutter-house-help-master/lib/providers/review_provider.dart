@@ -10,7 +10,7 @@ class ReviewProvider with ChangeNotifier {
   List<Review> get reviews => _reviews;
   bool get isLoading => _isLoading;
 
-  Future<void> fetchReviewsForWorker(String workerId) async {
+  Future<void> fetchReviewsForWorker(int workerId) async {
     _isLoading = true;
     notifyListeners();
     try {

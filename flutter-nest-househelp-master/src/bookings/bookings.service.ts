@@ -7,6 +7,7 @@ import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
 import { BookingStatus, AssignmentState, BookingType } from './entities/booking.entity';
+import { ServiceRequest } from '../service-requests/entities/service-request.entity';
 
 @Injectable()
 export class BookingsService {
@@ -19,13 +20,15 @@ export class BookingsService {
         private servicesRepository: Repository<Service>,
         @InjectRepository(User)
         private usersRepository: Repository<User>,
+        @InjectRepository(ServiceRequest)
+        private serviceRequestsRepository: Repository<ServiceRequest>,
         private slotsService: SlotsService,
     ) { }
 
     async findBestWorker(serviceId: string, userLat: number, userLng: number, startTime: Date, endTime: Date) {
         // Find all workers who offer this service
         const workers = await this.workersRepository.find({
-            where: { services: { id: serviceId } },
+            where: { services: { id: Number(serviceId) } },
             relations: ['user', 'services']
         });
 
@@ -88,39 +91,212 @@ export class BookingsService {
 
     async create(createBookingDto: any) {
         try {
-            // Validate user exists
-            const user = await this.usersRepository.findOne({ where: { id: createBookingDto.userId } });
-            if (!user) {
-                throw new BadRequestException('User not found');
-            }
+            console.log('DEBUG: Entering create method with createBookingDto:', createBookingDto);
+            let worker: Worker | null = null;
+            
+            // If serviceRequestId is provided, validate it exists and retrieve details
+            if (createBookingDto.serviceRequestId) {
+                console.log('DEBUG: serviceRequestId is provided:', createBookingDto.serviceRequestId);
+                // Check if serviceRequestId is a UUID (publicId) or numeric id
+                let serviceRequest;
+                if (createBookingDto.serviceRequestId.length === 36 && createBookingDto.serviceRequestId.includes('-')) {
+                    // It's a UUID (publicId)
+                    serviceRequest = await this.serviceRequestsRepository.findOne({ 
+                        where: { publicId: createBookingDto.serviceRequestId },
+                        relations: ['user', 'service']
+                    });
+                } else {
+                    // It's a string id (UUID)
+                    serviceRequest = await this.serviceRequestsRepository.findOne({ 
+                        where: { id: createBookingDto.serviceRequestId },
+                        relations: ['user', 'service']
+                    });
+                }
 
-            // Validate service exists
-            const service = await this.servicesRepository.findOne({ where: { id: createBookingDto.serviceId } });
-            if (!service) {
-                throw new BadRequestException('Service not found');
-            }
+                if (!serviceRequest) {
+                    throw new BadRequestException('Service request not found');
+                }
 
-            // Validate time range
-            if (createBookingDto.startTime >= createBookingDto.endTime) {
-                throw new BadRequestException('Start time must be before end time');
-            }
+                // Validate service request is in ASSIGNED state before creating booking
+                if (serviceRequest.assignmentStatus !== 'ASSIGNED') {
+                    throw new BadRequestException('Service request must be in ASSIGNED state to create booking');
+                }
 
-            // Validate time is in future
-            const now = new Date();
-            if (createBookingDto.startTime <= now) {
-                throw new BadRequestException('Start time must be in the future');
+                // Populate booking with service request details
+                createBookingDto.serviceRequestId = serviceRequest.id; // Use UUID
+                createBookingDto.userId = serviceRequest.userId;
+                createBookingDto.serviceId = serviceRequest.serviceId;
+                createBookingDto.workerId = serviceRequest.assignedWorkerId;
+                createBookingDto.date = serviceRequest.date;
+                
+                // Parse time window to get start and end times
+                let startHour: number;
+                let endHour: number;
+                
+                switch (serviceRequest.timeWindow.toLowerCase()) {
+                  case 'morning':
+                    startHour = 8;
+                    endHour = 12;
+                    break;
+                  case 'afternoon':
+                    startHour = 12;
+                    endHour = 17;
+                    break;
+                  case 'evening':
+                    startHour = 17;
+                    endHour = 21;
+                    break;
+                  case 'early-morning':
+                    startHour = 2;
+                    endHour = 11;
+                    break;
+                  default:
+                    startHour = 8;
+                    endHour = 12;
+                }
+                
+                // Set default times based on time window
+                const date = new Date(serviceRequest.date);
+                createBookingDto.startTime = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), startHour, 0, 0, 0));
+                createBookingDto.endTime = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), endHour, 0, 0, 0));
+            } else {
+                // Validate user exists
+                const user = await this.usersRepository.findOne({ where: { id: createBookingDto.userId } });
+                if (!user) {
+                    throw new BadRequestException('User not found');
+                }
+
+                // Validate service exists
+                const service = await this.servicesRepository.findOne({ where: { id: createBookingDto.serviceId } });
+                if (!service) {
+                    throw new BadRequestException('Service not found');
+                }
+
+                // Validate worker exists if workerId is provided
+                if (createBookingDto.workerId) {
+                    worker = await this.workersRepository.findOne({ 
+                        where: { id: createBookingDto.workerId },
+                        relations: ['user', 'services']
+                    });
+                    if (!worker) {
+                        throw new BadRequestException('Worker not found');
+                    }
+                }
+
+                // Validate time range
+                if (createBookingDto.startTime >= createBookingDto.endTime) {
+                    throw new BadRequestException('Start time must be before end time');
+                }
+
+                // Validate time is in future
+                const now = new Date();
+                if (createBookingDto.startTime <= now) {
+                    throw new BadRequestException('Start time must be in the future');
+                }
             }
 
             // Create service request (intent only) - never fail due to worker availability
-            const booking = this.bookingsRepository.create({
+            let workerToAssign: Worker | null = null;
+            if (createBookingDto.workerId) {
+                if (worker) {
+                    // Reuse the worker object fetched during validation
+                    workerToAssign = worker;
+                } else {
+                    // If worker wasn't fetched during validation (e.g., serviceRequestId was provided), fetch it now
+                    workerToAssign = await this.workersRepository.findOne({ 
+                        where: { id: createBookingDto.workerId },
+                        relations: ['user', 'services']
+                    });
+                }
+            }
+
+            // Calculate total amount if not provided
+            let totalAmount = createBookingDto.totalAmount;
+            if (!totalAmount) {
+                console.log('DEBUG: Calculating totalAmount, createBookingDto:', {
+                    serviceId: createBookingDto.serviceId,
+                    startTime: createBookingDto.startTime,
+                    startTimeType: typeof createBookingDto.startTime,
+                    endTime: createBookingDto.endTime,
+                    endTimeType: typeof createBookingDto.endTime,
+                });
+                
+                const service = await this.servicesRepository.findOne({ 
+                  where: { id: createBookingDto.serviceId },
+                });
+                
+                console.log('DEBUG: Found service:', service);
+                
+                if (service) {
+                    const basePrice = parseFloat(service.basePrice.toString());
+                    console.log('DEBUG: Parsed basePrice:', basePrice);
+                    
+                    const startTime = typeof createBookingDto.startTime === 'string' && createBookingDto.startTime.includes('T') 
+                        ? new Date(createBookingDto.startTime)
+                        : createBookingDto.startTime;
+                    const endTime = typeof createBookingDto.endTime === 'string' && createBookingDto.endTime.includes('T') 
+                        ? new Date(createBookingDto.endTime)
+                        : createBookingDto.endTime;
+                        
+                    console.log('DEBUG: Parsed times:', {
+                        startTime,
+                        endTime,
+                    });
+                        
+                    const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                    totalAmount = basePrice * durationHours;
+                    
+                    console.log('DEBUG: Calculated durationHours:', durationHours);
+                    console.log('DEBUG: Calculated totalAmount:', totalAmount);
+                } else {
+                    totalAmount = 0;
+                    console.log('DEBUG: No service found, totalAmount set to 0');
+                }
+            }
+
+            const bookingData = {
                 ...createBookingDto,
                 status: BookingStatus.REQUESTED,
-                worker: null, // No worker assigned yet
-                type: createBookingDto.type || BookingType.ON_DEMAND
-            });
+                worker: workerToAssign, // Assign worker with full details if workerId is provided
+                assignedWorkerId: createBookingDto.workerId, // Set assigned worker id for consistency
+                type: createBookingDto.type || BookingType.ON_DEMAND,
+                totalAmount: totalAmount, // Use calculated or provided amount
+                assignmentState: createBookingDto.serviceRequestId || createBookingDto.workerId ? AssignmentState.ASSIGNED : AssignmentState.PENDING,
+                // Parse startTime and endTime to Date objects if they're strings
+                startTime: typeof createBookingDto.startTime === 'string' && createBookingDto.startTime.includes('T') 
+                    ? new Date(createBookingDto.startTime)
+                    : createBookingDto.startTime,
+                endTime: typeof createBookingDto.endTime === 'string' && createBookingDto.endTime.includes('T') 
+                    ? new Date(createBookingDto.endTime)
+                    : createBookingDto.endTime,
+                // Extract date from startTime if not provided
+                date: createBookingDto.date || (typeof createBookingDto.startTime === 'string' && createBookingDto.startTime.includes('T') 
+                    ? new Date(createBookingDto.startTime).toISOString().split('T')[0] 
+                    : new Date().toISOString().split('T')[0]),
+                // Ensure we have service relation
+                service: await this.servicesRepository.findOne({ 
+                  where: { id: createBookingDto.serviceId },
+                }),
+                // Ensure we have user relation  
+                user: await this.usersRepository.findOne({ 
+                  where: { id: createBookingDto.userId },
+                }),
+            };
+            
+            // Ensure serviceRequestId is numeric when creating the booking
+            console.log('DEBUG: Creating booking with data:', bookingData);
+            const booking = this.bookingsRepository.create(bookingData);
 
             const savedBooking = await this.bookingsRepository.save(booking);
-            return Array.isArray(savedBooking) ? savedBooking[0] : savedBooking;
+            const bookingToReturn = Array.isArray(savedBooking) ? savedBooking[0] : savedBooking;
+            
+            // Load the saved booking with relations to ensure all data is returned
+            const fullBooking = await this.bookingsRepository.findOne({ 
+              where: { id: bookingToReturn.id },
+              relations: ['user', 'worker', 'service', 'worker.user', 'worker.services']
+            });
+            
+            return fullBooking || bookingToReturn;
         } catch (error) {
             // Log the error for debugging
             console.error('Booking creation error:', error.message, {
@@ -135,7 +311,7 @@ export class BookingsService {
         }
     }
 
-    async attemptAssignment(bookingId: string) {
+    async attemptAssignment(bookingId: number) {
         const booking = await this.bookingsRepository.findOne({
             where: { id: bookingId },
             relations: ['user', 'service']
@@ -181,7 +357,7 @@ export class BookingsService {
     private async attemptAssignmentWithUser(booking: Booking, user: User) {
         try {
             const bestMatch = await this.findBestWorker(
-                booking.service.id,
+                booking.service.id.toString(),
                 user.latitude,
                 user.longitude,
                 booking.startTime,
@@ -229,11 +405,11 @@ export class BookingsService {
         return this.bookingsRepository.find({ where, relations: ['user', 'worker', 'service'] });
     }
 
-    findOne(id: string) {
+    findOne(id: number) {
         return this.bookingsRepository.findOne({ where: { id }, relations: ['user', 'worker', 'service'] });
     }
 
-    async update(id: string, updateBookingDto: any) {
+    async update(id: number, updateBookingDto: any) {
         const currentBooking = await this.findOne(id);
         if (!currentBooking) {
             throw new BadRequestException('Booking not found');

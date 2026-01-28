@@ -11,13 +11,13 @@ export class City {
   @Column({ type: 'varchar', length: 100, nullable: false })
   name: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true, nullable: false })
+  @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
   slug: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: false })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   timezone: string;
 
-  @Column({ type: 'varchar', length: 3, nullable: false })
+  @Column({ type: 'varchar', length: 3, nullable: true })
   currency: string;
 
   @Column({ type: 'boolean', default: true })

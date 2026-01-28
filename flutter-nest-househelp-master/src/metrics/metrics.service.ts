@@ -20,7 +20,7 @@ export interface AssignmentMetrics {
 }
 
 export interface WorkerMetrics {
-  workerId: string;
+  workerId: number;
   totalAssignments: number;
   successRate: number;
   averageRating: number;
@@ -74,7 +74,7 @@ export class MetricsService {
       metric.workerRating = worker.rating || 0;
       metric.userSatisfaction = 0; // Booking entity doesn't have userSatisfaction field
       metric.distance = 0; // Worker entity doesn't have location field
-      metric.price = booking.amount;
+      metric.price = booking.totalAmount;
       metric.metadata = metadata;
 
       await this.assignmentMetricsRepository.save(metric);
@@ -84,7 +84,7 @@ export class MetricsService {
     }
   }
 
-  async recordWorkerPerformanceMetric(workerId: string): Promise<void> {
+  async recordWorkerPerformanceMetric(workerId: number): Promise<void> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -130,7 +130,7 @@ export class MetricsService {
     }
   }
 
-  async recordUserBehaviorMetric(userId: string): Promise<void> {
+  async recordUserBehaviorMetric(userId: number): Promise<void> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -204,7 +204,7 @@ export class MetricsService {
     };
   }
 
-  async getWorkerMetrics(workerId: string): Promise<WorkerMetrics> {
+  async getWorkerMetrics(workerId: number): Promise<WorkerMetrics> {
     const metrics = await this.workerPerformanceMetricsRepository.find({
       where: { workerId },
       order: { date: 'DESC' },
@@ -328,13 +328,13 @@ export class MetricsService {
     return Math.random() * 10; // Placeholder
   }
 
-  private calculateUtilizationRate(workerId: string, date: Date): number {
+  private calculateUtilizationRate(workerId: number, date: Date): number {
     // Simplified utilization calculation
     // In a real implementation, you would calculate based on worker availability and assignments
     return Math.random() * 100;
   }
 
-  private calculateRepeatBookingRate(userId: string): number {
+  private calculateRepeatBookingRate(userId: number): number {
     // Simplified repeat booking calculation
     // In a real implementation, you would analyze booking history
     return Math.random() * 100;

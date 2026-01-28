@@ -32,7 +32,7 @@ class ServiceOption {
     ServiceOption(
       id: 'cleaning',
       name: 'Home Cleaning',
-      description: 'Used for one-time or periodic cleaning',
+      description: 'Structured home cleanliness & maintenance',
       icon: Icons.cleaning_services,
       type: ServiceType.cleaning,
       basePrice: 500.0, // Matches Home Cleaning (ID: 1) base price
@@ -40,7 +40,7 @@ class ServiceOption {
     ServiceOption(
       id: 'cooking',
       name: 'Cooking Help',
-      description: 'Used for daily meal preparation or kitchen assistance',
+      description: 'Meal preparation & kitchen assistance',
       icon: Icons.restaurant,
       type: ServiceType.cooking,
       basePrice: 400.0, // Matches Cooking (ID: 3) base price
@@ -52,11 +52,11 @@ class ServiceOption {
   String getReassuranceBadge() {
     switch (type) {
       case ServiceType.maid:
-        return '🟢 Most customers choose monthly service for daily needs';
+        return '🟢 Optimized for ongoing household needs';
       case ServiceType.cleaning:
-        return 'Used for one-time or periodic cleaning';
+        return 'Structured home cleanliness & maintenance';
       case ServiceType.cooking:
-        return 'Used for daily meal preparation or kitchen assistance';
+        return 'Meal preparation & kitchen assistance';
       default:
         return 'Trusted service option';
     }

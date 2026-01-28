@@ -1,53 +1,43 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Booking } from '../../bookings/entities/booking.entity';
-import { Worker } from '../../workers/entities/worker.entity';
 
 export enum PaymentStatus {
-    CREATED = 'created',
-    PAID = 'paid',
-    FAILED = 'failed',
+    PENDING = 'PENDING',
+    COMPLETED = 'COMPLETED',
+    FAILED = 'FAILED',
 }
 
 @Entity()
 export class Payment {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn()
+    id: number; // Internal ID
+    
+    @Column('uuid', { unique: true, nullable: false })
+    publicId: string; // Public API ID
 
-    @Column({ type: 'uuid' })
-    bookingId: string;
+    @Column({ type: 'int' })
+    bookingId: number;
 
     @OneToOne(() => Booking)
-    @JoinColumn({ name: 'booking_id' })
+    @JoinColumn({ name: 'bookingId' })
     booking: Booking;
-
-    @Column({ type: 'uuid', nullable: true })
-    workerId: string;
-
-    @ManyToOne(() => Worker, { nullable: true })
-    @JoinColumn({ name: 'worker_id' })
-    worker: Worker;
-
-    @Column({ nullable: true })
-    razorpayOrderId: string;
-
-    @Column({ nullable: true })
-    razorpayPaymentId: string;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     amount: number;
 
-    @Column({ default: 'INR' })
-    currency: string;
+    @Column({ type: 'varchar', length: 255, nullable: false })
+    paymentMethod: string;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    transactionId: string;
 
     @Column({
-        type: 'text',
-        default: PaymentStatus.CREATED,
+        type: 'varchar',
+        length: 50,
+        default: PaymentStatus.PENDING,
     })
     status: PaymentStatus;
 
     @CreateDateColumn()
     createdAt: Date;
-
-    @UpdateDateColumn()
-    updatedAt: Date;
 }

@@ -1,0 +1,12 @@
+CREATE TABLE slot (
+    id SERIAL PRIMARY KEY,
+    "workerId" INTEGER REFERENCES worker(id),
+    "startTime" TIMESTAMP NOT NULL,
+    "endTime" TIMESTAMP NOT NULL,
+    "isBooked" BOOLEAN DEFAULT FALSE,
+    date DATE NOT NULL,
+    "maxBookings" INTEGER DEFAULT 1,
+    "currentBookings" INTEGER DEFAULT 0,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

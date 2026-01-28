@@ -1,24 +1,46 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Booking } from '../../bookings/entities/booking.entity';
+import { User } from '../../users/entities/user.entity';
+import { Service } from '../../services/entities/service.entity';
+import { Worker } from '../../workers/entities/worker.entity';
+
+export enum ServiceRequestSource {
+  SUBSCRIPTION = 'SUBSCRIPTION',
+  ONE_TIME = 'ONE_TIME',
+}
 
 @Entity('service_requests')
 @Index(['userId', 'createdAt']) // Performance optimization
 @Index(['assignmentStatus', 'createdAt']) // For async job processing
 export class ServiceRequest {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string; // Internal ID (UUID)
+  
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string; // Public API ID
 
-  @Column('uuid')
-  userId: string;
+  @Column({
+    type: 'varchar',
+    enum: ServiceRequestSource,
+    default: ServiceRequestSource.ONE_TIME,
+  })
+  source: ServiceRequestSource;
 
-  @Column('uuid')
-  serviceId: string;
+  @Column('int')
+  userId: number;
+
+  @Column('int', { nullable: true })
+  serviceId?: number;
+
+  @Column('int', { nullable: true })
+  serviceProfileId?: number;
 
   @Column()
   date: Date;
 
   @Column({
     type: 'varchar',
-    enum: ['morning', 'afternoon', 'evening'],
+    enum: ['morning', 'afternoon', 'evening', 'early-morning'],
   })
   timeWindow: string;
 
@@ -31,14 +53,14 @@ export class ServiceRequest {
   })
   assignmentStatus: 'REQUESTED' | 'ASSIGNED' | 'FAILED_TO_ASSIGN';
 
-  @Column({ nullable: true })
-  assignedWorkerId?: string;
+  @Column({ nullable: true, type: 'int' })
+  assignedWorkerId?: number | null;
 
-  @Column({ nullable: true })
-  assignedSlotId?: string;
+  @Column({ nullable: true, type: 'int' })
+  assignedSlotId?: number | null;
 
-  @Column({ nullable: true })
-  failureReason?: string;
+  @Column({ nullable: true, type: 'text' })
+  failureReason?: string | null;
 
   @Column({ type: 'json', nullable: true })
   metadata?: {
@@ -52,6 +74,22 @@ export class ServiceRequest {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Relationships
+  @OneToMany(() => Booking, (booking) => booking.serviceRequest)
+  bookings: Booking[];
+
+  @ManyToOne(() => User, (user) => user.serviceRequests)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @ManyToOne(() => Service, (service) => service.serviceRequests)
+  @JoinColumn({ name: 'serviceId' })
+  service: Service;
+
+  @ManyToOne(() => Worker, (worker) => worker.serviceRequests)
+  @JoinColumn({ name: 'assignedWorkerId' })
+  worker: Worker;
 
   // Business logic methods
   canRetry(): boolean {

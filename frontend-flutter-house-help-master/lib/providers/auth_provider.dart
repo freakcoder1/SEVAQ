@@ -2,8 +2,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/navigation_service.dart';
 import '../models/user.dart';
+import './booking_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -212,7 +215,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(
+    String email,
+    String password, {
+    BuildContext? context,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -233,16 +240,34 @@ class AuthProvider with ChangeNotifier {
           debugPrint(
             'AuthProvider: Token starts with: ${token.substring(0, math.min(20, token.length))}...',
           );
+          // First parse the user data
+          _currentUser = User.fromJson(user);
+
           await _storage.write(key: 'jwt_token', value: token);
           await _storage.write(key: 'user_id', value: user['id'].toString());
 
-          _currentUser = User.fromJson(user);
+          // Also save to SharedPreferences for synchronous restore on app resume
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_TOKEN_KEY, token);
+          await prefs.setString(_USER_ID_KEY, user['id'].toString());
+          await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
+
           // Update static cache immediately
           _cachedToken = token;
           _cachedUserId = user['id'].toString();
           _cachedUser = _currentUser;
           _cacheLoaded = true;
           _isLoading = false;
+
+          // Fetch bookings after login
+          if (context != null) {
+            final bookingProvider = Provider.of<BookingProvider>(
+              context,
+              listen: false,
+            );
+            await bookingProvider.fetchBookings();
+          }
+
           notifyListeners();
           return true;
         }
@@ -287,7 +312,19 @@ class AuthProvider with ChangeNotifier {
           await _storage.write(key: 'jwt_token', value: token);
           await _storage.write(key: 'user_id', value: user['id'].toString());
 
+          // Also save to SharedPreferences for synchronous restore on app resume
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_TOKEN_KEY, token);
+          await prefs.setString(_USER_ID_KEY, user['id'].toString());
           _currentUser = User.fromJson(user);
+          await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
+
+          // Update static cache
+          _cachedToken = token;
+          _cachedUserId = user['id'].toString();
+          _cachedUser = _currentUser;
+          _cacheLoaded = true;
+
           _isLoading = false;
           notifyListeners();
           return true;
@@ -314,12 +351,22 @@ class AuthProvider with ChangeNotifier {
       await _storage.delete(key: 'jwt_token');
       await _storage.delete(key: 'user_id');
       await _storage.delete(key: 'cached_user');
+
+      // Also clear from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_TOKEN_KEY);
+      await prefs.remove(_USER_ID_KEY);
+      await prefs.remove(_CACHED_USER_KEY);
+
       _currentUser = null;
       // Clear static cache
       _cachedToken = null;
       _cachedUserId = null;
       _cachedUser = null;
       _cacheLoaded = false;
+      debugPrint('AuthProvider: User logged out');
+      // Navigate to login screen
+      NavigationService().navigateToLogin();
     } catch (e) {
       debugPrint('Error during logout: $e');
     } finally {

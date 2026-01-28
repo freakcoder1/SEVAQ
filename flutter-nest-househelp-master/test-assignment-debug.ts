@@ -26,7 +26,7 @@ async function debugAssignment() {
     const serviceId = '7f8e4b5c-a883-4c6c-b348-f966508fd49d'; // From logs
     console.log(`\n🔍 Checking workers for service ${serviceId}...`);
     const workersForService = await workerRepo.find({
-      where: { services: { id: serviceId }, isActive: true, isAvailable: true },
+      where: { services: { id: parseInt(serviceId) }, isActive: true, isAvailable: true },
       relations: ['services']
     });
     console.log(`Found ${workersForService.length} workers for this service`);
@@ -50,7 +50,7 @@ async function debugAssignment() {
     // 4. Check service details
     console.log('\n📋 Checking service details...');
     const service = await serviceRepo.findOne({
-      where: { id: serviceId },
+      where: { id: parseInt(serviceId) },
       relations: ['workers']
     });
     console.log('Service:', service?.name);

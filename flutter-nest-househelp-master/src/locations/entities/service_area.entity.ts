@@ -9,6 +9,9 @@ export class ServiceArea {
     @Column()
     name: string;
 
+    @Column()
+    pincode: string;
+
     @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     minLat: number;
 

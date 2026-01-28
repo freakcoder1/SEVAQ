@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:intl/intl.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
@@ -8,6 +10,104 @@ import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
 import 'professional_assigned_screen.dart';
 import 'assignment_failed_screen.dart';
+
+class SquigglyLineProgress extends StatefulWidget {
+  final double height;
+  final Color color;
+  final double strokeWidth;
+
+  const SquigglyLineProgress({
+    Key? key,
+    this.height = 4,
+    this.color = const Color(0xFF2E7D32),
+    this.strokeWidth = 2,
+  }) : super(key: key);
+
+  @override
+  State<SquigglyLineProgress> createState() => _SquigglyLineProgressState();
+}
+
+class _SquigglyLineProgressState extends State<SquigglyLineProgress>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+    _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return CustomPaint(
+          size: Size(double.infinity, widget.height),
+          painter: _SquigglyLinePainter(
+            progress: _animation.value,
+            color: widget.color,
+            strokeWidth: widget.strokeWidth,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SquigglyLinePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+
+  _SquigglyLinePainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    final waveLength = 20.0;
+    final amplitude = 3.0;
+
+    // Start drawing from left
+    path.moveTo(0, size.height / 2);
+
+    // Create squiggly line across the width
+    for (double x = 0; x < size.width; x += 2) {
+      final y =
+          size.height / 2 +
+          amplitude * sin((x / waveLength + progress * 2 * pi) * 2);
+      path.lineTo(x, y);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SquigglyLinePainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
 
 class ServiceRequestInProgressScreen extends StatefulWidget {
   final String serviceRequestId;
@@ -33,7 +133,6 @@ class ServiceRequestInProgressScreen extends StatefulWidget {
 class _ServiceRequestInProgressScreenState
     extends State<ServiceRequestInProgressScreen> {
   late ApiService _apiService;
-  late AuthProvider _authProvider;
   late Timer _pollingTimer;
 
   AssignmentStatus _status = AssignmentStatus.requested;
@@ -48,7 +147,6 @@ class _ServiceRequestInProgressScreenState
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Start polling immediately
     _startPolling();
@@ -73,8 +171,9 @@ class _ServiceRequestInProgressScreenState
 
       if (response != null) {
         final status = response['assignmentStatus'];
+        final statusStr = status.toString().toUpperCase();
 
-        switch (status) {
+        switch (statusStr) {
           case 'ASSIGNED':
             _handleAssignmentSuccess(response);
             break;
@@ -87,6 +186,8 @@ class _ServiceRequestInProgressScreenState
               _handleTimeout();
             }
             break;
+          default:
+            debugPrint('Unknown assignment status: $status');
         }
       }
     } catch (e) {
@@ -219,6 +320,34 @@ class _ServiceRequestInProgressScreenState
 
               const SizedBox(height: 24),
 
+              // Reassurance Text
+              if (_status == AssignmentStatus.assigned)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'If anything changes, we’ll handle it and keep you informed.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'If assignment takes longer than expected, we’ll continue working on it and keep you updated.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
               // Support Section
               SupportSection(onHelpPressed: _showSupportOptions),
             ],
@@ -234,10 +363,10 @@ class _ServiceRequestInProgressScreenState
       children: [
         Text(
           _status == AssignmentStatus.assigned
-              ? 'Professional found!'
+              ? 'Professional assigned'
               : _status == AssignmentStatus.failed
               ? 'Assignment failed'
-              : 'Finding a professional',
+              : 'Assigning a professional',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -246,10 +375,10 @@ class _ServiceRequestInProgressScreenState
         const SizedBox(height: 8),
         Text(
           _status == AssignmentStatus.assigned
-              ? 'We found the perfect professional for you.'
+              ? 'A verified professional has been assigned to your service.'
               : _status == AssignmentStatus.failed
               ? 'We couldn\'t find a professional for your selected time.'
-              : 'We’re matching you with the best available professional.',
+              : 'We’re assigning a verified professional for your service.',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
@@ -273,7 +402,7 @@ class _ServiceRequestInProgressScreenState
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Professional assigned!',
+                'Assignment complete',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF2E7D32),
@@ -314,11 +443,15 @@ class _ServiceRequestInProgressScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Progress bar
-        LinearProgressIndicator(
-          backgroundColor: Colors.grey[200],
-          color: const Color(0xFF2E7D32),
-          minHeight: 8,
+        // Pulsing indicator instead of linear progress bar
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SquigglyLineProgress(
+            height: 4,
+            color: const Color(0xFF2E7D32),
+            strokeWidth: 2,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -330,7 +463,7 @@ class _ServiceRequestInProgressScreenState
         ),
         const SizedBox(height: 4),
         Text(
-          'This usually takes a few minutes. We\'re working on finding the best professional for you.',
+          'This may take a few minutes. We’re handling this for you.',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: Colors.black54),
@@ -357,23 +490,43 @@ class _ServiceRequestInProgressScreenState
             ),
           ),
           const SizedBox(height: 12),
-          _buildNextStep(
-            context,
-            icon: Icons.person,
-            text: 'We assign a verified professional',
-          ),
-          const SizedBox(height: 8),
-          _buildNextStep(
-            context,
-            icon: Icons.notifications,
-            text: 'You’ll be notified once assigned',
-          ),
-          const SizedBox(height: 8),
-          _buildNextStep(
-            context,
-            icon: Icons.payment,
-            text: 'Payment will be requested after assignment',
-          ),
+          if (_status == AssignmentStatus.assigned) ...[
+            _buildNextStep(
+              context,
+              icon: Icons.assignment,
+              text: 'Your booking is being prepared',
+            ),
+            const SizedBox(height: 8),
+            _buildNextStep(
+              context,
+              icon: Icons.payment,
+              text: 'You’ll be asked to confirm and complete payment',
+            ),
+            const SizedBox(height: 8),
+            _buildNextStep(
+              context,
+              icon: Icons.check_circle,
+              text: 'We’ll take care of the rest',
+            ),
+          ] else ...[
+            _buildNextStep(
+              context,
+              icon: Icons.person,
+              text: 'We assign a verified professional',
+            ),
+            const SizedBox(height: 8),
+            _buildNextStep(
+              context,
+              icon: Icons.notifications,
+              text: 'You’ll be notified once assigned',
+            ),
+            const SizedBox(height: 8),
+            _buildNextStep(
+              context,
+              icon: Icons.payment,
+              text: 'Payment will be requested after assignment',
+            ),
+          ],
         ],
       ),
     );
@@ -531,9 +684,9 @@ class ServiceSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '₹${amount.toStringAsFixed(0)} per visit',
+                      'Estimated price: ₹${amount.toStringAsFixed(0)} per visit',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w400,
                         color: const Color(0xFF2E7D32),
                       ),
                     ),

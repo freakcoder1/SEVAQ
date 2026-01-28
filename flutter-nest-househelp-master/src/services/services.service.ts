@@ -72,7 +72,7 @@ export class ServicesService {
   }
 
   async findOne(id: string) {
-    return await this.servicesRepository.findOne({ where: { id } });
+    return await this.servicesRepository.findOne({ where: { id: parseInt(id) } });
   }
 
   async update(id: string, updateServiceDto: UpdateServiceDto) {

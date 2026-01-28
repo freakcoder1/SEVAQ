@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/booking_provider.dart';
 import '../models/booking.dart';
+import '../widgets/pre_service_reminder_banner.dart';
+import 'booking_details_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   @override
@@ -19,193 +21,222 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  String _getStatusLabel(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.assignmentInProgress:
+        return 'Assignment in progress';
+      case BookingStatus.scheduled:
+        return 'Scheduled';
+      case BookingStatus.confirmed:
+        return 'Confirmed';
+      case BookingStatus.inProgress:
+        return 'In progress';
+      case BookingStatus.completed:
+        return 'Completed';
+      case BookingStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
+      case BookingStatus.assignmentInProgress:
+        return Colors.grey;
+      case BookingStatus.scheduled:
       case BookingStatus.confirmed:
-        return Colors.green;
-      case BookingStatus.pending:
-        return Colors.orange;
-      case BookingStatus.cancelled:
-        return Colors.red;
+        return Color.fromRGBO(76, 175, 80, 0.8); // Muted SEVAQ green
+      case BookingStatus.inProgress:
+        return Color.fromRGBO(76, 175, 80, 0.6); // Soft neutral green
       case BookingStatus.completed:
-        return Colors.blue;
+        return Color.fromRGBO(76, 175, 80, 0.4); // Soft neutral green
+      case BookingStatus.cancelled:
+        return Colors.grey;
     }
+  }
+
+  String _getPriceLabel(Booking booking) {
+    if (booking.amount == null || booking.amount == 0) {
+      return 'Price pending';
+    }
+    if (booking.isPaid) {
+      return '₹${booking.amount?.toInt()} paid';
+    }
+    return 'Estimated ₹${booking.amount?.toInt()}';
+  }
+
+  Color _getPriceColor(Booking booking) {
+    if (booking.amount == null || booking.amount == 0) {
+      return Colors.black38; // Muted gray for "Price pending"
+    }
+    return Colors.black54; // Regular color for other price labels
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('My Bookings')),
-      body: Consumer<BookingProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (provider.bookings.isEmpty) {
-            return Center(child: Text('No bookings found.'));
-          }
-          return ListView.separated(
-            padding: EdgeInsets.all(16),
-            itemCount: provider.bookings.length,
-            separatorBuilder: (ctx, i) => SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final booking = provider.bookings[index];
-              return Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.05 * 255).round()),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      appBar: AppBar(title: Text('Your services')),
+      body: Column(
+        children: [
+          PreServiceReminderBanner(),
+          Expanded(
+            child: Consumer<BookingProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (provider.bookings.isEmpty) {
+                  return Center(child: Text('No services found.'));
+                }
+
+                // Group bookings by date
+                final Map<DateTime, List<Booking>> bookingsByDate = {};
+                for (final booking in provider.bookings) {
+                  final date = DateTime(
+                    booking.startTime.year,
+                    booking.startTime.month,
+                    booking.startTime.day,
+                  );
+                  if (!bookingsByDate.containsKey(date)) {
+                    bookingsByDate[date] = [];
+                  }
+                  bookingsByDate[date]!.add(booking);
+                }
+
+                // Sort dates in ascending order
+                final sortedDates = bookingsByDate.keys.toList()
+                  ..sort((a, b) => a.compareTo(b));
+
+                return ListView.separated(
+                  padding: EdgeInsets.all(16),
+                  itemCount: sortedDates.length,
+                  separatorBuilder: (ctx, i) => SizedBox(height: 24),
+                  itemBuilder: (context, dateIndex) {
+                    final date = sortedDates[dateIndex];
+                    final dateBookings = bookingsByDate[date]!;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          DateFormat('MMM d, yyyy').format(booking.startTime),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        // Date header
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            DateFormat('EEEE, MMM d').format(date),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
-                        Row(
-                          children: [
-                            if (booking.status == BookingStatus.pending)
-                              TextButton(
-                                onPressed: () async {
-                                  final confirmed = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: Text('Cancel Booking'),
-                                      content: Text(
-                                        'Are you sure you want to cancel this booking?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: Text('No'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: Text('Yes'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirmed == true) {
-                                    final success =
-                                        await Provider.of<BookingProvider>(
-                                          context,
-                                          listen: false,
-                                        ).cancelBooking(booking.id);
-                                    if (success) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Booking cancelled successfully',
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to cancel booking',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: Text(
-                                  'Cancel',
-                                  style: TextStyle(color: Colors.red),
+                        // Bookings for this date
+                        ...dateBookings.map((booking) {
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      BookingDetailsScreen(booking: booking),
                                 ),
-                              ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
+                              );
+                            },
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 12),
+                              padding: EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                  booking.status,
-                                ).withAlpha((0.1 * 255).round()),
-                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withAlpha(
+                                      (0.03 * 255).round(),
+                                    ),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                booking.status
-                                    .toString()
-                                    .split('.')
-                                    .last
-                                    .toUpperCase(),
-                                style: TextStyle(
-                                  color: _getStatusColor(booking.status),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Service Name (Primary)
+                                  Text(
+                                    booking.service.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  // Date & Time (Secondary)
+                                  Text(
+                                    '${DateFormat('h:mm').format(booking.startTime)}–${DateFormat('h:mm a').format(booking.endTime)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  // Status Badge & Price (Right-Aligned)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(
+                                            booking.status,
+                                          ).withAlpha((0.05 * 255).round()),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _getStatusLabel(booking.status),
+                                          style: TextStyle(
+                                            color: _getStatusColor(
+                                              booking.status,
+                                            ).withAlpha((0.4 * 255).round()),
+                                            fontWeight: FontWeight.w400,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        _getPriceLabel(booking),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color:
+                                              booking.amount == null ||
+                                                  booking.amount == 0
+                                              ? Colors.black38
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        }).toList(),
                       ],
-                    ),
-                    Divider(height: 24),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.grey[200],
-                          child: Icon(Icons.person, color: Colors.grey),
-                        ),
-                        SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${booking.worker.user.firstName} ${booking.worker.user.lastName}',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Text(booking.service.name),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Time: ${DateFormat('jm').format(booking.startTime)} - ${DateFormat('jm').format(booking.endTime)}',
-                        ),
-                        Text(
-                          '₹${booking.service.basePrice.toInt()}', // Assuming one slot price for now
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

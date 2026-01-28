@@ -51,7 +51,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Service confirmed!',
+                          'Your service is scheduled',
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -59,7 +59,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Your professional is confirmed and ready to serve.',
+                          'Your booking is confirmed. Here are the details for your service.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.black54,
                           ),
@@ -72,7 +72,7 @@ class BookingConfirmationScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // Assignment details
+              // Assigned Professional Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -83,7 +83,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Assignment Details',
+                      'Assigned professional',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
@@ -91,7 +91,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
 
-                    // Professional assigned
+                    // Professional details
                     Row(
                       children: [
                         Container(
@@ -103,7 +103,9 @@ class BookingConfirmationScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              booking.worker.user.firstName[0],
+                              booking.worker.user.firstName.isNotEmpty
+                                  ? booking.worker.user.firstName[0]
+                                  : '?',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -126,7 +128,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Verified Sevaq Professional',
+                                'Verified SEVAQ professional',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Colors.black54,
                                 ),
@@ -137,9 +139,38 @@ class BookingConfirmationScreen extends StatelessWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    Text(
+                      'If needed, SEVAQ may assign another verified professional to ensure timely service.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                    // Service details
+              const SizedBox(height: 24),
+
+              // Service Details
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Service Details',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     Row(
                       children: [
                         const Icon(
@@ -197,7 +228,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          '₹${(booking.service.basePrice * booking.startTime.difference(booking.endTime).inHours).toStringAsFixed(0)}',
+                          '₹${booking.amount?.toStringAsFixed(0) ?? (booking.service.basePrice * booking.endTime.difference(booking.startTime).inHours).toStringAsFixed(0)}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -211,7 +242,7 @@ class BookingConfirmationScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // What happens next
+              // Assurance Block (System Trust)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -222,29 +253,18 @@ class BookingConfirmationScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'What happens next',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      'Covered by SEVAQ service guarantee.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    _buildNextStep(
-                      context,
-                      icon: Icons.notifications,
-                      text: 'You\'ll receive a confirmation notification',
-                    ),
-                    const SizedBox(height: 8),
-                    _buildNextStep(
-                      context,
-                      icon: Icons.person,
-                      text: 'Your professional will arrive on time',
-                    ),
-                    const SizedBox(height: 8),
-                    _buildNextStep(
-                      context,
-                      icon: Icons.star,
-                      text: 'Rate your experience after service completion',
+                    const SizedBox(height: 4),
+                    Text(
+                      'We’ll handle coordination, changes, and support.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
@@ -292,7 +312,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: const Text('Back to Home'),
+                        child: const Text('Done'),
                       ),
                     ),
                   ],
@@ -302,25 +322,6 @@ class BookingConfirmationScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNextStep(
-    BuildContext context, {
-    required IconData icon,
-    required String text,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF2E7D32), size: 18),
-        const SizedBox(width: 10),
-        Text(
-          text,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.black87),
-        ),
-      ],
     );
   }
 }

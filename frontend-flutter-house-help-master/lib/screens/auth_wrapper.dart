@@ -5,12 +5,14 @@ import '../providers/location_provider.dart';
 import 'login_screen.dart';
 import 'location_first_splash_screen.dart';
 import 'main_navigation.dart';
+import 'splash_screen.dart';
 
 /// AuthWrapper - The NEW home widget that handles all auth/location gating logic.
 ///
 /// This widget MUST always be created under provider scope (never via Navigator.push).
 /// It determines which screen to show based on authentication and location state:
 ///
+/// - Initial load → SplashScreen
 /// - If not authenticated → LoginScreen
 /// - If authenticated but no location → LocationFirstSplashScreen
 /// - If authenticated and location set → MainNavigation (pure navigation shell)
@@ -68,6 +70,12 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
       'AuthWrapper.build: isLoading=${auth.isLoading}, isAuthenticated=${auth.isAuthenticated}, needsLocationSetup=${locationProvider.needsLocationSetup()}',
     );
 
+    // Handle initial load - show splash screen
+    if (!_hasCompletedFirstBuild) {
+      _hasCompletedFirstBuild = true;
+      return const SplashScreen();
+    }
+
     // Handle loading state - wait for providers to initialize
     if (auth.isLoading || !locationProvider.ready) {
       debugPrint('AuthWrapper: Still initializing, showing loading screen');
@@ -88,25 +96,8 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
       return LocationFirstSplashScreen();
     }
 
-    // Handle authenticated with location - navigate to main navigation
-    debugPrint('AuthWrapper: Navigating to MainNavigation');
-
-    // Navigation debounce: only navigate if stable for 1.5 seconds and not already navigated
-    final now = DateTime.now();
-    if (!_hasNavigated &&
-        now.difference(_lastBuildTime).inMilliseconds > _DEBOUNCE_MS) {
-      _hasNavigated = true;
-      _lastBuildTime = now;
-      // Use a post-frame callback to navigate after the current build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
-      });
-    }
-
-    // Return MainNavigation directly instead of loading screen to prevent rebuild loop
-    // This ensures we don't keep checking auth state after successful navigation
+    // Handle authenticated with location - show main navigation directly
+    debugPrint('AuthWrapper: Showing MainNavigation');
     return MainNavigation();
   }
 

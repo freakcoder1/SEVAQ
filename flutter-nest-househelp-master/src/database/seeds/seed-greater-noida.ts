@@ -30,6 +30,7 @@ export class SeedGreaterNoidaAreas {
     // Create Greater Noida service area covering the user's location
     const serviceAreaGN = serviceAreaRepository.create({
       name: 'Greater Noida - Greater Noida West',
+      pincode: '201306',
       minLat: 28.5700,  // Covering area around user's location
       maxLat: 28.5900,
       minLng: 77.4300,

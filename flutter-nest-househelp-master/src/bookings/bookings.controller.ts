@@ -14,7 +14,7 @@ export class BookingsController {
     }
 
     @Post(':id/attempt-assignment')
-    attemptAssignment(@Param('id') id: string) {
+    attemptAssignment(@Param('id') id: number) {
         console.log('🔍 Attempting assignment for booking ID:', id);
         return this.bookingsService.attemptAssignment(id);
     }
@@ -31,18 +31,18 @@ export class BookingsController {
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
+    findOne(@Param('id') id: number) {
         return this.bookingsService.findOne(id);
     }
 
     @Patch(':id')
     @UsePipes(new ValidationPipe({ transform: true }))
-    update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
+    update(@Param('id') id: number, @Body() updateBookingDto: UpdateBookingDto) {
         return this.bookingsService.update(id, updateBookingDto);
     }
 
     @Post('assign')
-    assignBooking(@Body() assignBookingDto: { bookingId: string; workerId: string }) {
+    assignBooking(@Body() assignBookingDto: { bookingId: number; workerId: number }) {
         return this.bookingsService.assignBooking(assignBookingDto);
     }
 }

@@ -8,8 +8,8 @@ export class AssignmentsController {
 
   @Post('assign')
   async assignProfessional(@Body() assignmentRequest: {
-    bookingId: string;
-    serviceId: string;
+    bookingId: number;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -30,13 +30,13 @@ export class AssignmentsController {
 
   @Post('reassign')
   async reassignProfessional(@Body() reassignmentRequest: {
-    bookingId: string;
+    bookingId: number;
   }) {
     return this.assignmentsService.reassignProfessional(reassignmentRequest.bookingId);
   }
 
   @Get(':bookingId/status')
-  async getAssignmentStatus(@Param('bookingId') bookingId: string) {
+  async getAssignmentStatus(@Param('bookingId') bookingId: number) {
     return this.assignmentsService.getAssignmentStatus(bookingId);
   }
 
@@ -54,7 +54,7 @@ export class AssignmentsController {
 
   @Post('start-assignment-flow')
   async startAssignmentFlow(@Body() assignmentFlowRequest: {
-    serviceId: string;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -92,7 +92,7 @@ export class AssignmentsController {
 
   @Post('check-availability')
   async checkAvailability(@Body() availabilityRequest: {
-    serviceId: string;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -103,8 +103,8 @@ export class AssignmentsController {
 
   @Post('attempt-assignment')
   async attemptAssignment(@Body() assignmentRequest: {
-    bookingId: string;
-    serviceId: string;
+    bookingId: number;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;

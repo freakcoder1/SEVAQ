@@ -1,11 +1,11 @@
-import { IsUUID, IsDate, IsOptional, IsString, IsEnum, IsBoolean } from 'class-validator';
+import { IsNumber, IsUUID, IsDate, IsOptional, IsString, IsEnum, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookingStatus, AssignmentState } from '../entities/booking.entity';
 
 export class UpdateBookingDto {
   @IsOptional()
-  @IsUUID()
-  workerId?: string;
+  @IsNumber()
+  workerId?: number;
 
   @IsOptional()
   @IsDate()

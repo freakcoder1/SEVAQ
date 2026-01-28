@@ -36,7 +36,7 @@ export class SystemReadinessService {
       where: {
         isActive: true,
       },
-      relations: ['workerServices']
+      relations: ['services']
     });
 
     // Determine readiness status

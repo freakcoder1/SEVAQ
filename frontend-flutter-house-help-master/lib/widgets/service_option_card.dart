@@ -3,7 +3,7 @@ import '../models/service_option.dart';
 
 /// Service option card for the Service Clarification Page
 /// Displays individual service options in a clean, selectable format
-class ServiceOptionCard extends StatelessWidget {
+class ServiceOptionCard extends StatefulWidget {
   final ServiceOption service;
   final bool isSelected;
   final VoidCallback onTap;
@@ -16,101 +16,134 @@ class ServiceOptionCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ServiceOptionCard> createState() => _ServiceOptionCardState();
+}
+
+class _ServiceOptionCardState extends State<ServiceOptionCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: isSelected ? 2 : 0,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF81C784) : Colors.transparent,
-          width: 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // Leading icon with subtle styling
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFFE8F5E9)
-                      : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
+        child: Card(
+          elevation: widget.isSelected ? 4 : 2,
+          margin: const EdgeInsets.only(bottom: 16),
+          color: Colors.white, // Pure white card background
+          shadowColor: const Color.fromRGBO(17, 19, 21, 0.06),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: widget.isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : Colors.transparent,
+              width: widget.isSelected ? 2 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Leading icon with subtle styling
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? theme.colorScheme.primaryContainer
+                        : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    widget.service.icon,
+                    size: 24,
+                    color: widget.isSelected
+                        ? theme.colorScheme.primary
+                        : Colors.grey[600],
+                  ),
                 ),
-                child: Icon(
-                  service.icon,
-                  size: 24,
-                  color: isSelected
-                      ? const Color(0xFF2E7D32)
-                      : Colors.grey[600],
-                ),
-              ),
 
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
 
-              // Service content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Service name
-                    Text(
-                      service.name,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Service description
-                    Text(
-                      service.description,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black54,
-                        height: 1.4,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Reassurance badge - only show green for Maid/House Help
-                    if (service.type == ServiceType.maid)
+                // Service content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Service name
                       Text(
-                        service.getReassuranceBadge(),
+                        widget.service.name,
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF2E7D32),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
-                  ],
-                ),
-              ),
 
-              // Selection indicator
-              if (isSelected)
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2E7D32),
-                    shape: BoxShape.circle,
+                      const SizedBox(height: 8),
+
+                      // Service description
+                      Text(
+                        widget.service.description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Reassurance badge - only show green for Maid/House Help
+                      if (widget.service.type == ServiceType.maid)
+                        Text(
+                          widget.service.getReassuranceBadge(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                    ],
                   ),
-                  child: const Icon(Icons.check, size: 16, color: Colors.white),
                 ),
-            ],
+
+                // Selection indicator with animation
+                if (widget.isSelected)
+                  AnimatedOpacity(
+                    opacity: widget.isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: AnimatedScale(
+                      scale: widget.isSelected ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutBack,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

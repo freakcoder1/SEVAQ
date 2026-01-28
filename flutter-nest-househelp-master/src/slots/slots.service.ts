@@ -19,11 +19,11 @@ export class SlotsService {
         return this.slotsRepository.find({ relations: ['worker'] });
     }
 
-    async findOne(id: string) {
+    async findOne(id: number) {
         return this.slotsRepository.findOne({ where: { id }, relations: ['worker'] });
     }
 
-    async findAvailableSlot(workerId: string, startTime: Date, endTime: Date): Promise<Slot | null> {
+    async findAvailableSlot(workerId: number, startTime: Date, endTime: Date): Promise<Slot | null> {
         this.logger.log(`Finding available slot for workerId: ${workerId} (type: ${typeof workerId})`);
         return this.slotsRepository.findOne({
             where: {
@@ -35,7 +35,7 @@ export class SlotsService {
         });
     }
 
-    async findBookedSlot(workerId: string, startTime: Date, endTime: Date): Promise<Slot | null> {
+    async findBookedSlot(workerId: number, startTime: Date, endTime: Date): Promise<Slot | null> {
         return this.slotsRepository.findOne({
             where: {
                 worker: { id: workerId },
@@ -50,7 +50,7 @@ export class SlotsService {
      * Find available slot with flexible time matching
      * This method allows for flexible time matching to improve worker availability
      */
-    async findAvailableSlotFlexible(workerId: string, requestedStartTime: Date, requestedEndTime: Date): Promise<Slot | null> {
+    async findAvailableSlotFlexible(workerId: number, requestedStartTime: Date, requestedEndTime: Date): Promise<Slot | null> {
         this.logger.log(`Finding flexible slot for worker ${workerId} from ${requestedStartTime} to ${requestedEndTime}`);
 
         try {
@@ -119,7 +119,7 @@ export class SlotsService {
     /**
      * Enhanced slot creation with better availability management
      */
-    async createSlotsForWorker(workerId: string, date: Date, timeSlots: Array<{ startTime: Date, endTime: Date }>): Promise<Slot[]> {
+    async createSlotsForWorker(workerId: number, date: Date, timeSlots: Array<{ startTime: Date, endTime: Date }>): Promise<Slot[]> {
         this.logger.log(`Creating ${timeSlots.length} slots for worker ${workerId} on ${date}`);
 
         try {
@@ -149,9 +149,12 @@ export class SlotsService {
             const slotsToCreate = timeSlots.map(slotData => {
                 const slot = new Slot();
                 slot.worker = worker;
+                slot.date = date;
                 slot.startTime = slotData.startTime;
                 slot.endTime = slotData.endTime;
                 slot.isBooked = false;
+                slot.maxBookings = 1;
+                slot.currentBookings = 0;
                 return slot;
             });
 
@@ -170,7 +173,7 @@ export class SlotsService {
      * Bulk create slots for multiple workers
      */
     async createSlotsForMultipleWorkers(workerSlots: Array<{
-        workerId: string,
+        workerId: number,
         date: Date,
         timeSlots: Array<{ startTime: Date, endTime: Date }>
     }>): Promise<void> {
@@ -193,7 +196,7 @@ export class SlotsService {
     /**
      * Get available slots for a worker within a date range
      */
-    async getAvailableSlotsForWorker(workerId: string, startDate: Date, endDate: Date): Promise<Slot[]> {
+    async getAvailableSlotsForWorker(workerId: number, startDate: Date, endDate: Date): Promise<Slot[]> {
         return this.slotsRepository.find({
             where: {
                 worker: { id: workerId },
@@ -209,7 +212,7 @@ export class SlotsService {
     /**
      * Get booking statistics for a worker
      */
-    async getWorkerSlotStats(workerId: string): Promise<{
+    async getWorkerSlotStats(workerId: number): Promise<{
         totalSlots: number;
         availableSlots: number;
         bookedSlots: number;
@@ -237,18 +240,18 @@ export class SlotsService {
         };
     }
 
-    async markAsAvailable(id: string): Promise<void> {
+    async markAsAvailable(id: number): Promise<void> {
         await this.slotsRepository.update(id, { isBooked: false });
     }
 
-    async markAsBooked(id: string): Promise<void> {
+    async markAsBooked(id: number): Promise<void> {
         await this.slotsRepository.update(id, { isBooked: true });
     }
 
     /**
      * Enhanced slot booking with validation
      */
-    async bookSlot(slotId: string): Promise<boolean> {
+    async bookSlot(slotId: number): Promise<boolean> {
         try {
             const slot = await this.slotsRepository.findOne({ where: { id: slotId } });
             
@@ -275,7 +278,7 @@ export class SlotsService {
     /**
      * Enhanced slot unbooking with validation
      */
-    async unbookSlot(slotId: string): Promise<boolean> {
+    async unbookSlot(slotId: number): Promise<boolean> {
         try {
             const slot = await this.slotsRepository.findOne({ where: { id: slotId } });
             

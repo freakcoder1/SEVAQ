@@ -1,39 +1,61 @@
-const axios = require('axios');
+const http = require('http');
 
-async function testServiceRequest() {
-  try {
-    console.log('Testing service request creation...');
-    
-    // First test if server is responding
-    const healthCheck = await axios.get('http://127.0.0.1:3000/health');
-    console.log('✅ Server is responding:', healthCheck.data);
-    
-    const response = await axios.post('http://127.0.0.1:3000/service-requests', {
-      userId: 'test-uuid-123',
-      serviceId: 'cleaning',
-      date: '2024-01-15',
-      timeWindow: 'morning',
-      priceSnapshot: 500,
-      location: {
-        lat: 28.5804579,
-        lng: 77.4392951,
-        address: 'Test Address'
-      }
-    });
+console.log('Testing service request creation...');
 
-    console.log('✅ Service request created successfully!');
-    console.log('Response:', response.data);
-    return true;
-  } catch (error) {
-    console.log('❌ Service request failed:');
-    if (error.response) {
-      console.log('Status:', error.response.status);
-      console.log('Data:', error.response.data);
-    } else {
-      console.log('Error:', error.message);
-    }
-    return false;
+const data = JSON.stringify({
+  serviceId: 1,
+  date: '2026-01-17',
+  timeWindow: 'morning',
+  priceSnapshot: 100,
+  location: {
+    lat: 28.5804579,
+    lng: 77.4392951,
+    address: 'Test address near workers'
   }
-}
+});
 
-testServiceRequest();
+const options = {
+  hostname: '127.0.0.1',
+  port: 45357,
+  path: '/service-requests',
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Content-Length': data.length,
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwic3ViIjoyMiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Njg1ODE5NTMsImV4cCI6MTc2ODU4NTU1M30.a__HjLHnAa1YLExMdxuCT58gIWFNJ5YB3iSUNYOaJZ0'
+  }
+};
+
+const req = http.request(options, (res) => {
+  console.log(`\n✅ Status Code: ${res.statusCode}`);
+  console.log(`\n✅ Response Headers: ${JSON.stringify(res.headers)}`);
+  
+  let responseData = '';
+  
+  res.on('data', (chunk) => {
+    responseData += chunk;
+  });
+  
+  res.on('end', () => {
+    try {
+      const parsedData = JSON.parse(responseData);
+      console.log('\n✅ Response Data:');
+      console.log(JSON.stringify(parsedData, null, 2));
+      
+      if (parsedData && parsedData.id) {
+        console.log(`\n✅ Service request created successfully! ID: ${parsedData.id}`);
+      }
+    } catch (error) {
+      console.log(`\n⚠️ Failed to parse JSON response: ${error.message}`);
+      console.log(`\nRaw Response: ${responseData}`);
+    }
+  });
+});
+
+req.on('error', (error) => {
+  console.log(`\n❌ Service request failed:`);
+  console.error(error);
+});
+
+req.write(data);
+req.end();

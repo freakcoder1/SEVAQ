@@ -45,8 +45,11 @@ export class AssignmentWorker {
       const { startTime, endTime } = this.parseTimeWindow(request.date, request.timeWindow);
 
       // Find best worker using service request-specific logic
+      // TODO: Implement logic to map service profile to service
+      const serviceId = request.serviceId || 1; // Default to service 1 if not specified
+      
       const bestWorker = await this.findBestWorker(
-        request.serviceId,
+        serviceId,
         userLat,
         userLng,
         startTime,
@@ -57,8 +60,8 @@ export class AssignmentWorker {
         await this.serviceRequestsRepository.update(requestId, {
           assignmentStatus: 'FAILED_TO_ASSIGN',
           failureReason: 'No professional available',
-          assignedWorkerId: '',
-          assignedSlotId: '',
+          assignedWorkerId: null,
+          assignedSlotId: null,
         });
         this.logger.log(`Failed to assign worker to request ${requestId}: No professional available`);
         return;
@@ -71,8 +74,8 @@ export class AssignmentWorker {
         await this.serviceRequestsRepository.update(requestId, {
           assignmentStatus: 'FAILED_TO_ASSIGN',
           failureReason: 'Failed to book worker slot',
-          assignedWorkerId: '',
-          assignedSlotId: '',
+          assignedWorkerId: null,
+          assignedSlotId: null,
         });
         this.logger.log(`Failed to book slot for request ${requestId}`);
         return;
@@ -83,7 +86,7 @@ export class AssignmentWorker {
         assignmentStatus: 'ASSIGNED',
         assignedWorkerId: bestWorker.worker.id,
         assignedSlotId: bestWorker.slot.id,
-        failureReason: '',
+        failureReason: null,
       });
 
       this.logger.log(`Successfully assigned worker ${bestWorker.worker.id} to request ${requestId}`);
@@ -92,8 +95,8 @@ export class AssignmentWorker {
       await this.serviceRequestsRepository.update(requestId, {
         assignmentStatus: 'FAILED_TO_ASSIGN',
         failureReason: error.message,
-        assignedWorkerId: '',
-        assignedSlotId: '',
+        assignedWorkerId: null,
+        assignedSlotId: null,
       });
     }
   }
@@ -115,22 +118,23 @@ export class AssignmentWorker {
         startHour = 17;
         endHour = 21;
         break;
+      case 'early-morning':
+        startHour = 2;
+        endHour = 11;
+        break;
       default:
         startHour = 8;
         endHour = 12;
     }
 
-    const startTime = new Date(date);
-    startTime.setHours(startHour, 0, 0, 0);
-
-    const endTime = new Date(date);
-    endTime.setHours(endHour, 0, 0, 0);
+    const startTime = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), startHour, 0, 0, 0));
+    const endTime = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), endHour, 0, 0, 0));
 
     return { startTime, endTime };
   }
 
   // Enhanced worker matching logic adapted from AssignmentsService.findBestWorker()
-  private async findBestWorker(serviceId: string, userLat: number, userLng: number, startTime: Date, endTime: Date) {
+  private async findBestWorker(serviceId: number, userLat: number, userLng: number, startTime: Date, endTime: Date) {
     this.logger.log('🔍 Starting worker search for service:', serviceId);
     this.logger.log('📍 User location:', { lat: userLat, lng: userLng });
     this.logger.log('⏰ Requested time:', { start: startTime, end: endTime });

@@ -1,51 +1,72 @@
 class CopyHelper {
+  // SEVAQ COPY GUIDELINES - CALM, DECLARATIVE, TRUST-FIRST
+
   static String translateInfrastructureStatus(bool isActive) {
-    return isActive ? "Available and on track" : "Service adjustment needed";
+    return isActive ? "SEVAQ is handling this" : "SEVAQ is handling this";
   }
 
   static String translateSystemMonitoring(bool isMonitoring) {
-    return isMonitoring ? "We're watching this visit" : "Monitoring active";
+    return isMonitoring
+        ? "Assigned & monitored by SEVAQ"
+        : "Assigned & monitored by SEVAQ";
   }
 
   static String translateWorkerAvailability(double percentage) {
-    if (percentage >= 80) return "Backup active";
-    if (percentage >= 60) return "Slight delay expected";
-    return "Service adjustment needed";
+    if (percentage >= 80) return "SEVAQ is handling this";
+    if (percentage >= 60) return "SEVAQ is handling this";
+    return "SEVAQ is handling this";
   }
 
   static String translateSystemHealth(bool isHealthy) {
-    return isHealthy ? "All services on track" : "Service adjustment needed";
+    return isHealthy ? "SEVAQ is handling this" : "SEVAQ is handling this";
   }
 
   static String translateServiceAvailability(double percentage) {
-    if (percentage >= 85) return "All services on track";
-    if (percentage >= 70) return "Most services available";
-    return "Limited availability";
+    if (percentage >= 85) return "SEVAQ is handling this";
+    if (percentage >= 70) return "SEVAQ is handling this";
+    return "SEVAQ is handling this";
   }
 
   static String translateResponseTime(int minutes) {
-    if (minutes <= 15) return "On track";
-    if (minutes <= 30) return "Slight delay expected";
-    return "Extended wait time";
+    if (minutes <= 15) return "SEVAQ is handling this";
+    if (minutes <= 30) return "SEVAQ is handling this";
+    return "SEVAQ is handling this";
   }
 
   static String translateReliabilityStreak(int streak) {
-    if (streak >= 10) return "Consistently reliable";
-    if (streak >= 5) return "Reliable performance";
-    return "Building reliability";
+    if (streak >= 10) return "Assigned & monitored by SEVAQ";
+    if (streak >= 5) return "Assigned & monitored by SEVAQ";
+    return "Assigned & monitored by SEVAQ";
   }
 
   static String translateExperience(int years) {
-    if (years >= 10) return "Extensive experience";
-    if (years >= 5) return "Experienced professional";
-    if (years >= 2) return "Professional experience";
-    return "Trained professional";
+    if (years >= 10) return "Assigned & monitored by SEVAQ";
+    if (years >= 5) return "Assigned & monitored by SEVAQ";
+    if (years >= 2) return "Assigned & monitored by SEVAQ";
+    return "Assigned & monitored by SEVAQ";
   }
 
   static String translateHomesServed(int count) {
-    if (count >= 100) return "Extensively serves your area";
-    if (count >= 50) return "Commonly serves your area";
-    if (count >= 20) return "Familiar with your area";
-    return "New to your area";
+    if (count >= 100) return "Covered by your monthly service";
+    if (count >= 50) return "Covered by your monthly service";
+    if (count >= 20) return "Covered by your monthly service";
+    return "Covered by your monthly service";
+  }
+
+  // Additional SEVAQ-specific copy methods
+  static String translateSubscriptionCoverage() {
+    return "Covered by your monthly service";
+  }
+
+  static String translateServiceAssignment() {
+    return "Assigned & monitored by SEVAQ";
+  }
+
+  static String translateSystemAssurance() {
+    return "SEVAQ is handling this";
+  }
+
+  static String translateTrustMessage() {
+    return "We'll take care of this";
   }
 }

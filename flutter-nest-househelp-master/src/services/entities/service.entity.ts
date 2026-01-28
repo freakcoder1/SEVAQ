@@ -1,10 +1,14 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { Worker } from '../../workers/entities/worker.entity';
+import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 
 @Entity('service')
 export class Service {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number; // Internal ID
+  
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string; // Public API ID
 
   @Column({ length: 100 })
   name: string;
@@ -49,13 +53,10 @@ export class Service {
   imageUrl: string;
 
   @ManyToMany(() => Worker, worker => worker.services)
-  @JoinTable({
-    name: 'service_worker',
-    joinColumn: { name: 'serviceId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'workerId', referencedColumnName: 'id' },
-  })
   workers: Worker[];
 
+  @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.service)
+  serviceRequests: ServiceRequest[];
 
   @CreateDateColumn()
   createdAt: Date;

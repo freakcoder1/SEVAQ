@@ -5,6 +5,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +21,7 @@ export class UsersService {
     const user = this.usersRepository.create({
       ...createUserDto,
       password: hashedPassword,
+      publicId: uuidv4(),
     });
     return this.usersRepository.save(user);
   }
@@ -28,7 +30,7 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  findOne(id: string) {
+  findOne(id: number) {
     return this.usersRepository.findOneBy({ id });
   }
 
@@ -36,11 +38,11 @@ export class UsersService {
     return this.usersRepository.findOneBy({ email });
   }
 
-  update(id: string, updateUserDto: UpdateUserDto) {
+  update(id: number, updateUserDto: UpdateUserDto) {
     return this.usersRepository.update(id, updateUserDto);
   }
 
-  async remove(id: string) {
+  async remove(id: number) {
     const user = await this.findOne(id);
     if (!user) {
       throw new ForbiddenException('User not found');

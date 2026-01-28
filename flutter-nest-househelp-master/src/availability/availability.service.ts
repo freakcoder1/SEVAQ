@@ -13,7 +13,7 @@ export enum AvailabilityStatus {
 }
 
 export interface AvailabilityCheckRequest {
-  serviceId: string;
+  serviceId: number;
   date: string;
   timeWindow: string;
   userLat: number;
@@ -146,7 +146,7 @@ export class AvailabilityService {
     const availableWorkers: Worker[] = [];
 
     for (const worker of workers) {
-      const availableSlot = await this.slotsService.findAvailableSlot(worker.id, startTime, endTime);
+      const availableSlot = await this.slotsService.findAvailableSlotFlexible(worker.id, startTime, endTime);
       if (availableSlot) {
         availableWorkers.push(worker);
       }
@@ -179,11 +179,18 @@ export class AvailabilityService {
         endHour = 12;
     }
 
+    // Convert IST hours to UTC (IST = UTC + 5:30)
+    const utcOffset = 5.5;
+    const startHourUTC = startHour - utcOffset;
+    const endHourUTC = endHour - utcOffset;
+
     const startTime = new Date(date);
-    startTime.setHours(startHour, 0, 0, 0);
+    startTime.setUTCHours(Math.floor(startHourUTC), Math.round((startHourUTC % 1) * 60), 0, 0);
 
     const endTime = new Date(date);
-    endTime.setHours(endHour, 0, 0, 0);
+    endTime.setUTCHours(Math.floor(endHourUTC), Math.round((endHourUTC % 1) * 60), 0, 0);
+
+    console.log(`Time window conversion (${timeWindow}): IST ${startHour}:00-${endHour}:00 -> UTC ${startTime.getUTCHours()}:${startTime.getUTCMinutes()}-${endTime.getUTCHours()}:${endTime.getUTCMinutes()}`);
 
     return { startTime, endTime };
   }

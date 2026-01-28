@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { validate } from 'uuid';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -12,7 +13,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             throw new Error('Missing required environment variable: JWT_SECRET');
         }
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: (req: Request) => {
+                console.log('🔍 DEBUG: JWT Strategy - Authorization header:', req.headers.authorization);
+                return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+            },
             ignoreExpiration: false,
             secretOrKey: secret,
         });
@@ -21,14 +25,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     async validate(payload: any) {
         console.log('🔍 DEBUG: JWT Strategy validate called with payload:', JSON.stringify(payload, null, 2));
 
-        // Ensure userId is treated as a UUID string
-        const userId = payload.sub.toString();
+        // Extract user ID from payload - support both numeric and UUID formats
+        // IMPORTANT: Handle case where payload.sub might be missing or invalid
+        let userId: string;
+        
+        if (payload.sub) {
+            userId = payload.sub.toString();
+        } else if (payload.userId) {
+            userId = payload.userId.toString();
+        } else {
+            console.log('🔍 DEBUG: JWT Strategy validation failed - no user ID in payload');
+            throw new Error('Invalid token: Missing user ID');
+        }
+        
         console.log('🔍 DEBUG: JWT Strategy extracted userId:', userId);
 
-        // Validate that the userId is a valid UUID
-        if (!validate(userId)) {
-            console.log('🔍 DEBUG: JWT Strategy validation failed - invalid UUID format');
-            throw new Error('Invalid user ID format: Expected UUID');
+        // Validate that the userId is either a valid UUID or a numeric string
+        const isNumeric = /^\d+$/.test(userId);
+        const isUUID = validate(userId);
+        
+        if (!isNumeric && !isUUID) {
+            console.log('🔍 DEBUG: JWT Strategy validation failed - invalid ID format');
+            throw new Error('Invalid user ID format: Expected numeric or UUID');
         }
 
         console.log('🔍 DEBUG: JWT Strategy validation successful for user:', userId);

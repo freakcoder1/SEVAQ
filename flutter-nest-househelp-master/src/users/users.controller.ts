@@ -22,19 +22,19 @@ export class UsersController {
 
   @Get(':id')
   @UseGuards(AdminGuard)
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: number) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
   @UseGuards(AdminGuard)
-  update(@Param('id') id: string, @Body() updateUserDto: AdminUpdateUserDto) {
+  update(@Param('id') id: number, @Body() updateUserDto: AdminUpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
 
   @Delete(':id')
   @UseGuards(AdminGuard)
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: number) {
     return this.usersService.remove(id);
   }
 }

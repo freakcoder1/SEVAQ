@@ -1,22 +1,37 @@
-import { IsUUID, IsDate, IsOptional, IsString, IsEnum, ValidateNested } from 'class-validator';
+import { IsNumber, IsUUID, IsDate, IsOptional, IsString, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookingStatus, BookingType } from '../entities/booking.entity';
 import { LocationDto } from './location.dto';
 
 export class CreateBookingDto {
   @IsUUID()
-  serviceId: string;
+  @IsOptional()
+  serviceRequestId?: string;
 
-  @IsUUID()
-  userId: string;
+  @IsNumber()
+  @IsOptional()
+  serviceId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  userId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  workerId?: number;
 
   @IsDate()
   @Type(() => Date)
-  startTime: Date;
+  @IsOptional()
+  date?: Date;
 
-  @IsDate()
-  @Type(() => Date)
-  endTime: Date;
+  @IsString()
+  @IsOptional()
+  startTime?: string;
+
+  @IsString()
+  @IsOptional()
+  endTime?: string;
 
   @IsOptional()
   @IsString()

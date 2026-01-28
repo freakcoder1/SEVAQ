@@ -107,6 +107,14 @@ class NavigationService {
     navigatorKey.currentState?.popUntil((route) => route.isFirst);
   }
 
+  /// Navigate to Login Screen
+  void navigateToLogin() {
+    navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/login',
+      (route) => false,
+    );
+  }
+
   /// Navigate to assignment flow with proper state management
   Future<void> startAssignmentFlow({
     required BuildContext context,

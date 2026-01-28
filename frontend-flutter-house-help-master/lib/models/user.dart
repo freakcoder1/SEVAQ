@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 class User {
-  final String id;
+  final int id;
+  final String publicId;
   final String email;
   final String firstName;
   final String lastName;
@@ -9,6 +10,7 @@ class User {
 
   User({
     required this.id,
+    required this.publicId,
     required this.email,
     required this.firstName,
     required this.lastName,
@@ -18,6 +20,7 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'publicId': publicId,
       'email': email,
       'firstName': firstName,
       'lastName': lastName,
@@ -31,7 +34,8 @@ class User {
 
   static User fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id']?.toString() ?? '',
+      id: json['id'] as int? ?? 0,
+      publicId: json['publicId'] ?? '',
       email: json['email']?.toString() ?? '',
       firstName: json['firstName']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
@@ -43,7 +47,14 @@ class User {
     try {
       return fromJson(jsonDecode(jsonString));
     } catch (e) {
-      return User(id: '', email: '', firstName: '', lastName: '', role: '');
+      return User(
+        id: 0,
+        publicId: '',
+        email: '',
+        firstName: '',
+        lastName: '',
+        role: '',
+      );
     }
   }
 }

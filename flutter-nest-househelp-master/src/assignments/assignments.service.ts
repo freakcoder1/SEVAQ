@@ -24,8 +24,8 @@ export class AssignmentsService {
   ) {}
 
   async assignProfessional(assignmentRequest: {
-    bookingId: string;
-    serviceId: string;
+    bookingId: number;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -76,7 +76,7 @@ export class AssignmentsService {
     return { success: true, worker: bestWorker.worker };
   }
 
-  async reassignProfessional(bookingId: string): Promise<{ success: boolean; worker?: Worker }> {
+  async reassignProfessional(bookingId: number): Promise<{ success: boolean; worker?: Worker }> {
     // 1. Get current booking
     const booking = await this.bookingsRepository.findOne({
       where: { id: bookingId }
@@ -117,9 +117,9 @@ export class AssignmentsService {
     return newAssignment;
   }
 
-  async getAssignmentStatus(bookingId: string): Promise<{
+  async getAssignmentStatus(bookingId: number): Promise<{
     status: AssignmentState;
-    assignedWorkerId?: string;
+    assignedWorkerId?: number;
     reassignmentCount: number;
     assignmentTimestamp?: Date;
     assignmentMetadata?: any;
@@ -158,8 +158,19 @@ export class AssignmentsService {
 
   async createBookingWithAssignment(createBookingDto: any): Promise<Booking> {
     // 1. Create booking with PENDING assignment state
+    // Parse dates from DTO
+    const startTime = typeof createBookingDto.startTime === 'string' 
+      ? new Date(createBookingDto.startTime) 
+      : createBookingDto.startTime;
+    const endTime = typeof createBookingDto.endTime === 'string' 
+      ? new Date(createBookingDto.endTime) 
+      : createBookingDto.endTime;
+
     const booking = this.bookingsRepository.create({
       ...createBookingDto,
+      startTime: startTime.toTimeString().split(' ')[0], // Extract HH:MM:SS
+      endTime: endTime.toTimeString().split(' ')[0], // Extract HH:MM:SS
+      date: startTime, // This will be stored as date type in PostgreSQL
       assignmentState: AssignmentState.PENDING,
       assignedWorkerId: null,
       reassignmentCount: 0
@@ -175,7 +186,7 @@ export class AssignmentsService {
   // NEW: Two-phase assignment methods
 
   async checkAvailabilityForAssignment(assignmentRequest: {
-    serviceId: string;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -217,8 +228,8 @@ export class AssignmentsService {
   }
 
   async attemptAssignment(assignmentRequest: {
-    bookingId: string;
-    serviceId: string;
+    bookingId: number;
+    serviceId: number;
     userLat: number;
     userLng: number;
     startTime: Date;
@@ -329,7 +340,7 @@ export class AssignmentsService {
   }
 
   // Enhanced worker matching logic with flexible time matching and comprehensive logging
-  private async findBestWorker(serviceId: string, userLat: number, userLng: number, startTime: Date | string, endTime: Date | string) {
+  private async findBestWorker(serviceId: number, userLat: number, userLng: number, startTime: Date | string, endTime: Date | string) {
     console.log('🔍 Starting worker search for service:', serviceId);
     console.log('📍 User location:', { lat: userLat, lng: userLng });
     console.log('⏰ Requested time:', { start: startTime, end: endTime });
@@ -340,8 +351,10 @@ export class AssignmentsService {
 
     const workers = await this.workersRepository
       .createQueryBuilder('worker')
-      .innerJoin('worker.services', 'service', 'service.id = :serviceId')
-      .where('worker.isActive = :isActive')
+      .innerJoin('service_worker', 'sw', 'sw.worker_id = worker.id')
+      .innerJoin('service', 'service', 'service.id = sw.service_id')
+      .where('service.id = :serviceId')
+      .andWhere('worker.isActive = :isActive')
       .andWhere('worker.isAvailable = :isAvailable')
       .setParameters({ serviceId, isActive: true, isAvailable: true })
       .getMany();

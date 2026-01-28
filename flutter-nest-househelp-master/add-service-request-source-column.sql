@@ -1,0 +1,2 @@
+ALTER TABLE service_requests 
+ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'ONE_TIME';

@@ -1,17 +1,17 @@
-import { IsString, IsNotEmpty, IsArray, IsUUID, IsNumber, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsNumber, Min, Max } from 'class-validator';
 
 export class CreateWorkerDto {
-    @IsUUID()
+    @IsNumber()
     @IsNotEmpty()
-    userId: string;
+    userId: number;
 
     @IsString()
     @IsNotEmpty()
     bio: string;
 
     @IsArray()
-    @IsUUID('4', { each: true })
-    serviceIds: string[];
+    @IsNumber({}, { each: true })
+    serviceIds: number[];
 
     @IsNumber()
     @IsNotEmpty()

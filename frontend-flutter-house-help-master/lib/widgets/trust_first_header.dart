@@ -12,16 +12,18 @@ class TrustFirstHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: theme.colorScheme.primaryContainer),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.1),
+            color: theme.colorScheme.primary.withOpacity(0.1),
             blurRadius: 8,
             offset: Offset(0, 4),
           ),
@@ -37,7 +39,11 @@ class TrustFirstHeader extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    Icon(Icons.location_on, color: Colors.green[600], size: 20),
+                    Icon(
+                      Icons.location_on,
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -48,7 +54,7 @@ class TrustFirstHeader extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                              color: theme.colorScheme.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -58,7 +64,7 @@ class TrustFirstHeader extends StatelessWidget {
                             systemMessage,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.green[600],
+                              color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -78,7 +84,7 @@ class TrustFirstHeader extends StatelessWidget {
               'Support is live',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey[500],
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 0.2,
               ),

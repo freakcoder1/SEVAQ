@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../widgets/loading_widget.dart';
@@ -66,8 +67,9 @@ class _FindingProfessionalScreenState extends State<FindingProfessionalScreen> {
     });
   }
 
-  AssignmentStatus _parseAssignmentStatus(String status) {
-    switch (status) {
+  AssignmentStatus _parseAssignmentStatus(dynamic status) {
+    final statusStr = status.toString().toUpperCase();
+    switch (statusStr) {
       case 'REQUESTED':
         return AssignmentStatus.requested;
       case 'ASSIGNED':
@@ -75,6 +77,7 @@ class _FindingProfessionalScreenState extends State<FindingProfessionalScreen> {
       case 'FAILED_TO_ASSIGN':
         return AssignmentStatus.failedToAssign;
       default:
+        debugPrint('Unknown assignment status: $status');
         return AssignmentStatus.requested;
     }
   }
@@ -131,7 +134,7 @@ class _FindingProfessionalScreenState extends State<FindingProfessionalScreen> {
           const Icon(Icons.check_circle, size: 80, color: Colors.green),
           const SizedBox(height: 16),
           const Text(
-            'Great news!',
+            'Professional assigned',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -140,7 +143,7 @@ class _FindingProfessionalScreenState extends State<FindingProfessionalScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'We found ${_assignedWorker?.user.firstName ?? 'a professional'} for you!',
+            'A verified professional has been assigned to your service.',
             style: const TextStyle(fontSize: 18, color: Colors.black87),
             textAlign: TextAlign.center,
           ),

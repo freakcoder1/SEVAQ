@@ -1,48 +1,73 @@
 /// Service Mapper Utility
-/// Maps frontend service IDs to backend UUID service IDs
-/// This fixes the mismatch between frontend simple IDs and backend UUIDs
+/// Maps frontend service IDs to backend numeric service IDs
+/// This fixes the mismatch between frontend simple IDs and backend numeric IDs
 
 import '../models/worker.dart';
 
 class ServiceMapper {
-  // Backend UUID service IDs from the database
-  static const String homeCleaningId = '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b';
-  static const String deepCleaningId = 'e8003676-f554-41d0-b41e-a0fb5fec7c51';
-  static const String cookingId = '7f8e4b5c-a883-4c6c-b348-f966508fd49d';
-  static const String mealPreparationId =
-      '6a7ae1cd-ba09-4970-8a2f-f911efcd196f';
+  // Backend numeric service IDs from the database
+  static const int homeCleaningId = 1;
+  static const int cookingId = 3;
+  static const int driverId = 5;
+  static const int errandsId = 6;
+  static const int laundryId = 7;
+  static const int babysittingId = 8;
+  static const int gardeningId = 9;
+  static const int seniorCareId = 10;
+  static const int shoppingId = 12;
 
   /// Map frontend service option ID to backend service ID
-  static String mapToFrontendId(String backendId) {
+  static String mapToFrontendId(int backendId) {
     switch (backendId) {
       case homeCleaningId:
         return 'cleaning';
-      case deepCleaningId:
-        return 'cleaning';
       case cookingId:
         return 'cooking';
-      case mealPreparationId:
-        return 'cooking';
+      case driverId:
+        return 'driver';
+      case errandsId:
+        return 'errands';
+      case laundryId:
+        return 'laundry';
+      case babysittingId:
+        return 'babysitting';
+      case gardeningId:
+        return 'gardening';
+      case seniorCareId:
+        return 'senior_care';
+      case shoppingId:
+        return 'shopping';
       default:
         return 'cleaning'; // Default fallback
     }
   }
 
   /// Map frontend service option ID to backend service IDs
-  static List<String> mapToBackendIds(String frontendId) {
+  static List<int> mapToBackendIds(String frontendId) {
     switch (frontendId) {
       case 'maid':
         // Maid service can use any cleaning or cooking service
-        return [homeCleaningId, deepCleaningId, cookingId, mealPreparationId];
+        return [homeCleaningId, cookingId];
       case 'cleaning':
-        // Cleaning service uses cleaning-related backend services
-        return [homeCleaningId, deepCleaningId];
+        return [homeCleaningId];
       case 'cooking':
-        // Cooking service uses cooking-related backend services
-        return [cookingId, mealPreparationId];
+        return [cookingId];
+      case 'driver':
+        return [driverId];
+      case 'errands':
+        return [errandsId];
+      case 'laundry':
+        return [laundryId];
+      case 'babysitting':
+        return [babysittingId];
+      case 'gardening':
+        return [gardeningId];
+      case 'senior_care':
+        return [seniorCareId];
+      case 'shopping':
+        return [shoppingId];
       default:
-        // Default fallback to all services
-        return [homeCleaningId, deepCleaningId, cookingId, mealPreparationId];
+        return [homeCleaningId, cookingId];
     }
   }
 
@@ -55,7 +80,7 @@ class ServiceMapper {
   }
 
   /// Get a representative backend service ID for a frontend service ID
-  static String getRepresentativeBackendId(String frontendId) {
+  static int getRepresentativeBackendId(String frontendId) {
     final backendIds = mapToBackendIds(frontendId);
     return backendIds.isNotEmpty ? backendIds.first : homeCleaningId;
   }

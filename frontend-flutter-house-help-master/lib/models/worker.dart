@@ -2,7 +2,8 @@ import 'user.dart';
 import 'service.dart';
 
 class Worker {
-  final String id;
+  final int id;
+  final String publicId;
   final User user;
   final String bio;
   final double rating;
@@ -11,6 +12,7 @@ class Worker {
 
   Worker({
     required this.id,
+    required this.publicId,
     required this.user,
     required this.bio,
     required this.rating,
@@ -18,16 +20,48 @@ class Worker {
     required this.services,
   });
 
-  factory Worker.fromJson(Map<String, dynamic> json) {
+  factory Worker.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return Worker(
+        id: 0,
+        publicId: '',
+        user: User(
+          id: 0,
+          publicId: '',
+          email: '',
+          firstName: '',
+          lastName: '',
+          role: 'worker',
+        ),
+        bio: '',
+        rating: 0.0,
+        reviewCount: 0,
+        services: [],
+      );
+    }
+
     return Worker(
-      id: json['id'],
-      user: User.fromJson(json['user']),
+      id: json['id'] as int? ?? 0,
+      publicId: json['publicId'] ?? '',
+      user: json['user'] != null
+          ? User.fromJson(json['user'])
+          : User(
+              id: 0,
+              publicId: '',
+              email: '',
+              firstName: '',
+              lastName: '',
+              role: 'worker',
+            ),
       bio: json['bio'] ?? '',
-      rating: double.parse(json['rating'].toString()),
+      rating: double.tryParse(json['rating'].toString()) ?? 0.0,
       reviewCount: json['reviewCount'] ?? 0,
-      services: (json['services'] as List)
-          .map((s) => Service.fromJson(s))
-          .toList(),
+      services: (json['services'] is List)
+          ? (json['services'] as List)
+                .where((s) => s != null)
+                .map((s) => Service.fromJson(s))
+                .toList()
+          : [],
     );
   }
 }

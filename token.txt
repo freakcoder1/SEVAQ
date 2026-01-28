@@ -1,0 +1,24 @@
+[dotenv@17.2.3] injecting env (13) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+🔑 Login to get valid JWT token
+✅ Token obtained successfully
+🔐 Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QudXNlcjFAZXhhbXBsZS5jb20iLCJzdWIiOjE4LCJyb2xlIjoidXNlciIsImlhdCI6MTc2OTU4OTc0MSwiZXhwIjoxNzcyMTgxNzQxfQ.CWmEYqetW147FeEIOkg9zFzhSOZBL79M2idzUyuDI2Q
+
+📋 Testing Subscription API
+🔍 URL: http://127.0.0.1:45357/api/subscriptions
+✅ Success: {
+  id: 42,
+  publicId: '5617d702-5925-468b-9c34-e599998beb88',
+  userId: 18,
+  serviceProfileId: 1,
+  frequency: 'DAILY',
+  timeWindowStart: '2026-01-28T02:30:00.000Z',
+  timeWindowEnd: '2026-01-28T11:30:00.000Z',
+  startDate: '2026-01-28T00:00:00.000Z',
+  endDate: null,
+  status: 'ACTIVE',
+  billingCycle: 'MONTHLY',
+  monthlyPriceSnapshot: 3500,
+  customDays: [ 1, 3, 5 ],
+  createdAt: '2026-01-28T08:42:21.961Z',
+  updatedAt: '2026-01-28T08:42:21.961Z'
+}

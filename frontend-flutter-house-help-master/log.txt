@@ -1,0 +1,994 @@
+Showing motorola edge 60 fusion logs:
+I/flutter ( 8994): AuthWrapper: App resumed from background
+I/flutter ( 8994): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter ( 8994): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter ( 8994): AuthWrapper: Showing LoginScreen
+I/flutter ( 8994): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter ( 8994): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: POST request to http://192.168.29.154:45357/auth/login
+I/flutter ( 8994): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter ( 8994): AuthWrapper.build: isLoading=true, isAuthenticated=false, needsLocationSetup=false
+I/flutter ( 8994): AuthWrapper: Still initializing, showing loading screen
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): AuthProvider: Storing token and user data
+I/flutter ( 8994): AuthProvider: Token length: 203
+I/flutter ( 8994): AuthProvider: Token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): LoginScreen: login result=false
+I/flutter ( 8994): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter ( 8994): AuthWrapper: Showing MainNavigation
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): RecommendationProvider: Generating recommendations
+I/flutter ( 8994): Workers count: 0
+I/flutter ( 8994): Services count: 0
+I/flutter ( 8994): User location: Available
+I/flutter ( 8994): User: Null
+I/flutter ( 8994): RecommendationProvider: Using fallback suggestions
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): Failed to get AuthProvider: Error: Could not find the correct Provider<AuthProvider> above this PreServiceReminderBanner Widget
+I/flutter ( 8994): 
+I/flutter ( 8994): This happens because you used a `BuildContext` that does not include the provider
+I/flutter ( 8994): of your choice. There are a few common scenarios:
+I/flutter ( 8994): 
+I/flutter ( 8994): - You added a new provider in your `main.dart` and performed a hot-reload.
+I/flutter ( 8994):   To fix, perform a hot-restart.
+I/flutter ( 8994): 
+I/flutter ( 8994): - The provider you are trying to read is in a different route.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Providers are "scoped". So if you insert of provider inside a route, then
+I/flutter ( 8994):   other routes will not be able to access that provider.
+I/flutter ( 8994): 
+I/flutter ( 8994): - You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Make sure that PreServiceReminderBanner is under your MultiProvider/Provider<AuthProvider>.
+I/flutter ( 8994):   This usually happens when you are creating a provider and trying to read it immediately.
+I/flutter ( 8994): 
+I/flutter ( 8994):   For example, instead of:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // Will throw a ProviderNotFoundError, because `context` is associated
+I/flutter ( 8994):       // to the widget that is the parent of `Provider<Example>`
+I/flutter ( 8994):       child: Text(context.watch<Example>().toString()),
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994):   consider using `builder` like so:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // we use `builder` to obtain a new `BuildContext` that has access to the provider
+I/flutter ( 8994):       builder: (context, child) {
+I/flutter ( 8994):         // No longer throws
+I/flutter ( 8994):         return Text(context.watch<Example>().toString());
+I/flutter ( 8994):       }
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994): If none of these solutions work, consider asking for help on StackOverflow:
+I/flutter ( 8994): https://stackoverflow.com/questions/tagged/flutter
+I/flutter ( 8994): 
+I/flutter ( 8994): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter ( 8994): Failed to get AuthProvider: Error: Could not find the correct Provider<AuthProvider> above this PreServiceReminderBanner Widget
+I/flutter ( 8994): 
+I/flutter ( 8994): This happens because you used a `BuildContext` that does not include the provider
+I/flutter ( 8994): of your choice. There are a few common scenarios:
+I/flutter ( 8994): 
+I/flutter ( 8994): - You added a new provider in your `main.dart` and performed a hot-reload.
+I/flutter ( 8994):   To fix, perform a hot-restart.
+I/flutter ( 8994): 
+I/flutter ( 8994): - The provider you are trying to read is in a different route.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Providers are "scoped". So if you insert of provider inside a route, then
+I/flutter ( 8994):   other routes will not be able to access that provider.
+I/flutter ( 8994): 
+I/flutter ( 8994): - You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Make sure that PreServiceReminderBanner is under your MultiProvider/Provider<AuthProvider>.
+I/flutter ( 8994):   This usually happens when you are creating a provider and trying to read it immediately.
+I/flutter ( 8994): 
+I/flutter ( 8994):   For example, instead of:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // Will throw a ProviderNotFoundError, because `context` is associated
+I/flutter ( 8994):       // to the widget that is the parent of `Provider<Example>`
+I/flutter ( 8994):       child: Text(context.watch<Example>().toString()),
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994):   consider using `builder` like so:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // we use `builder` to obtain a new `BuildContext` that has access to the provider
+I/flutter ( 8994):       builder: (context, child) {
+I/flutter ( 8994):         // No longer throws
+I/flutter ( 8994):         return Text(context.watch<Example>().toString());
+I/flutter ( 8994):       }
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994): If none of these solutions work, consider asking for help on StackOverflow:
+I/flutter ( 8994): https://stackoverflow.com/questions/tagged/flutter
+I/flutter ( 8994): 
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): RecommendationProvider: Generating recommendations
+I/flutter ( 8994): Workers count: 0
+I/flutter ( 8994): Services count: 0
+I/flutter ( 8994): User location: Available
+I/flutter ( 8994): User: Null
+I/flutter ( 8994): RecommendationProvider: Using fallback suggestions
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): Failed to get AuthProvider: Error: Could not find the correct Provider<AuthProvider> above this PreServiceReminderBanner Widget
+I/flutter ( 8994): 
+I/flutter ( 8994): This happens because you used a `BuildContext` that does not include the provider
+I/flutter ( 8994): of your choice. There are a few common scenarios:
+I/flutter ( 8994): 
+I/flutter ( 8994): - You added a new provider in your `main.dart` and performed a hot-reload.
+I/flutter ( 8994):   To fix, perform a hot-restart.
+I/flutter ( 8994): 
+I/flutter ( 8994): - The provider you are trying to read is in a different route.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Providers are "scoped". So if you insert of provider inside a route, then
+I/flutter ( 8994):   other routes will not be able to access that provider.
+I/flutter ( 8994): 
+I/flutter ( 8994): - You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Make sure that PreServiceReminderBanner is under your MultiProvider/Provider<AuthProvider>.
+I/flutter ( 8994):   This usually happens when you are creating a provider and trying to read it immediately.
+I/flutter ( 8994): 
+I/flutter ( 8994):   For example, instead of:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // Will throw a ProviderNotFoundError, because `context` is associated
+I/flutter ( 8994):       // to the widget that is the parent of `Provider<Example>`
+I/flutter ( 8994):       child: Text(context.watch<Example>().toString()),
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994):   consider using `builder` like so:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // we use `builder` to obtain a new `BuildContext` that has access to the provider
+I/flutter ( 8994):       builder: (context, child) {
+I/flutter ( 8994):         // No longer throws
+I/flutter ( 8994):         return Text(context.watch<Example>().toString());
+I/flutter ( 8994):       }
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994): If none of these solutions work, consider asking for help on StackOverflow:
+I/flutter ( 8994): https://stackoverflow.com/questions/tagged/flutter
+I/flutter ( 8994): 
+I/flutter ( 8994): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter ( 8994): 🔍 DEBUG: TrustFirstRecommendation CTA clicked
+I/flutter ( 8994): 🔍 DEBUG: Calling onAccept callback
+I/flutter ( 8994): 🔍 DEBUG: Fallback recommendation CTA clicked
+I/flutter ( 8994): 🔍 DEBUG: onAccept callback completed successfully
+I/flutter ( 8994): 🔍 DEBUG: ServiceClarificationScreen createState called
+I/flutter ( 8994): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter ( 8994): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter ( 8994): 🔍 DEBUG: _handleConfirmAssignment called
+I/flutter ( 8994): 🔍 DEBUG: _canProceed() = true
+I/flutter ( 8994): 🔍 DEBUG: AuthProvider user: test.user1@example.com
+I/flutter ( 8994): 🔍 DEBUG: AuthProvider isAuthenticated: true
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): 🔍 DEBUG: User authenticated and location validated, proceeding with intent capture
+I/flutter ( 8994): 🔍 DEBUG: Creating service request with data: {serviceId: 1, date: 2026-01-22, timeWindow: morning, location: {lat: 28.58046, lng: 77.43928, address: Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India}, priceSnapshot: 1500.0}
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: POST request to http://192.168.29.154:45357/service-requests
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): 🔍 DEBUG: Service request created successfully: cca28598-c7fb-4eff-a0b0-772a2e31cc6a
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: POST request to http://192.168.29.154:45357/bookings
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): Payment response: {id: 138, publicId: 0e7c8228-18a9-4a35-bee4-5813d8b2b3c3, serviceRequestId: null, userId: 18, user: {id: 18, publicId: d4fc9e66-be02-48c2-9c1d-1521bbd44b16, email: test.user1@example.com, password: $2b$10$KG4gTkHjhaEJkhb25jjNO.YBy4tazsDhDQ8eyXoMcz0PxtkhRCJsy, firstName: Test, lastName: User1, role: user, address: null, phone: +919876543217, latitude: 28.61390000, longitude: 77.20900000, preferredLat: 28.61390000, preferredLng: 77.20900000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-16T08:23:06.728Z, updatedAt: 2026-01-18T06:59:01.727Z}, workerId: 5, worker: {id: 5, publicId: 5e482110-9247-40ad-a409-5c69abaceedd, userId: 7, user: {id: 7, publicId: d7817fea-4e51-4ccc-b86e-79597615f1eb, email: rita.gupta@househelp.com, password: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi, firstName: Rita, lastName: Gupta, role: WORKER, address: null, phone: +919876543219, latitude: 28.58300000, longitude: 77.43600000, preferredLat: 28.583
+I/flutter ( 8994): Response type: _Map<String, dynamic>
+I/flutter ( 8994): Response fields:
+I/flutter ( 8994):   id: 138 (Type: int)
+I/flutter ( 8994):   publicId: 0e7c8228-18a9-4a35-bee4-5813d8b2b3c3 (Type: String)
+I/flutter ( 8994):   serviceRequestId: null (Type: Null)
+I/flutter ( 8994):   userId: 18 (Type: int)
+I/flutter ( 8994):   user: {id: 18, publicId: d4fc9e66-be02-48c2-9c1d-1521bbd44b16, email: test.user1@example.com, password: $2b$10$KG4gTkHjhaEJkhb25jjNO.YBy4tazsDhDQ8eyXoMcz0PxtkhRCJsy, firstName: Test, lastName: User1, role: user, address: null, phone: +919876543217, latitude: 28.61390000, longitude: 77.20900000, preferredLat: 28.61390000, preferredLng: 77.20900000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-16T08:23:06.728Z, updatedAt: 2026-01-18T06:59:01.727Z} (Type: _Map<String, dynamic>)
+I/flutter ( 8994):   workerId: 5 (Type: int)
+I/flutter ( 8994):   worker: {id: 5, publicId: 5e482110-9247-40ad-a409-5c69abaceedd, userId: 7, user: {id: 7, publicId: d7817fea-4e51-4ccc-b86e-79597615f1eb, email: rita.gupta@househelp.com, password: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi, firstName: Rita, lastName: Gupta, role: WORKER, address: null, phone: +919876543219, latitude: 28.58300000, longitude: 77.43600000, preferredLat: 28.58300000, preferredLng: 77.43600000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-14T23:02:05.719Z, updatedAt: 2026-01-17T05:20:22.501Z}, bio: Professional organizer and cleaning expert. Specialized in decluttering and deep cleaning., rating: 4.70, reviewCount: 89, yearsOfExperience: 0, homesServedInArea: 0, reliabilityStreak: 0, isVerified: false, isTrained: false, isMonitored: false, isActive: true, latitude: null, longitude: null, serviceAreaId: null, isAvailable: true, currentLocationData: null, currentLat: 28.58300000, currentLng: 77.43600000, lastLocationUpdate: 20
+I/flutter ( 8994):   serviceId: 1 (Type: int)
+I/flutter ( 8994):   service: {id: 1, publicId: 6138cfa5-4ffd-47cf-b55f-55d4c30a6c51, name: Home Cleaning, description: Complete home cleaning service, basePrice: 500.00, reassuranceText: null, whatWillHappen: null, whatWillNotHappen: null, ifSomethingGoesWrong: null, category: Cleaning, subcategory: null, isAvailable: true, isFastBooking: false, estimatedWaitTime: 0, workerCount: 0, imageUrl: null, createdAt: 2026-01-14T23:02:05.698Z, updatedAt: 2026-01-17T05:42:26.584Z} (Type: _Map<String, dynamic>)
+I/flutter ( 8994):   slotId: null (Type: Null)
+I/flutter ( 8994):   startTime: 08:00:00 (Type: String)
+I/flutter ( 8994):   endTime: 11:00:00 (Type: String)
+I/flutter ( 8994):   date: 2026-01-22 (Type: String)
+I/flutter ( 8994):   totalAmount: 0.00 (Type: String)
+I/flutter ( 8994):   isPaid: false (Type: bool)
+I/flutter ( 8994):   status: requested (Type: String)
+I/flutter ( 8994):   type: on_demand (Type: String)
+I/flutter ( 8994):   notes: null (Type: Null)
+I/flutter ( 8994):   responsibilityTransferred: false (Type: bool)
+I/flutter ( 8994):   systemMonitoring: false (Type: bool)
+I/flutter ( 8994):   protectionStatus: null (Type: Null)
+I/flutter ( 8994):   assignmentState: assigned (Type: String)
+I/flutter ( 8994):   assignedWorkerId: 5 (Type: int)
+I/flutter ( 8994):   assignmentReason: null (Type: Null)
+I/flutter ( 8994):   reassignmentCount: 0 (Type: int)
+I/flutter ( 8994):   assignmentTimestamp: null (Type: Null)
+I/flutter ( 8994):   assignmentMetadata: null (Type: Null)
+I/flutter ( 8994):   createdAt: 2026-01-21T16:40:25.657Z (Type: String)
+I/flutter ( 8994):   updatedAt: 2026-01-21T16:40:25.657Z (Type: String)
+I/flutter ( 8994): Failed to get AuthProvider: Error: Could not find the correct Provider<AuthProvider> above this PreServiceReminderBanner Widget
+I/flutter ( 8994): 
+I/flutter ( 8994): This happens because you used a `BuildContext` that does not include the provider
+I/flutter ( 8994): of your choice. There are a few common scenarios:
+I/flutter ( 8994): 
+I/flutter ( 8994): - You added a new provider in your `main.dart` and performed a hot-reload.
+I/flutter ( 8994):   To fix, perform a hot-restart.
+I/flutter ( 8994): 
+I/flutter ( 8994): - The provider you are trying to read is in a different route.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Providers are "scoped". So if you insert of provider inside a route, then
+I/flutter ( 8994):   other routes will not be able to access that provider.
+I/flutter ( 8994): 
+I/flutter ( 8994): - You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Make sure that PreServiceReminderBanner is under your MultiProvider/Provider<AuthProvider>.
+I/flutter ( 8994):   This usually happens when you are creating a provider and trying to read it immediately.
+I/flutter ( 8994): 
+I/flutter ( 8994):   For example, instead of:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // Will throw a ProviderNotFoundError, because `context` is associated
+I/flutter ( 8994):       // to the widget that is the parent of `Provider<Example>`
+I/flutter ( 8994):       child: Text(context.watch<Example>().toString()),
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994):   consider using `builder` like so:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // we use `builder` to obtain a new `BuildContext` that has access to the provider
+I/flutter ( 8994):       builder: (context, child) {
+I/flutter ( 8994):         // No longer throws
+I/flutter ( 8994):         return Text(context.watch<Example>().toString());
+I/flutter ( 8994):       }
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994): If none of these solutions work, consider asking for help on StackOverflow:
+I/flutter ( 8994): https://stackoverflow.com/questions/tagged/flutter
+I/flutter ( 8994): 
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): RecommendationProvider: Generating recommendations
+I/flutter ( 8994): Workers count: 0
+I/flutter ( 8994): Services count: 0
+I/flutter ( 8994): User location: Available
+I/flutter ( 8994): User: Null
+I/flutter ( 8994): RecommendationProvider: Using fallback suggestions
+I/flutter ( 8994): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): ApiService: _getHeaders - token exists: true
+I/flutter ( 8994): ApiService: _getHeaders - token length: 203
+I/flutter ( 8994): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter ( 8994): Failed to get AuthProvider: Error: Could not find the correct Provider<AuthProvider> above this PreServiceReminderBanner Widget
+I/flutter ( 8994): 
+I/flutter ( 8994): This happens because you used a `BuildContext` that does not include the provider
+I/flutter ( 8994): of your choice. There are a few common scenarios:
+I/flutter ( 8994): 
+I/flutter ( 8994): - You added a new provider in your `main.dart` and performed a hot-reload.
+I/flutter ( 8994):   To fix, perform a hot-restart.
+I/flutter ( 8994): 
+I/flutter ( 8994): - The provider you are trying to read is in a different route.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Providers are "scoped". So if you insert of provider inside a route, then
+I/flutter ( 8994):   other routes will not be able to access that provider.
+I/flutter ( 8994): 
+I/flutter ( 8994): - You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+I/flutter ( 8994): 
+I/flutter ( 8994):   Make sure that PreServiceReminderBanner is under your MultiProvider/Provider<AuthProvider>.
+I/flutter ( 8994):   This usually happens when you are creating a provider and trying to read it immediately.
+I/flutter ( 8994): 
+I/flutter ( 8994):   For example, instead of:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // Will throw a ProviderNotFoundError, because `context` is associated
+I/flutter ( 8994):       // to the widget that is the parent of `Provider<Example>`
+I/flutter ( 8994):       child: Text(context.watch<Example>().toString()),
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994):   consider using `builder` like so:
+I/flutter ( 8994): 
+I/flutter ( 8994):   ```
+I/flutter ( 8994):   Widget build(BuildContext context) {
+I/flutter ( 8994):     return Provider<Example>(
+I/flutter ( 8994):       create: (_) => Example(),
+I/flutter ( 8994):       // we use `builder` to obtain a new `BuildContext` that has access to the provider
+I/flutter ( 8994):       builder: (context, child) {
+I/flutter ( 8994):         // No longer throws
+I/flutter ( 8994):         return Text(context.watch<Example>().toString());
+I/flutter ( 8994):       }
+I/flutter ( 8994):     );
+I/flutter ( 8994):   }
+I/flutter ( 8994):   ```
+I/flutter ( 8994): 
+I/flutter ( 8994): If none of these solutions work, consider asking for help on StackOverflow:
+I/flutter ( 8994): https://stackoverflow.com/questions/tagged/flutter
+I/flutter ( 8994): 
+I/flutter ( 8994): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter ( 8994): AuthWrapper: App resumed from background
+D/FlutterJNI(18774): Beginning load of flutter...
+D/FlutterJNI(18774): flutter (null) was loaded normally!
+I/flutter (18774): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+I/flutter (18774): The Dart VM service is listening on http://127.0.0.1:32977/xz_0hTCv1Z8=/
+D/FlutterGeolocator(18774): Attaching Geolocator to activity
+D/FlutterGeolocator(18774): Creating service.
+D/FlutterGeolocator(18774): Binding to location service.
+D/FlutterGeolocator(18774): Geolocator foreground service connected
+D/FlutterGeolocator(18774): Initializing Geolocator services
+D/FlutterGeolocator(18774): Flutter engine connected. Connected engine count 1
+I/flutter (18774): Failed to initialize Firebase: PlatformException(java.lang.Exception: Failed to load FirebaseOptions from resource. Check that you have defined values.xml correctly., Exception, Cause: null, Stacktrace: java.lang.Exception: Failed to load FirebaseOptions from resource. Check that you have defined values.xml correctly.
+I/flutter (18774): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin.lambda$optionsFromResource$5(FlutterFirebaseCorePlugin.java:222)
+I/flutter (18774): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin.$r8$lambda$UKjIMRLnh50mCq5Rg7c5X1_2d5w(Unknown Source:0)
+I/flutter (18774): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin$$ExternalSyntheticLambda3.run(D8$$SyntheticClass:0)
+I/flutter (18774): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+I/flutter (18774): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+I/flutter (18774): 	at java.lang.Thread.run(Thread.java:1563)
+I/flutter (18774): , null)
+I/flutter (18774): AuthWrapper: initState called
+I/flutter (18774): AuthProvider: Constructor called
+I/flutter (18774): LocationProvider: Constructor called with prefs: true
+I/flutter (18774): LocationProvider: Restored synchronously from passed prefs (legacy format)
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (18774): SplashScreen.build: START, location=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India, completed=true
+I/flutter (18774): SplashScreen._checkExistingLocation: called
+I/flutter (18774): SplashScreen: currentLocation=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India
+I/flutter (18774): SplashScreen: needsLocationSetup=false
+I/flutter (18774): SplashScreen: Location exists, marking setup complete immediately
+I/flutter (18774): SplashScreen: About to call markLocationSetupComplete after build
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): SplashScreen._initializeThemeDependentAnimations: START
+I/flutter (18774): SplashScreen._initializeThemeDependentAnimations: END - _bgColorAnimation.value=Color(alpha: 1.0000, red: 0.9961, green: 0.9686, blue: 1.0000, colorSpace: ColorSpace.sRGB)
+I/flutter (18774): SplashScreen.build: Theme initialized
+I/flutter (18774): SplashScreen.build: bgColor=Color(alpha: 1.0000, red: 0.9961, green: 0.9686, blue: 1.0000, colorSpace: ColorSpace.sRGB), location=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India
+I/flutter (18774): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (18774): SplashScreen: markLocationSetupComplete called after build
+I/flutter (18774): SplashScreen: Error in _checkAuthStatus: This widget has been unmounted, so the State no longer has a context (and should be considered defunct).
+I/flutter (18774): Consider canceling any active work during "dispose" or using the "mounted" getter to determine if the State is still active.
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (18774): AuthWrapper: Showing LoginScreen
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (18774): AuthWrapper: App resumed from background
+I/flutter (18774): SplashScreen: Availability check complete
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (18774): AuthWrapper: Showing LoginScreen
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: POST request to http://192.168.29.154:45357/auth/login
+I/flutter (18774): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (18774): AuthWrapper.build: isLoading=true, isAuthenticated=false, needsLocationSetup=false
+I/flutter (18774): AuthWrapper: Still initializing, showing loading screen
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): AuthProvider: Storing token and user data
+I/flutter (18774): AuthProvider: Token length: 203
+I/flutter (18774): AuthProvider: Token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): LoginScreen: login result=false
+I/flutter (18774): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter (18774): AuthWrapper: Showing MainNavigation
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): RecommendationProvider: Generating recommendations
+I/flutter (18774): Workers count: 0
+I/flutter (18774): Services count: 0
+I/flutter (18774): User location: Available
+I/flutter (18774): User: Null
+I/flutter (18774): RecommendationProvider: Using fallback suggestions
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): PreServiceReminderBanner: No upcoming booking
+I/flutter (18774): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (18774): PreServiceReminderBanner: No upcoming booking
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): RecommendationProvider: Generating recommendations
+I/flutter (18774): Workers count: 0
+I/flutter (18774): Services count: 0
+I/flutter (18774): User location: Available
+I/flutter (18774): User: Null
+I/flutter (18774): RecommendationProvider: Using fallback suggestions
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): PreServiceReminderBanner: No upcoming booking
+I/flutter (18774): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (18774): PreServiceReminderBanner: No upcoming booking
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (19397): [INFO:flutter/shell/common/shorebird/shorebird.cc(283)] Shorebird updater: no active patch.
+I/flutter (19397): updater::updater: [shorebird] Reporting launch start.
+I/flutter (19397): [INFO:flutter/shell/common/shorebird/shorebird.cc(306)] Starting Shorebird update
+I/flutter (19397): updater::network: [shorebird] Sending patch check request: PatchCheckRequest { app_id: "c40adb8c-9f35-4ddd-a698-7bd8d6444b56", channel: "stable", release_version: "8.20.1+25106910", platform: "android", arch: "aarch64" }
+I/flutter (19397): updater::updater: [shorebird] Patch check response: PatchCheckResponse { patch_available: false, patch: None, rolled_back_patch_numbers: Some([]) }
+I/flutter (19397): updater::updater: [shorebird] Update thread finished with status: No update
+I/flutter (18774): AuthWrapper: App resumed from background
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): RecommendationProvider: Generating recommendations
+I/flutter (18774): Workers count: 0
+I/flutter (18774): Services count: 0
+I/flutter (18774): User location: Available
+I/flutter (18774): User: Null
+I/flutter (18774): RecommendationProvider: Using fallback suggestions
+I/flutter (18774): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): ApiService: _getHeaders - token exists: true
+I/flutter (18774): ApiService: _getHeaders - token length: 203
+I/flutter (18774): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (18774): PreServiceReminderBanner: No upcoming booking
+I/flutter (18774): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (18774): AuthWrapper: App resumed from background
+D/FlutterGeolocator(18774): Detaching Geolocator from activity
+D/FlutterGeolocator(18774): Flutter engine disconnected. Connected engine count 0
+D/FlutterGeolocator(18774): Disposing Geolocator services
+E/FlutterGeolocator(18774): Geolocator position updates stopped
+D/FlutterGeolocator(18774): Stopping location service.
+D/FlutterGeolocator(18774): Unbinding from location service.
+D/FlutterJNI(23596): Beginning load of flutter...
+D/FlutterJNI(23596): flutter (null) was loaded normally!
+I/flutter (23596): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+I/flutter (23596): The Dart VM service is listening on http://127.0.0.1:46191/2pNEJXwsEpg=/
+D/FlutterGeolocator(23596): Attaching Geolocator to activity
+D/FlutterGeolocator(23596): Creating service.
+D/FlutterGeolocator(23596): Binding to location service.
+D/FlutterGeolocator(23596): Geolocator foreground service connected
+D/FlutterGeolocator(23596): Initializing Geolocator services
+D/FlutterGeolocator(23596): Flutter engine connected. Connected engine count 1
+I/flutter (23596): Failed to initialize Firebase: PlatformException(java.lang.Exception: Failed to load FirebaseOptions from resource. Check that you have defined values.xml correctly., Exception, Cause: null, Stacktrace: java.lang.Exception: Failed to load FirebaseOptions from resource. Check that you have defined values.xml correctly.
+I/flutter (23596): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin.lambda$optionsFromResource$5(FlutterFirebaseCorePlugin.java:222)
+I/flutter (23596): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin.$r8$lambda$UKjIMRLnh50mCq5Rg7c5X1_2d5w(Unknown Source:0)
+I/flutter (23596): 	at io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin$$ExternalSyntheticLambda3.run(D8$$SyntheticClass:0)
+I/flutter (23596): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+I/flutter (23596): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+I/flutter (23596): 	at java.lang.Thread.run(Thread.java:1563)
+I/flutter (23596): , null)
+I/flutter (23596): AuthWrapper: initState called
+I/flutter (23596): AuthProvider: Constructor called
+I/flutter (23596): LocationProvider: Constructor called with prefs: true
+I/flutter (23596): LocationProvider: Restored synchronously from passed prefs (legacy format)
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (23596): SplashScreen.build: START, location=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India, completed=true
+I/flutter (23596): SplashScreen._checkExistingLocation: called
+I/flutter (23596): SplashScreen: currentLocation=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India
+I/flutter (23596): SplashScreen: needsLocationSetup=false
+I/flutter (23596): SplashScreen: Location exists, marking setup complete immediately
+I/flutter (23596): SplashScreen: About to call markLocationSetupComplete after build
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): SplashScreen._initializeThemeDependentAnimations: START
+I/flutter (23596): SplashScreen._initializeThemeDependentAnimations: END - _bgColorAnimation.value=Color(alpha: 1.0000, red: 0.9961, green: 0.9686, blue: 1.0000, colorSpace: ColorSpace.sRGB)
+I/flutter (23596): SplashScreen.build: Theme initialized
+I/flutter (23596): SplashScreen.build: bgColor=Color(alpha: 1.0000, red: 0.9961, green: 0.9686, blue: 1.0000, colorSpace: ColorSpace.sRGB), location=Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India
+I/flutter (23596): LocationProvider: Loaded from prefs, ready=true
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing LoginScreen
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (23596): SplashScreen: markLocationSetupComplete called after build
+I/flutter (23596): SplashScreen: Error in _checkAuthStatus: This widget has been unmounted, so the State no longer has a context (and should be considered defunct).
+I/flutter (23596): Consider canceling any active work during "dispose" or using the "mounted" getter to determine if the State is still active.
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing LoginScreen
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (23596): SplashScreen: Availability check complete
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=false, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing LoginScreen
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): LoginScreen.build: isAuthenticated=false, isLoading=false
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/auth/login
+I/flutter (23596): AuthProvider: isAuthenticated - no auth data, returning false
+I/flutter (23596): AuthWrapper.build: isLoading=true, isAuthenticated=false, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Still initializing, showing loading screen
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthProvider: Storing token and user data
+I/flutter (23596): AuthProvider: Token length: 203
+I/flutter (23596): AuthProvider: Token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): LoginScreen: login result=false
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing MainNavigation
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing MainNavigation
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: Calling onAccept callback
+I/flutter (23596): 🔍 DEBUG: Fallback recommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: onAccept callback completed successfully
+I/flutter (23596): 🔍 DEBUG: ServiceClarificationScreen createState called
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing MainNavigation
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (uz.shs.better_player_plus.BetterPlayerPlugin@aca5ba6) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.hui.bluetooth_enable.BluetoothEnablePlugin@7098994) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.camerax.CameraAndroidCameraxPlugin@372dc3d) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.fluttercommunity.plus.connectivity.ConnectivityPlugin@b308c32) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (flutter.plugins.contactsservice.contactsservice.ContactsServicePlugin@bb5ff39) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.fluttercommunity.plus.device_info.DeviceInfoPlusPlugin@f57397e) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.mr.flutter.plugin.filepicker.FilePickerPlugin@11c0edf) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.firebase.analytics.FlutterFirebaseAnalyticsPlugin@4f4772c) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin@6e55f5) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.firebase.crashlytics.FlutterFirebaseCrashlyticsPlugin@da96f8a) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.firebase.performance.FlutterFirebasePerformancePlugin@fdcb9fb) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.lib.flutter_blue_plus.FlutterBluePlusPlugin@4c7da18) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.fluttercandies.flutter_image_compress.ImageCompressPlugin@41b5c71) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.jrai.flutter_keyboard_visibility.FlutterKeyboardVisibilityPlugin@636fa56) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.flutter_plugin_android_lifecycle.FlutterAndroidLifecyclePlugin@a32fad7) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.tundralabs.fluttertts.FlutterTtsPlugin@96c7fc4) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (me.schlaubi.fluttercontactpicker.FlutterContactPickerPlugin@7b84ead) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.imagepicker.ImagePickerPlugin@84065e2) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.lyokone.location.LocationPlugin@1426d73) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.objectbox.objectbox_flutter_libs.ObjectboxFlutterLibsPlugin@93d430) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.fluttercommunity.plus.packageinfo.PackageInfoPlugin@6b828a9) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.pathprovider.PathProviderPlugin@482fe2e) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.baseflow.permissionhandler.PermissionHandlerPlugin@acc6dcf) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.fluttercommunity.plus.share.SharePlusPlugin@f9a035c) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin@6c1a665) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.csdcorp.speech_to_text.SpeechToTextPlugin@844cf3a) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.tekartik.sqflite.SqflitePlugin@d4c17eb) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.ttlock.ttlock_flutter.TtlockFlutterPlugin@371f948) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.urllauncher.UrlLauncherPlugin@72b43e1) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.example.video_compress.VideoCompressPlugin@d20a506) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (io.flutter.plugins.videoplayer.VideoPlayerPlugin@1d247c7) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (com.kurenai7968.volume_controller.VolumeControllerPlugin@35161f4) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.fluttercommunity.plus.wakelock.WakelockPlusPlugin@c373d1d) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+W/FlutterEngineCxnRegstry(24256): Attempted to register plugin (dev.flutternetwork.wifi.wifi_scan.WifiScanPlugin@9920b92) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@879c9e7).
+D/FlutterLocationService(24256): Creating service.
+D/FlutterLocationService(24256): Binding to location service.
+I/flutter (24256): 1 has been spawned
+I/flutter (24256): initialized
+I/flutter (24256): setAppsConfig: AppData
+I/flutter (24256): _setupForEnv: buildType: null, env: null
+I/flutter (24256): set baseUrl: 
+I/flutter (24256): set metricsBaseUrl: 
+I/flutter (24256): setAppsConfig: flat changed.
+I/flutter (24256): set buildType: null
+I/flutter (24256): Setting knox env: null
+I/flutter (24256): _getUserData called
+I/flutter (24256): setAppsConfig: AppData
+I/flutter (24256): _setupForEnv: buildType: null, env: null
+I/flutter (24256): set baseUrl: 
+I/flutter (24256): set metricsBaseUrl: 
+I/flutter (24256): set buildType: null
+I/flutter (24256): set flutterScreenVisibleNotifier: <optimized out>#3cf80(true)
+I/flutter (24256): set flutterScreenVisibleNotifier: <optimized out>#3cf80(true)
+I/flutter (24256): setAppsConfig: AppData
+I/flutter (24256): _setupForEnv: buildType: null, env: null
+I/flutter (24256): set baseUrl: 
+I/flutter (24256): set metricsBaseUrl: 
+I/flutter (24256): set buildType: null
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: Calling onAccept callback
+I/flutter (23596): 🔍 DEBUG: Fallback recommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: onAccept callback completed successfully
+I/flutter (23596): 🔍 DEBUG: ServiceClarificationScreen createState called
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: Calling onAccept callback
+I/flutter (23596): 🔍 DEBUG: Fallback recommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: onAccept callback completed successfully
+I/flutter (23596): 🔍 DEBUG: ServiceClarificationScreen createState called
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): 🔍 DEBUG: _handleConfirmAssignment called
+I/flutter (23596): 🔍 DEBUG: _canProceed() = true
+I/flutter (23596): 🔍 DEBUG: AuthProvider user: test.user1@example.com
+I/flutter (23596): 🔍 DEBUG: AuthProvider isAuthenticated: true
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: User authenticated and location validated, proceeding with intent capture
+I/flutter (23596): 🔍 DEBUG: Creating service request with data: {serviceId: 3, date: 2026-01-22, timeWindow: morning, location: {lat: 28.7040592, lng: 77.10249019999999, address: Lat: 28.7040592, Lng: 77.10249019999999}, priceSnapshot: 1500.0}
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/service-requests
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: Service request created successfully: e3bbd0e1-6639-48f3-b747-d115c4ff62b1
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: _handleConfirmAssignment called
+I/flutter (23596): 🔍 DEBUG: _canProceed() = true
+I/flutter (23596): 🔍 DEBUG: AuthProvider user: test.user1@example.com
+I/flutter (23596): 🔍 DEBUG: AuthProvider isAuthenticated: true
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: User authenticated and location validated, proceeding with intent capture
+I/flutter (23596): 🔍 DEBUG: Creating service request with data: {serviceId: 3, date: 2026-01-23, timeWindow: morning, location: {lat: 28.7040592, lng: 77.10249019999999, address: Lat: 28.7040592, Lng: 77.10249019999999}, priceSnapshot: 1500.0}
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/service-requests
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: Service request created successfully: 2bdcd016-156f-49d4-95df-f0c00af1d8c3
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): 🔍 DEBUG: _handleConfirmAssignment called
+I/flutter (23596): 🔍 DEBUG: _canProceed() = true
+I/flutter (23596): 🔍 DEBUG: AuthProvider user: test.user1@example.com
+I/flutter (23596): 🔍 DEBUG: AuthProvider isAuthenticated: true
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: User authenticated and location validated, proceeding with intent capture
+I/flutter (23596): 🔍 DEBUG: Creating service request with data: {serviceId: 3, date: 2026-01-24, timeWindow: morning, location: {lat: 28.7040592, lng: 77.10249019999999, address: Lat: 28.7040592, Lng: 77.10249019999999}, priceSnapshot: 1500.0}
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/service-requests
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: Service request created successfully: 7edccdc8-dd17-48ea-8c5d-aebaf61c978e
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthWrapper: App resumed from background
+I/flutter (23596): RecommendationProvider: Generating recommendations
+I/flutter (23596): Workers count: 0
+I/flutter (23596): Services count: 0
+I/flutter (23596): User location: Available
+I/flutter (23596): User: Null
+I/flutter (23596): RecommendationProvider: Using fallback suggestions
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation build called, onAccept callback: true
+I/flutter (23596): AuthWrapper.build: isLoading=false, isAuthenticated=true, needsLocationSetup=false
+I/flutter (23596): AuthWrapper: Showing MainNavigation
+I/flutter (23596): 🔍 DEBUG: TrustFirstRecommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: Calling onAccept callback
+I/flutter (23596): 🔍 DEBUG: Fallback recommendation CTA clicked
+I/flutter (23596): 🔍 DEBUG: onAccept callback completed successfully
+I/flutter (23596): 🔍 DEBUG: ServiceClarificationScreen createState called
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): ServiceClarificationScreen: build called, screen size: Size(433.8, 964.3)
+I/flutter (23596): 🔍 DEBUG: _handleConfirmAssignment called
+I/flutter (23596): 🔍 DEBUG: _canProceed() = true
+I/flutter (23596): 🔍 DEBUG: AuthProvider user: test.user1@example.com
+I/flutter (23596): 🔍 DEBUG: AuthProvider isAuthenticated: true
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: User authenticated and location validated, proceeding with intent capture
+I/flutter (23596): 🔍 DEBUG: Creating service request with data: {serviceId: 1, date: 2026-01-22, timeWindow: morning, location: {lat: 28.58046, lng: 77.43928, address: Greater Noida, Bisrakh Jalalpur, Uttar Pradesh, India}, priceSnapshot: 1500.0}
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/service-requests
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): 🔍 DEBUG: Service request created successfully: d317dd84-5678-452c-b5c1-2fa71eb808ff
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: POST request to http://192.168.29.154:45357/bookings
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): Payment response: {id: 139, publicId: c65ea41d-d1c9-4a2c-b2b7-89fbbe71370f, serviceRequestId: null, userId: 18, user: {id: 18, publicId: d4fc9e66-be02-48c2-9c1d-1521bbd44b16, email: test.user1@example.com, password: $2b$10$KG4gTkHjhaEJkhb25jjNO.YBy4tazsDhDQ8eyXoMcz0PxtkhRCJsy, firstName: Test, lastName: User1, role: user, address: null, phone: +919876543217, latitude: 28.61390000, longitude: 77.20900000, preferredLat: 28.61390000, preferredLng: 77.20900000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-16T08:23:06.728Z, updatedAt: 2026-01-18T06:59:01.727Z}, workerId: 2, worker: {id: 2, publicId: 00789d77-a8cc-4b79-a218-134e29ef1c83, userId: 4, user: {id: 4, publicId: a200522e-1bbf-4c2b-a9e5-cff6f5edf4f4, email: sunita.devi@househelp.com, password: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi, firstName: Sunita, lastName: Devi, role: WORKER, address: null, phone: +919876543213, latitude: 28.58200000, longitude: 77.43700000, preferredLat: 28.5
+I/flutter (23596): Response type: _Map<String, dynamic>
+I/flutter (23596): Response fields:
+I/flutter (23596):   id: 139 (Type: int)
+I/flutter (23596):   publicId: c65ea41d-d1c9-4a2c-b2b7-89fbbe71370f (Type: String)
+I/flutter (23596):   serviceRequestId: null (Type: Null)
+I/flutter (23596):   userId: 18 (Type: int)
+I/flutter (23596):   user: {id: 18, publicId: d4fc9e66-be02-48c2-9c1d-1521bbd44b16, email: test.user1@example.com, password: $2b$10$KG4gTkHjhaEJkhb25jjNO.YBy4tazsDhDQ8eyXoMcz0PxtkhRCJsy, firstName: Test, lastName: User1, role: user, address: null, phone: +919876543217, latitude: 28.61390000, longitude: 77.20900000, preferredLat: 28.61390000, preferredLng: 77.20900000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-16T08:23:06.728Z, updatedAt: 2026-01-18T06:59:01.727Z} (Type: _Map<String, dynamic>)
+I/flutter (23596):   workerId: 2 (Type: int)
+I/flutter (23596):   worker: {id: 2, publicId: 00789d77-a8cc-4b79-a218-134e29ef1c83, userId: 4, user: {id: 4, publicId: a200522e-1bbf-4c2b-a9e5-cff6f5edf4f4, email: sunita.devi@househelp.com, password: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi, firstName: Sunita, lastName: Devi, role: WORKER, address: null, phone: +919876543213, latitude: 28.58200000, longitude: 77.43700000, preferredLat: 28.58200000, preferredLng: 77.43700000, preferredZoneId: null, hasCompletedLocationSetup: true, locationHistory: null, createdAt: 2026-01-14T23:02:05.714Z, updatedAt: 2026-01-17T05:20:22.495Z}, bio: Expert in laundry and ironing services. Quick and efficient., rating: 4.60, reviewCount: 45, yearsOfExperience: 0, homesServedInArea: 0, reliabilityStreak: 0, isVerified: false, isTrained: false, isMonitored: false, isActive: true, latitude: null, longitude: null, serviceAreaId: null, isAvailable: true, currentLocationData: null, currentLat: 28.58200000, currentLng: 77.43700000, lastLocationUpdate: 2026-01-14T23:02:05.715Z, serv
+I/flutter (23596):   serviceId: 1 (Type: int)
+I/flutter (23596):   service: {id: 1, publicId: 6138cfa5-4ffd-47cf-b55f-55d4c30a6c51, name: Home Cleaning, description: Complete home cleaning service, basePrice: 500.00, reassuranceText: null, whatWillHappen: null, whatWillNotHappen: null, ifSomethingGoesWrong: null, category: Cleaning, subcategory: null, isAvailable: true, isFastBooking: false, estimatedWaitTime: 0, workerCount: 0, imageUrl: null, createdAt: 2026-01-14T23:02:05.698Z, updatedAt: 2026-01-17T05:42:26.584Z} (Type: _Map<String, dynamic>)
+I/flutter (23596):   slotId: null (Type: Null)
+I/flutter (23596):   startTime: 08:00:00 (Type: String)
+I/flutter (23596):   endTime: 11:00:00 (Type: String)
+I/flutter (23596):   date: 2026-01-22 (Type: String)
+I/flutter (23596):   totalAmount: 0.00 (Type: String)
+I/flutter (23596):   isPaid: false (Type: bool)
+I/flutter (23596):   status: requested (Type: String)
+I/flutter (23596):   type: on_demand (Type: String)
+I/flutter (23596):   notes: null (Type: Null)
+I/flutter (23596):   responsibilityTransferred: false (Type: bool)
+I/flutter (23596):   systemMonitoring: false (Type: bool)
+I/flutter (23596):   protectionStatus: null (Type: Null)
+I/flutter (23596):   assignmentState: assigned (Type: String)
+I/flutter (23596):   assignedWorkerId: 2 (Type: int)
+I/flutter (23596):   assignmentReason: null (Type: Null)
+I/flutter (23596):   reassignmentCount: 0 (Type: int)
+I/flutter (23596):   assignmentTimestamp: null (Type: Null)
+I/flutter (23596):   assignmentMetadata: null (Type: Null)
+I/flutter (23596):   createdAt: 2026-01-21T17:45:33.112Z (Type: String)
+I/flutter (23596):   updatedAt: 2026-01-21T17:45:33.112Z (Type: String)
+I/flutter (23596): PreServiceReminderBanner: No upcoming booking
+I/flutter (23596): AppConfig: apiBaseUrl = http://192.168.29.154:45357
+I/flutter (23596): ApiService: _getHeaders - token exists: true
+I/flutter (23596): ApiService: _getHeaders - token length: 203
+I/flutter (23596): ApiService: _getHeaders - token starts with: eyJhbGciOiJIUzI1NiIs...
+I/flutter (23596): AuthWrapper: App resumed from background
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (uz.shs.better_player_plus.BetterPlayerPlugin@6b727f1) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.hui.bluetooth_enable.BluetoothEnablePlugin@b847257) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.camerax.CameraAndroidCameraxPlugin@8856144) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.fluttercommunity.plus.connectivity.ConnectivityPlugin@305522d) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (flutter.plugins.contactsservice.contactsservice.ContactsServicePlugin@2194db0) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.fluttercommunity.plus.device_info.DeviceInfoPlusPlugin@91e429) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.mr.flutter.plugin.filepicker.FilePickerPlugin@258d3ae) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.firebase.analytics.FlutterFirebaseAnalyticsPlugin@6e5554f) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin@9bd94dc) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.firebase.crashlytics.FlutterFirebaseCrashlyticsPlugin@73b99e5) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.firebase.performance.FlutterFirebasePerformancePlugin@9627cba) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.lib.flutter_blue_plus.FlutterBluePlusPlugin@2cbf76b) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.fluttercandies.flutter_image_compress.ImageCompressPlugin@dfd22c8) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.jrai.flutter_keyboard_visibility.FlutterKeyboardVisibilityPlugin@410ef61) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.flutter_plugin_android_lifecycle.FlutterAndroidLifecyclePlugin@a2baa86) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.tundralabs.fluttertts.FlutterTtsPlugin@c309f47) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (me.schlaubi.fluttercontactpicker.FlutterContactPickerPlugin@925a374) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.imagepicker.ImagePickerPlugin@c8c209d) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.lyokone.location.LocationPlugin@7e912) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.objectbox.objectbox_flutter_libs.ObjectboxFlutterLibsPlugin@24de8e3) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.fluttercommunity.plus.packageinfo.PackageInfoPlugin@ab382e0) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.pathprovider.PathProviderPlugin@98f2999) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.baseflow.permissionhandler.PermissionHandlerPlugin@5f7845e) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.fluttercommunity.plus.share.SharePlusPlugin@36c303f) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin@b7ded0c) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.csdcorp.speech_to_text.SpeechToTextPlugin@61fc655) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.tekartik.sqflite.SqflitePlugin@4b3886a) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.ttlock.ttlock_flutter.TtlockFlutterPlugin@ffd915b) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.urllauncher.UrlLauncherPlugin@8a2cdf8) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.example.video_compress.VideoCompressPlugin@de372d1) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (io.flutter.plugins.videoplayer.VideoPlayerPlugin@579c136) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (com.kurenai7968.volume_controller.VolumeControllerPlugin@379e837) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.fluttercommunity.plus.wakelock.WakelockPlusPlugin@132d1a4) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+W/FlutterEngineCxnRegstry(11219): Attempted to register plugin (dev.flutternetwork.wifi.wifi_scan.WifiScanPlugin@75b6b0d) but it was already registered with this FlutterEngine (io.flutter.embedding.engine.FlutterEngine@f8d9fd6).
+D/FlutterLocationService(11219): Creating service.
+D/FlutterLocationService(11219): Binding to location service.
+I/flutter (11219): 1 has been spawned
+I/flutter (11219): initialized
+I/flutter (11219): setAppsConfig: AppData
+I/flutter (11219): _setupForEnv: buildType: null, env: null
+I/flutter (11219): set baseUrl: 
+I/flutter (11219): set metricsBaseUrl: 
+I/flutter (11219): setAppsConfig: flat changed.
+I/flutter (11219): set buildType: null
+I/flutter (11219): Setting knox env: null
+I/flutter (11219): _getUserData called
+I/flutter (11219): setAppsConfig: AppData
+I/flutter (11219): _setupForEnv: buildType: null, env: null
+I/flutter (11219): set baseUrl: 
+I/flutter (11219): set metricsBaseUrl: 
+I/flutter (11219): set buildType: null
+I/flutter (11219): set flutterScreenVisibleNotifier: <optimized out>#36d78(false)

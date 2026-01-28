@@ -19,19 +19,16 @@ export class ServiceRequestsController {
 
     console.log('📝 SERVICE REQUEST CREATED:', {
       id: serviceRequest.id,
+      publicId: serviceRequest.publicId,
       status: serviceRequest.assignmentStatus,
       serviceId: serviceRequest.serviceId,
       date: serviceRequest.date,
       timeWindow: serviceRequest.timeWindow
     });
 
-    // CRITICAL: Assignment is NOT being triggered automatically
-    // The AssignmentWorker exists but is never called
-    console.log('⚠️  WARNING: Assignment processing is NOT triggered automatically');
-
     return {
-      requestId: serviceRequest.id,
-      assignmentStatus: 'REQUESTED',
+      requestId: serviceRequest.publicId,
+      assignmentStatus: serviceRequest.assignmentStatus,
     };
   }
 
@@ -39,7 +36,7 @@ export class ServiceRequestsController {
   async getServiceRequestStatus(@Param('id') id: string): Promise<{
     assignmentStatus: string;
     assignedWorker?: any;
-    failureReason?: string;
+    failureReason?: string | null;
   }> {
     return this.serviceRequestsService.getStatus(id);
   }

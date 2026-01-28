@@ -12,7 +12,7 @@ async function bootstrap() {
     
     await seedService.run(dataSource);
     
-    this.logger.log('Test customers added successfully!');
+    console.log('Test customers added successfully!');
   } catch (error) {
     console.error('Error adding test customers:', error);
   } finally {

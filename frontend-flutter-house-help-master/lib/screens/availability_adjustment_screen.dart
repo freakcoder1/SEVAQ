@@ -108,9 +108,11 @@ class _AvailabilityAdjustmentScreenState
     // For now, return a default worker. In a real implementation, this would
     // fetch available workers for the service from the backend
     return Worker(
-      id: 'default-worker-${service.id}',
+      id: 1,
+      publicId: 'default-worker-${service.id}',
       user: User(
-        id: 'default-user-${service.id}',
+        id: 1,
+        publicId: 'default-user-${service.id}',
         firstName: 'Available',
         lastName: 'Professional',
         email: 'professional@example.com',
@@ -125,9 +127,11 @@ class _AvailabilityAdjustmentScreenState
 
   Worker _getDefaultWorker() {
     return Worker(
-      id: 'default-worker',
+      id: 1,
+      publicId: 'default-worker',
       user: User(
-        id: 'default-user',
+        id: 1,
+        publicId: 'default-user',
         firstName: 'Available',
         lastName: 'Professional',
         email: 'professional@example.com',

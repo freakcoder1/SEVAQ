@@ -12,14 +12,14 @@ export class AssignmentMetric {
   @Column('uuid')
   assignmentId: string;
 
-  @Column('uuid')
-  bookingId: string;
+  @Column('int')
+  bookingId: number;
 
-  @Column('uuid')
-  userId: string;
+  @Column('int')
+  userId: number;
 
-  @Column('uuid')
-  workerId: string;
+  @Column('int')
+  workerId: number;
 
   @Column({ length: 50 })
   serviceType: string;
@@ -61,8 +61,8 @@ export class WorkerPerformanceMetric {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid')
-  workerId: string;
+  @Column('int')
+  workerId: number;
 
   @Column({ type: 'date' })
   date: Date;
@@ -107,8 +107,8 @@ export class UserBehaviorMetric {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid')
-  userId: string;
+  @Column('int')
+  userId: number;
 
   @Column({ type: 'date' })
   date: Date;

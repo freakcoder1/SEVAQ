@@ -3,8 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { ServiceRequest } from './entities/service-request.entity';
 import { AssignmentWorker } from './assignment.worker';
+import { Worker } from '../workers/entities/worker.entity';
 
 @Injectable()
 export class ServiceRequestsService {
@@ -15,38 +17,47 @@ export class ServiceRequestsService {
     private serviceRequestsRepository: Repository<ServiceRequest>,
     @InjectQueue('assignment') private assignmentQueue: Queue,
     private assignmentWorker: AssignmentWorker,
+    @InjectRepository(Worker)
+    private workersRepository: Repository<Worker>,
   ) {}
 
-  async create(userId: string, createDto: {
-    serviceId: string;
+  async create(userId: number, createDto: {
+    serviceId?: number;
+    serviceProfileId?: number;
     date: string;
     timeWindow: string;
     priceSnapshot: number;
     location?: { lat: number; lng: number; address?: string };
+    source?: string;
   }): Promise<ServiceRequest> {
-    const serviceRequest = this.serviceRequestsRepository.create({
+    const serviceRequestData: any = {
+      publicId: uuidv4(),
       userId: userId,
       serviceId: createDto.serviceId,
+      serviceProfileId: createDto.serviceProfileId,
       date: new Date(createDto.date),
       timeWindow: createDto.timeWindow,
       priceSnapshot: createDto.priceSnapshot,
       assignmentStatus: 'REQUESTED',
-      failureReason: '',
-      assignedWorkerId: '',
-      assignedSlotId: '',
+      failureReason: null,
+      assignedWorkerId: null,
+      assignedSlotId: null,
+      source: createDto.source,
       metadata: createDto.location ? { location: createDto.location } : undefined,
-    });
+    };
+    const serviceRequest = this.serviceRequestsRepository.create(serviceRequestData as any);
     const savedRequest = await this.serviceRequestsRepository.save(serviceRequest);
+    const singleRequest = Array.isArray(savedRequest) ? savedRequest[0] : savedRequest;
 
     // Trigger assignment processing synchronously
     try {
-      await this.assignmentWorker.processAssignment(savedRequest.id);
-      this.logger.log(`Assignment processing completed for service request ${savedRequest.id}`);
+      await this.assignmentWorker.processAssignment(singleRequest.id);
+      this.logger.log(`Assignment processing completed for service request ${singleRequest.publicId}`);
     } catch (error) {
-      this.logger.error(`Failed to process assignment for service request ${savedRequest.id}: ${error.message}`);
+      this.logger.error(`Failed to process assignment for service request ${singleRequest.publicId}: ${error.message}`);
     }
 
-    return savedRequest;
+    return singleRequest;
   }
 
   async findById(id: string): Promise<ServiceRequest | null> {
@@ -63,8 +74,8 @@ export class ServiceRequestsService {
 
   async markAsAssigned(
     requestId: string,
-    workerId: string,
-    slotId: string,
+    workerId: number,
+    slotId: number,
   ): Promise<void> {
     await this.serviceRequestsRepository.update(requestId, {
       assignmentStatus: 'ASSIGNED',
@@ -78,27 +89,41 @@ export class ServiceRequestsService {
     await this.serviceRequestsRepository.update(requestId, {
       assignmentStatus: 'FAILED_TO_ASSIGN',
       failureReason: reason,
-      assignedWorkerId: '',
-      assignedSlotId: '',
+      assignedWorkerId: null,
+      assignedSlotId: null,
     });
   }
 
-  async getStatus(requestId: string): Promise<{
+  async getStatus(publicId: string): Promise<{
     assignmentStatus: string;
     assignedWorker?: any;
-    failureReason?: string;
+    failureReason?: string | null;
   }> {
-    const request = await this.findById(requestId);
+    const request = await this.serviceRequestsRepository.findOne({ where: { publicId } });
     if (!request) {
       throw new Error('Service request not found');
     }
 
-    if (request.assignmentStatus === 'ASSIGNED') {
-      // Fetch worker details if needed
-      return {
-        assignmentStatus: request.assignmentStatus,
-        assignedWorker: { id: request.assignedWorkerId },
-      };
+    if (request.assignmentStatus === 'ASSIGNED' && request.assignedWorkerId) {
+      // Fetch complete worker details with user and services
+      const worker = await this.workersRepository.findOne({
+        where: { id: request.assignedWorkerId },
+        relations: ['user', 'services'],
+      });
+
+      if (worker) {
+        return {
+          assignmentStatus: request.assignmentStatus,
+          assignedWorker: {
+            id: worker.id,
+            user: worker.user,
+            bio: worker.bio,
+            rating: worker.rating,
+            reviewCount: worker.reviewCount,
+            services: worker.services,
+          },
+        };
+      }
     }
 
     return {

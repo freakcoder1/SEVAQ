@@ -22,10 +22,10 @@ import { JwtAuthGuard } from './jwt-auth.guard';
         }
         
         console.log('JWT_SECRET loaded: YES (length: ${secret.length})');
-        return {
-          secret,
-          signOptions: { expiresIn: '60m' },
-        };
+         return {
+            secret,
+            signOptions: { expiresIn: '30d' },
+          };
       },
       inject: [ConfigService],
     }),

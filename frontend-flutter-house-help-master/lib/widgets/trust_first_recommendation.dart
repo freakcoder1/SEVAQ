@@ -42,7 +42,7 @@ class TrustFirstRecommendation extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
@@ -55,15 +55,15 @@ class TrustFirstRecommendation extends StatelessWidget {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.green[50],
+              color: theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.green[200]!),
+              border: Border.all(color: theme.colorScheme.primaryContainer),
             ),
             child: Text(
               'Recommended for your area',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.green[700],
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -77,7 +77,7 @@ class TrustFirstRecommendation extends StatelessWidget {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              color: theme.colorScheme.onSurface,
               letterSpacing: 0.5,
             ),
           ),
@@ -89,7 +89,7 @@ class TrustFirstRecommendation extends StatelessWidget {
             'Assigned & monitored by Sevaq',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.green[600],
+              color: theme.colorScheme.primary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -101,7 +101,7 @@ class TrustFirstRecommendation extends StatelessWidget {
             'Arrives in ~30 mins · Reliable in your area',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -123,8 +123,8 @@ class TrustFirstRecommendation extends StatelessWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[600],
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

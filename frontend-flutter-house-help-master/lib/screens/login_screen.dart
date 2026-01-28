@@ -72,10 +72,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      final success = await Provider.of<AuthProvider>(
-                        context,
-                        listen: false,
-                      ).login(_emailController.text, _passwordController.text);
+                      final success =
+                          await Provider.of<AuthProvider>(
+                            context,
+                            listen: false,
+                          ).login(
+                            _emailController.text,
+                            _passwordController.text,
+                            context: context,
+                          );
                       debugPrint('LoginScreen: login result=$success');
                       if (!success && mounted) {
                         ScaffoldMessenger.of(

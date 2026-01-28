@@ -3,6 +3,7 @@ import '../models/service.dart';
 import '../models/worker.dart';
 import '../models/user.dart';
 import 'schedule_pricing_screen.dart';
+import 'subscription_profiles_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Service service;
@@ -85,6 +86,147 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
             SizedBox(height: 8),
             Text(widget.service.description, style: theme.textTheme.bodyLarge),
+            SizedBox(height: 30),
+
+            // Service Handling Section
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'How would you like this service handled?',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+
+                  // Monthly Service Option (Primary)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withOpacity(0.05),
+                      border: Border.all(color: theme.primaryColor, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SubscriptionProfilesScreen(
+                              serviceType: widget.service.category
+                                  .toUpperCase(),
+                              serviceName: widget.service.name,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Monthly service',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  color: theme.primaryColor,
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'We handle this for you, every day',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.black54,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Includes scheduling, replacements, and service guarantee',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // One-time Service Option (Secondary)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey[200]!, width: 1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SchedulePricingScreen(
+                              worker: _createPlaceholderWorker(),
+                              service: widget.service,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'One-time service',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Schedule once, pay per visit',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             SizedBox(height: 30),
 
             // Service Scope Section
@@ -321,70 +463,16 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ],
         ),
       ),
-
-      // Primary CTA - Go to Schedule & Pricing
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SchedulePricingScreen(
-                        worker: _createPlaceholderWorker(),
-                        service: widget.service,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                  textStyle: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                child: Text('Schedule & Get Price'),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'We\'ll assign a professional and monitor your service',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Worker _createPlaceholderWorker() {
     return Worker(
-      id: 'placeholder-worker',
+      id: 0,
+      publicId: 'placeholder-worker',
       user: User(
-        id: 'placeholder-user',
+        id: 0,
+        publicId: 'placeholder-user',
         firstName: 'Sevaq',
         lastName: 'Professional',
         email: 'sevaq@sevaq.com',

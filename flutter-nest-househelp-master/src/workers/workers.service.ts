@@ -14,9 +14,8 @@ export class WorkersService {
         return this.workersRepository.find({ relations: ['user', 'services'] });
     }
 
-    async create(userId: string, bio: string, serviceIds: string[], latitude: number, longitude: number) {
+    async create(userId: number, bio: string, serviceIds: number[], latitude: number, longitude: number) {
         const worker = this.workersRepository.create({
-            userId: userId,
             user: { id: userId },
             bio,
             services: serviceIds.map((id) => ({ id })),
@@ -29,7 +28,7 @@ export class WorkersService {
         return this.workersRepository.save(worker);
     }
 
-    async findOne(id: string) {
+    async findOne(id: number) {
         return this.workersRepository.findOne({ where: { id }, relations: ['user', 'services'] });
     }
 
@@ -82,7 +81,7 @@ export class WorkersService {
             .execute();
     }
 
-    async updateWorkerAvailability(id: string, isAvailable: boolean) {
+    async updateWorkerAvailability(id: number, isAvailable: boolean) {
         const worker = await this.workersRepository.findOne({ where: { id } });
         if (!worker) {
             throw new Error('Worker not found');

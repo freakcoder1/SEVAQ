@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import * as GeoJSON from 'geojson';
+import { ServiceArea } from './service_area.entity';
 
 @Entity()
 export class MicroZone {
@@ -8,6 +9,13 @@ export class MicroZone {
 
     @Column()
     name: string;
+
+    @Column()
+    serviceAreaId: string;
+
+    @ManyToOne(() => ServiceArea)
+    @JoinColumn({ name: 'serviceAreaId' })
+    serviceArea: ServiceArea;
 
     @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     centerLat: number;
@@ -18,7 +26,7 @@ export class MicroZone {
     @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
     radiusKm: number; // 0.5 to 2km
 
-    @Column()
+    @Column({ nullable: true })
     zoneType: string; // 'static', 'dynamic', or 'hybrid'
 
     @Column({ default: true })

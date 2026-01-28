@@ -30,7 +30,6 @@ export class HealthService {
       () => this.db.pingCheck('database'),
       () => this.memory.checkHeap('memory_heap', 200 * 1024 * 1024), // 200MB heap threshold
       () => this.memory.checkRSS('memory_rss', 300 * 1024 * 1024), // 300MB RSS threshold
-      () => this.disk.checkStorage('storage', { path: 'C:\\', thresholdPercent: 0.9 }),
       () => this.checkWorkers(),
       () => this.checkServices(),
     ]);

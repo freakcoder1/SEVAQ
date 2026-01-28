@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 import '../models/service.dart';
 import '../models/category_availability.dart';
 import '../models/worker.dart';
@@ -18,6 +19,8 @@ import '../widgets/trust_first_recommendation.dart';
 import '../widgets/trust_first_suggestions.dart';
 import '../widgets/support_signal.dart';
 import '../widgets/location_picker_dialog.dart';
+import '../widgets/pre_service_reminder_banner.dart';
+import '../providers/booking_provider.dart';
 import 'service_details_screen.dart';
 import 'service_clarification_screen.dart';
 import 'monitoring_dashboard_screen.dart';
@@ -147,6 +150,17 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     _loadHomeData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRecommendations();
+      // Fetch bookings to check for pre-service reminders
+      final bookingProvider = ProviderManager.safeGetProvider<BookingProvider>(
+        context,
+        listen: false,
+      );
+      if (bookingProvider != null) {
+        debugPrint('TrustFirstHomeScreen: Calling fetchBookings()');
+        bookingProvider.fetchBookings();
+      } else {
+        debugPrint('TrustFirstHomeScreen: BookingProvider not available');
+      }
     });
   }
 
@@ -309,20 +323,20 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
         title: Text(
           'Sevaq',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         actions: [
           IconButton(
             icon: Icon(
               Icons.location_on,
               color: locationProvider?.currentLocationData != null
-                  ? Colors.green
-                  : Colors.red,
+                  ? AppTheme.successColor
+                  : AppTheme.errorColor,
               size: 24,
             ),
             onPressed: () {
@@ -405,6 +419,20 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
 
             SizedBox(height: 16),
 
+            // Pre-Service Reminder Banner
+            PreServiceReminderBanner(
+              authProvider: ProviderManager.safeGetProvider<AuthProvider>(
+                context,
+                listen: false,
+              ),
+              bookingProvider: ProviderManager.safeGetProvider<BookingProvider>(
+                context,
+                listen: false,
+              ),
+            ),
+
+            SizedBox(height: 16),
+
             // 2️⃣ PRIMARY RECOMMENDATION (HERO CARD)
             _currentRecommendation != null
                 ? TrustFirstRecommendation(
@@ -416,9 +444,11 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
                     recommendation: Recommendation(
                       service: services.first,
                       worker: Worker(
-                        id: 'fallback-worker-001',
+                        id: 1,
+                        publicId: 'fallback-worker-001',
                         user: User(
-                          id: 'fallback-user-001',
+                          id: 1,
+                          publicId: 'fallback-user-001',
                           email: 'fallback@example.com',
                           firstName: 'Available',
                           lastName: 'Professional',

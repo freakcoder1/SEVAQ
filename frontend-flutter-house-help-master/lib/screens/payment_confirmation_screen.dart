@@ -51,16 +51,10 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       }
 
       // Create booking from service request
-      final bookingResponse = await _apiService
-          .post('bookings/create-with-assignment', {
-            'serviceRequestId': widget.requestId,
-            'userId': user.id,
-            'amount': widget.amount,
-            'currency': 'INR',
-            'razorpayOrderId': _orderId,
-            'razorpayPaymentId': response.paymentId,
-            'signature': response.signature,
-          });
+      final bookingResponse = await _apiService.post(
+        'bookings/create-with-assignment',
+        {'serviceRequestId': widget.requestId, 'userId': user.id},
+      );
 
       if (bookingResponse != null && bookingResponse['status'] == 'success') {
         // Navigate to booking confirmation
@@ -107,7 +101,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         _orderId = orderResponse['id'];
 
         var options = {
-          'key': 'rzp_test_1234567890', // Replace with your actual Razorpay key
+          'key': 'rzp_test_S5NgGMcDqTBauH', // Razorpay test key
           'amount': (widget.amount * 100).toInt(), // Amount in paise
           'currency': 'INR',
           'name': 'House Help',

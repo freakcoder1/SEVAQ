@@ -148,7 +148,7 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
       worker.isActive = workerData.isActive;
       worker.latitude = workerData.latitude;
       worker.longitude = workerData.longitude;
-      worker.microZoneId = workerData.microZoneId;
+
       worker.serviceAreaId = workerData.serviceAreaId;
       worker.isAvailable = true;
       worker.currentLat = workerData.latitude;
@@ -188,28 +188,24 @@ async function createWorkerSlots(dataSource: DataSource, worker: Worker, slotRep
 
     // If no specific availability for this day, use default availability
     if (!availability) {
-      // Use default availability for this day (9 AM to 6 PM)
+      // Use default availability for this day (9 AM to 6 PM UTC)
       const defaultStartTime = '09:00';
       const defaultEndTime = '18:00';
       
       // Create slot with default availability
-      const startTime = new Date(currentDate);
       const [startHour] = defaultStartTime.split(':').map(Number);
-      startTime.setHours(startHour, 0, 0, 0);
-
-      const endTime = new Date(currentDate);
       const [endHour] = defaultEndTime.split(':').map(Number);
-      endTime.setHours(endHour, 0, 0, 0);
-
-      // Skip if end time exceeds default end time
-      if (endTime > new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0)) {
-        break;
-      }
+      
+      const startTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), startHour, 0, 0, 0));
+      const endTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0, 0));
 
       const slot = new Slot();
+      slot.date = currentDate;
       slot.startTime = startTime;
       slot.endTime = endTime;
       slot.isBooked = false;
+      slot.maxBookings = 1;
+      slot.currentBookings = 0;
       slot.worker = worker;
 
       await slotRepository.save(slot);
@@ -221,21 +217,21 @@ async function createWorkerSlots(dataSource: DataSource, worker: Worker, slotRep
 
     // Create 3-hour time slots from start to end time
     for (let hour = startHour; hour < endHour; hour += 3) {
-      const startTime = new Date(currentDate);
-      startTime.setHours(hour, 0, 0, 0);
-
-      const endTime = new Date(currentDate);
-      endTime.setHours(hour + 3, 0, 0, 0);
+      const startTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, 0, 0, 0));
+      const endTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour + 3, 0, 0, 0));
 
       // Skip if end time exceeds availability
-      if (endTime > new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0)) {
+      if (endTime > new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0, 0))) {
         break;
       }
 
       const slot = new Slot();
+      slot.date = currentDate;
       slot.startTime = startTime;
       slot.endTime = endTime;
       slot.isBooked = false;
+      slot.maxBookings = 1;
+      slot.currentBookings = 0;
       slot.worker = worker;
 
       await slotRepository.save(slot);

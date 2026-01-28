@@ -157,11 +157,11 @@ export class LocationService {
       const workers = await this.findAvailableWorkers(lat, lng, radiusKm);
       this.logger.debug(`Found ${workers.length} workers in area`);
 
-      // Get unique services from available workers
+      // Get unique services from available workers (only Cleaning and Cooking categories)
       const services = new Map();
       workers.forEach(worker => {
         worker.services?.forEach(service => {
-          if (!services.has(service.id)) {
+          if (!services.has(service.id) && (service.category === 'Cleaning' || service.category === 'Cooking')) {
             services.set(service.id, service);
             this.logger.debug(`Found service: ${service.id} - ${service.name}`);
           }
@@ -178,7 +178,7 @@ export class LocationService {
   }
 
   // Add user to waitlist
-  async addToWaitlist(userId: string, serviceId: string, lat: number, lng: number, estimatedWaitTime: number): Promise<Waitlist> {
+  async addToWaitlist(userId: number, serviceId: number, lat: number, lng: number, estimatedWaitTime: number): Promise<Waitlist> {
     this.logger.log(`Adding user ${userId} to waitlist for service ${serviceId} at lat=${lat}, lng=${lng}`);
 
     try {
@@ -202,7 +202,7 @@ export class LocationService {
   }
 
   // Get waitlist status for user
-  async getWaitlistStatus(userId: string): Promise<Waitlist[]> {
+  async getWaitlistStatus(userId: number): Promise<Waitlist[]> {
     this.logger.debug(`Getting waitlist status for user: ${userId}`);
 
     try {
@@ -220,7 +220,7 @@ export class LocationService {
   }
 
   // Cancel waitlist entry
-  async cancelWaitlist(waitlistId: string): Promise<void> {
+  async cancelWaitlist(waitlistId: number): Promise<void> {
     this.logger.log(`Cancelling waitlist entry: ${waitlistId}`);
 
     try {
@@ -233,7 +233,7 @@ export class LocationService {
   }
 
   // Remove user from waitlist
-  async removeFromWaitlist(userId: string): Promise<void> {
+  async removeFromWaitlist(userId: number): Promise<void> {
     this.logger.log(`Removing user ${userId} from waitlist`);
 
     try {
@@ -250,7 +250,7 @@ export class LocationService {
   }
 
   // Update user's preferred location
-  async updatePreferredLocation(userId: string, lat: number, lng: number): Promise<User> {
+  async updatePreferredLocation(userId: number, lat: number, lng: number): Promise<User> {
     this.logger.log(`Updating preferred location for user ${userId}: lat=${lat}, lng=${lng}`);
 
     try {
@@ -290,7 +290,7 @@ export class LocationService {
   }
 
   // Update worker's current location
-  async updateWorkerLocation(workerId: string, lat: number, lng: number): Promise<Worker> {
+  async updateWorkerLocation(workerId: number, lat: number, lng: number): Promise<Worker> {
     this.logger.log(`Updating current location for worker ${workerId}: lat=${lat}, lng=${lng}`);
 
     try {

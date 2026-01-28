@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function loginUser(email, password) {
   try {
-    const response = await axios.post('http://0.0.0.0:45357/auth/login', { email, password });
+    const response = await axios.post('http://127.0.0.1:45357/auth/login', { email, password });
     return response.data.access_token;
   } catch (error) {
     throw new Error(`Login failed: ${error.response?.data?.message || error.message}`);
@@ -13,18 +13,23 @@ async function testServiceRequest() {
   console.log('=== TESTING SERVICE REQUEST CREATION ===\n');
 
   try {
-    // Login first
+    // Login first with correct test credentials
     console.log('1. Logging in...');
-    const token = await loginUser('user@test.com', 'UserPass123!');
+    const token = await loginUser('test.user1@example.com', 'password123');
     console.log('Login successful, got token');
 
     // Create a service request
     console.log('2. Creating a service request...');
 
-    const response = await axios.post('http://0.0.0.0:45357/service-requests', {
-      serviceId: '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b', // Home Cleaning
-      date: '2026-01-15T10:00:00.000Z',
-      timeWindow: 'morning',
+    // Use tomorrow's date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const response = await axios.post('http://127.0.0.1:45357/service-requests', {
+      serviceId: 1, // Home Cleaning
+      date: tomorrowStr,
+      timeWindow: 'early-morning', // This should match the available slots
       priceSnapshot: 1500,
       location: {
         lat: 28.5805083,
@@ -46,7 +51,9 @@ async function testServiceRequest() {
     // Check assignment status
     console.log('\n3. Checking assignment status...');
 
-    const statusResponse = await axios.get(`http://0.0.0.0:45357/service-requests/${requestId}`);
+    const statusResponse = await axios.get(`http://127.0.0.1:45357/service-requests/${requestId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     console.log('Assignment status:', statusResponse.data);
 
     console.log('\n=== TEST COMPLETE ===');

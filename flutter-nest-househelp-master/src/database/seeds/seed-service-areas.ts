@@ -31,6 +31,7 @@ export class SeedServiceAreas {
     // Coordinates for 201306 postal code area (Noida/Greater Noida region, India)
     const serviceArea201306 = serviceAreaRepository.create({
       name: '201306 Area',
+      pincode: '201306',
       minLat: 28.6100,  // Approximate latitude for 201306
       maxLat: 28.6300,
       minLng: 77.3600,  // Approximate longitude for 201306
@@ -82,6 +83,7 @@ export class SeedServiceAreas {
     for (const zoneData of microZones) {
       const microZone = microZoneRepository.create({
         ...zoneData,
+        serviceArea: serviceArea201306,
         boundaries: {
           type: 'Polygon',
           coordinates: [[

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
@@ -19,12 +20,16 @@ import 'screens/home_screen.dart';
 import 'screens/category_screen.dart';
 import 'screens/service_details_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/firebase_messaging_service.dart';
 
 void main() async {
   // Preload SharedPreferences synchronously to prevent navigation loop
   // This ensures location state is available immediately on app start/resume
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+
+  // Initialize Firebase Messaging
+  await FirebaseMessagingService.initialize();
 
   runApp(SevaqApp(prefs: prefs));
 }
@@ -68,39 +73,10 @@ class SevaqAppMaterial extends StatelessWidget {
     return MaterialApp(
       title: 'Sevaq - House Help Services',
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      // Use a Builder to capture the correct context with providers
-      home: Builder(
-        builder: (context) {
-          // Store the context for route generation
-          return WillPopScope(
-            onWillPop: () async {
-              // Prevent the app from closing when back button is pressed
-              // This keeps the app running even when on the main navigation
-              return false;
-            },
-            child: Navigator(
-              onGenerateRoute: (settings) => _generateRoute(settings, context),
-            ),
-          );
-        },
-      ),
-      initialRoute: '/',
+      home: const AuthWrapper(),
     );
-  }
-}
-
-Route<dynamic> _generateRoute(RouteSettings settings, BuildContext context) {
-  switch (settings.name) {
-    case '/':
-      return MaterialPageRoute(builder: (_) => const SplashScreen());
-    case '/home':
-      return MaterialPageRoute(builder: (_) => const MainNavigation());
-    case '/auth':
-      return MaterialPageRoute(builder: (_) => const AuthWrapper());
-    default:
-      return MaterialPageRoute(builder: (_) => const SplashScreen());
   }
 }

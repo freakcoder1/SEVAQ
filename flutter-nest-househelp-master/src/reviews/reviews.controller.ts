@@ -16,7 +16,7 @@ export class ReviewsController {
     }
 
     @Get('worker/:workerId')
-    findByWorker(@Param('workerId') workerId: string) {
+    findByWorker(@Param('workerId') workerId: number) {
         return this.reviewsService.findByWorker(workerId);
     }
 }

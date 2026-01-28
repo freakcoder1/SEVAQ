@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 
 export enum UserRole {
     USER = 'user',
@@ -8,8 +9,11 @@ export enum UserRole {
 
 @Entity()
 export class User {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn()
+    id: number; // Internal ID
+    
+    @Column('uuid', { unique: true, nullable: false })
+    publicId: string; // Public API ID
 
     @Column({ unique: true })
     email: string;
@@ -60,6 +64,9 @@ export class User {
         timestamp: Date;
         accuracy: number;
     }>;
+
+    @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.user)
+    serviceRequests: ServiceRequest[];
 
     @CreateDateColumn()
     createdAt: Date;

@@ -3,17 +3,21 @@ import { User } from '../../users/entities/user.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
 import { Service } from '../../services/entities/service.entity';
+import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 
 @Entity('worker')
 export class Worker {
-   @PrimaryGeneratedColumn('uuid')
-   id: string;
+   @PrimaryGeneratedColumn()
+   id: number; // Internal ID
+   
+   @Column('uuid', { unique: true, nullable: false })
+   publicId: string; // Public API ID
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ type: 'int', name: 'userId' })
+  userId: number;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column({ type: 'text', nullable: true })
@@ -55,9 +59,6 @@ export class Worker {
 
   @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
   longitude: number;
-
-  @Column({ type: 'text', nullable: true })
-  microZoneId: string;
 
   @Column({ type: 'text', nullable: true })
   serviceAreaId: string;
@@ -104,6 +105,9 @@ export class Worker {
 
   @OneToMany(() => Booking, booking => booking.worker)
   bookings: Booking[];
+
+  @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.worker)
+  serviceRequests: ServiceRequest[];
 
   @CreateDateColumn()
   createdAt: Date;

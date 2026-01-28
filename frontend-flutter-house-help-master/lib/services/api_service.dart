@@ -5,7 +5,37 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+
+// Helper function to decode JWT token
+Map<String, dynamic>? decodeJwt(String token) {
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    var payload = parts[1];
+
+    // Fix padding for base64 URL decoding
+    while (payload.length % 4 != 0) {
+      payload += '=';
+    }
+
+    final decoded = base64Url.decode(payload);
+    final json = utf8.decode(decoded);
+    return jsonDecode(json);
+  } catch (e) {
+    debugPrint('Error decoding token: $e');
+    return null;
+  }
+}
+
+// Helper function to check if token is expired
+bool isTokenExpired(Map<String, dynamic> tokenData) {
+  if (!tokenData.containsKey('exp')) return true;
+  final exp = tokenData['exp'] as int;
+  final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
+  return currentTime > exp;
+}
 
 class ApiService {
   static String get baseUrl {
@@ -16,14 +46,46 @@ class ApiService {
 
   Future<Map<String, String>> _getHeaders() async {
     String? token = await _storage.read(key: 'jwt_token');
-    debugPrint('ApiService: _getHeaders - token exists: ${token != null}');
+    debugPrint(
+      'ApiService: _getHeaders - token exists in secure storage: ${token != null}',
+    );
+
+    // Fallback to SharedPreferences if token not found in secure storage
+    if (token == null) {
+      debugPrint('ApiService: _getHeaders - Trying SharedPreferences fallback');
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('jwt_token');
+      debugPrint(
+        'ApiService: _getHeaders - token exists in SharedPreferences: ${token != null}',
+      );
+    }
+
     if (token != null) {
       debugPrint('ApiService: _getHeaders - token length: ${token.length}');
       debugPrint(
-        'ApiService: _getHeaders - token starts with: ${token.substring(0, math.min(20, token.length))}...',
+        'ApiService: _getHeaders - token starts with: ${token.substring(0, 20)}...',
       );
+
+      // Check token expiry (DISABLED FOR TESTING)
+      final tokenData = decodeJwt(token);
+      if (tokenData != null) {
+        if (isTokenExpired(tokenData)) {
+          debugPrint(
+            'ApiService: _getHeaders - Token has expired BUT NOT CLEARED',
+          );
+          // DO NOT clear expired token for testing purposes
+        }
+      } else {
+        debugPrint('ApiService: _getHeaders - Invalid token');
+        await clearToken();
+        await _storage.delete(key: 'user_id');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('jwt_token');
+        await prefs.remove('user_id');
+        token = null;
+      }
     } else {
-      debugPrint('ApiService: _getHeaders - NO TOKEN FOUND in secure storage');
+      debugPrint('ApiService: _getHeaders - NO TOKEN FOUND in any storage');
     }
     return {
       'Content-Type': 'application/json',
@@ -282,20 +344,142 @@ extension LocationApi on ApiService {
 // Service Request API methods
 extension ServiceRequestApi on ApiService {
   Future<dynamic> createServiceRequest({
-    required String serviceId,
+    required int serviceId,
     required DateTime scheduledDate,
     required String timeWindow,
     required double priceSnapshot,
+    String source = 'ONE_TIME',
   }) async {
     return await post('service-requests', {
       'serviceId': serviceId,
       'date': scheduledDate.toIso8601String(),
       'timeWindow': timeWindow,
       'priceSnapshot': priceSnapshot,
+      'source': source,
     });
   }
 
   Future<dynamic> getServiceRequestStatus(String requestId) async {
     return await get('service-requests/$requestId');
+  }
+
+  Future<dynamic> assignServiceRequest(String requestId) async {
+    return await post('service-requests/$requestId/assign', {});
+  }
+
+  Future<dynamic> getServiceRequestAssignments() async {
+    return await get('service-requests/assignments');
+  }
+}
+
+// Booking API methods
+extension BookingApi on ApiService {
+  Future<dynamic> createBookingFromServiceRequest({
+    required String serviceRequestId,
+  }) async {
+    return await post('bookings', {'serviceRequestId': serviceRequestId});
+  }
+
+  Future<dynamic> getBookingById(int bookingId) async {
+    return await get('bookings/$bookingId');
+  }
+
+  Future<dynamic> getBookingsByUserId(String userId) async {
+    return await get('bookings?userId=$userId');
+  }
+
+  Future<dynamic> getUpcomingBookings() async {
+    return await get('notifications/upcoming-bookings');
+  }
+}
+
+// Service Profile API methods
+extension ServiceProfileApi on ApiService {
+  Future<dynamic> getServiceProfiles(String serviceType) async {
+    // Map frontend service types to backend enum values
+    String mappedType;
+    switch (serviceType.toLowerCase()) {
+      case 'cooking':
+        mappedType = 'COOK';
+        break;
+      case 'maid':
+      case 'house help':
+        mappedType = 'MAID';
+        break;
+      case 'cleaning':
+        mappedType = 'CLEANING';
+        break;
+      default:
+        mappedType = serviceType.toUpperCase();
+    }
+    debugPrint('🔍 DEBUG: Mapping service type $serviceType to $mappedType');
+    final response = await get('service-profiles?serviceType=$mappedType');
+    debugPrint('🔍 DEBUG: Service profiles response: $response');
+    // Extract data from backend response format { success: true, data: [] }
+    if (response is Map && response.containsKey('data')) {
+      return response['data'];
+    }
+    return response;
+  }
+
+  Future<dynamic> getServiceProfileById(int profileId) async {
+    return await get('service-profiles/$profileId');
+  }
+}
+
+// Subscription API methods
+extension SubscriptionApi on ApiService {
+  Future<dynamic> createSubscription({
+    required int serviceProfileId,
+    required String frequency,
+    required String timeWindowStart,
+    required String timeWindowEnd,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    return await post('subscriptions', {
+      'serviceProfileId': serviceProfileId,
+      'frequency': frequency,
+      'timeWindowStart': timeWindowStart,
+      'timeWindowEnd': timeWindowEnd,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'billingCycle': 'MONTHLY',
+    });
+  }
+
+  Future<dynamic> getSubscriptions() async {
+    return await get('subscriptions');
+  }
+
+  Future<dynamic> getSubscriptionById(int subscriptionId) async {
+    return await get('subscriptions/$subscriptionId');
+  }
+
+  Future<dynamic> updateSubscriptionStatus(
+    int subscriptionId,
+    String status,
+  ) async {
+    return await patch('subscriptions/$subscriptionId/status', {
+      'status': status,
+    });
+  }
+
+  Future<dynamic> pauseSubscription(int subscriptionId) async {
+    return await patch('subscriptions/$subscriptionId/status', {
+      'status': 'PAUSED',
+    });
+  }
+
+  Future<dynamic> resumeSubscription(int subscriptionId) async {
+    return await patch('subscriptions/$subscriptionId/status', {
+      'status': 'ACTIVE',
+    });
+  }
+
+  Future<dynamic> cancelSubscription(int subscriptionId) async {
+    return await patch('subscriptions/$subscriptionId/status', {
+      'status': 'CANCELLED',
+    });
   }
 }

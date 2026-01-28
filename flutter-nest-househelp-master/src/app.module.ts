@@ -23,6 +23,8 @@ import { MonitoringDashboardModule } from './monitoring-dashboard/monitoring-das
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrometheusModule, makeCounterProvider, makeHistogramProvider } from '@willsoto/nestjs-prometheus';
 import { DatabaseModule } from './database/database.module';
+import { ServiceProfilesModule } from './service-profiles/service-profiles.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
 import { Worker } from './workers/entities/worker.entity';
@@ -35,6 +37,8 @@ import { ServiceArea } from './locations/entities/service_area.entity';
 import { Waitlist } from './locations/entities/waitlist.entity';
 import { ServiceRequest } from './service-requests/entities/service-request.entity';
 import { AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric } from './metrics/entities/metric.entity';
+import { ServiceProfile } from './service-profiles/entities/service-profile.entity';
+import { Subscription } from './subscriptions/entities/subscription.entity';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { ResponseTimeInterceptor } from './common/interceptors/response-time.interceptor';
 
@@ -73,7 +77,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
           throw new Error('Missing required environment variable: DB_NAME');
         }
 
-        const entities = [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist, ServiceRequest, AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric];
+        const entities = [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist, ServiceRequest, AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric, ServiceProfile, Subscription];
         console.log('TypeORM entities:', entities.map(e => e.name));
 
         return {
@@ -106,6 +110,9 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     HealthModule,
     MonitoringDashboardModule,
     NotificationsModule,
+    HomeModule,
+    ServiceProfilesModule,
+    SubscriptionsModule,
     // DatabaseModule,
   ],
   controllers: [AppController],

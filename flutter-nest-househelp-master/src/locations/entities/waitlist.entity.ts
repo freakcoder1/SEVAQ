@@ -2,14 +2,14 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 
 @Entity()
 export class Waitlist {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn()
+    id: number;
 
-    @Column()
-    userId: string;
+    @Column({ type: 'int' })
+    userId: number;
 
-    @Column()
-    serviceId: string;
+    @Column({ type: 'int' })
+    serviceId: number;
 
     @Column({ type: 'decimal', precision: 10, scale: 7 })
     latitude: number;
