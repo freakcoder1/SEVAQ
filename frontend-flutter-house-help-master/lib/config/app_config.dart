@@ -3,19 +3,31 @@ import 'package:flutter/foundation.dart';
 
 class AppConfig {
   // API Configuration
+  // Flag to use localhost (for USB debugging with ADB reverse)
+  static const bool useLocalhostForUSB = true;
+
   static String get apiBaseUrl {
     // Determine the correct API URL based on platform
     String url;
 
     if (Platform.isAndroid) {
-      // For Android physical devices: Use IP address instead of localhost
-      // localhost doesn't work on physical Android devices
-      // For Android emulator: use 10.0.2.2 to connect to host machine's localhost
-      // For physical devices: use the actual server IP address
-      url = 'http://192.168.1.38:45357/api';
-      debugPrint(
-        'AppConfig: apiBaseUrl = $url (Android physical device - using IP address)',
-      );
+      // For USB debugging with ADB reverse: use localhost
+      // Run: adb reverse tcp:45357 tcp:45357
+      if (useLocalhostForUSB) {
+        url = 'http://localhost:45357/api';
+        debugPrint(
+          'AppConfig: apiBaseUrl = $url (Android USB debugging - using localhost)',
+        );
+      } else {
+        // For Android physical devices over WiFi: Use IP address instead of localhost
+        // localhost doesn't work on physical Android devices
+        // For Android emulator: use 10.0.2.2 to connect to host machine's localhost
+        // For physical devices: use the actual server IP address
+        url = 'http://192.168.1.38:45357/api';
+        debugPrint(
+          'AppConfig: apiBaseUrl = $url (Android physical device - using IP address)',
+        );
+      }
     } else {
       // For iOS or web
       url = 'http://localhost:45357/api';
