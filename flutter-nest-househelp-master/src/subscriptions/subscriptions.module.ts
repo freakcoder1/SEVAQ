@@ -10,6 +10,7 @@ import { Worker } from '../workers/entities/worker.entity';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
+import { OnDemandAssignmentScheduler } from './on-demand-assignment.scheduler';
 import { AvailabilityDetectionService } from './availability-detection.service';
 import { AvailabilityDetectionScheduler } from './availability-detection.scheduler';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
@@ -36,12 +37,14 @@ import { WorkersModule } from '../workers/workers.module';
   providers: [
     SubscriptionsService, 
     SubscriptionAssignmentScheduler,
+    OnDemandAssignmentScheduler,
     AvailabilityDetectionService,
     AvailabilityDetectionScheduler,
   ],
   exports: [
     SubscriptionsService, 
     SubscriptionAssignmentScheduler,
+    OnDemandAssignmentScheduler,
     AvailabilityDetectionService,
   ],
 })
