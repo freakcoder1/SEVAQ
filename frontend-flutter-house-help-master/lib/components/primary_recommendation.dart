@@ -36,7 +36,7 @@ class PrimaryRecommendation extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -50,7 +50,7 @@ class PrimaryRecommendation extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    theme.colorScheme.primary.withOpacity(0.1),
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
                     Colors.transparent,
                   ],
                   begin: Alignment.topLeft,

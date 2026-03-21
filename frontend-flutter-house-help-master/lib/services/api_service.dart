@@ -8,6 +8,14 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 
+/// Exception thrown when JWT token has expired
+class TokenExpiredException implements Exception {
+  final String message;
+  TokenExpiredException(this.message);
+  @override
+  String toString() => 'TokenExpiredException: $message';
+}
+
 // Helper function to decode JWT token
 Map<String, dynamic>? decodeJwt(String token) {
   try {
@@ -62,18 +70,29 @@ class ApiService {
 
     if (token != null) {
       debugPrint('ApiService: _getHeaders - token length: ${token.length}');
-      debugPrint(
-        'ApiService: _getHeaders - token starts with: ${token.substring(0, 20)}...',
-      );
+      if (kDebugMode && token.length > 20) {
+        debugPrint(
+          'ApiService: _getHeaders - token starts with: ${token.substring(0, 20)}...',
+        );
+      }
 
-      // Check token expiry (DISABLED FOR TESTING)
+      // Check token expiry (PRODUCTION-READY: Expired tokens are now cleared)
       final tokenData = decodeJwt(token);
       if (tokenData != null) {
         if (isTokenExpired(tokenData)) {
           debugPrint(
-            'ApiService: _getHeaders - Token has expired BUT NOT CLEARED',
+            'ApiService: _getHeaders - Token has expired, clearing token',
           );
-          // DO NOT clear expired token for testing purposes
+          // Clear expired token from all storage locations
+          await clearToken();
+          await _storage.delete(key: 'user_id');
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('jwt_token');
+          await prefs.remove('user_id');
+          await prefs.remove('refresh_token');
+          token = null;
+          // Notify that token has expired - app should redirect to login
+          throw TokenExpiredException('Session expired. Please log in again.');
         }
       } else {
         debugPrint('ApiService: _getHeaders - Invalid token');
@@ -82,6 +101,7 @@ class ApiService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('jwt_token');
         await prefs.remove('user_id');
+        await prefs.remove('refresh_token');
         token = null;
       }
     } else {
@@ -391,6 +411,10 @@ extension BookingApi on ApiService {
   Future<dynamic> getUpcomingBookings() async {
     return await get('notifications/upcoming-bookings');
   }
+
+  Future<dynamic> getAllBookings() async {
+    return await get('notifications/all-bookings');
+  }
 }
 
 // Service Profile API methods
@@ -427,6 +451,68 @@ extension ServiceProfileApi on ApiService {
   }
 }
 
+// Payment API methods
+extension PaymentApi on ApiService {
+  Future<dynamic> createPaymentOrder({
+    required double amount,
+    required String currency,
+  }) async {
+    return await post('payments/create-order', {
+      'amount': amount,
+      'currency': currency,
+    });
+  }
+
+  Future<dynamic> createSubscriptionOrder({
+    required dynamic userId, // Support both int and String (UUID)
+    required int serviceProfileId,
+    required String preferredTimeWindow,
+    required DateTime startDate,
+    required double lat,
+    required double lng,
+  }) async {
+    return await post('payments/create-subscription-order', {
+      'userId': userId,
+      'serviceProfileId': serviceProfileId,
+      'preferredTimeWindow': preferredTimeWindow,
+      'startDate': startDate.toIso8601String(),
+      'billingCycle': 'MONTHLY',
+      'location': {'lat': lat, 'lng': lng},
+    });
+  }
+
+  Future<dynamic> createSubscriptionAfterPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+    required Map<String, dynamic> subscriptionData,
+  }) async {
+    return await post('payments/confirm-subscription', {
+      'razorpayOrderId': orderId,
+      'razorpayPaymentId': paymentId,
+      'signature': signature,
+      'userId': subscriptionData['userId'],
+      'serviceProfileId': subscriptionData['serviceProfileId'],
+      'preferredTimeWindow': subscriptionData['preferredTimeWindow'],
+      'startDate': subscriptionData['startDate'],
+      'location': subscriptionData['location'],
+      'monthlyPriceSnapshot': subscriptionData['monthlyPriceSnapshot'],
+    });
+  }
+
+  Future<dynamic> verifyPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String signature,
+  }) async {
+    return await post('payments/verify', {
+      'razorpayOrderId': razorpayOrderId,
+      'razorpayPaymentId': razorpayPaymentId,
+      'signature': signature,
+    });
+  }
+}
+
 // Subscription API methods
 extension SubscriptionApi on ApiService {
   Future<dynamic> createSubscription({
@@ -436,6 +522,8 @@ extension SubscriptionApi on ApiService {
     required String timeWindowEnd,
     required DateTime startDate,
     required DateTime endDate,
+    required double lat,
+    required double lng,
   }) async {
     return await post('subscriptions', {
       'serviceProfileId': serviceProfileId,
@@ -445,11 +533,16 @@ extension SubscriptionApi on ApiService {
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'billingCycle': 'MONTHLY',
+      'location': {'lat': lat, 'lng': lng},
     });
   }
 
   Future<dynamic> getSubscriptions() async {
     return await get('subscriptions');
+  }
+
+  Future<dynamic> getUserSubscriptions(String userId) async {
+    return await get('subscriptions/user/$userId');
   }
 
   Future<dynamic> getSubscriptionById(int subscriptionId) async {

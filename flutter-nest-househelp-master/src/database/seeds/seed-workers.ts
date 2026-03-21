@@ -18,7 +18,9 @@ export class SeedWorkers {
     // Check if workers already exist
     const existingWorkers = await workerRepository.count();
     if (existingWorkers > 0) {
-      this.logger.log(`${existingWorkers} workers already exist, skipping creation`);
+      this.logger.log(
+        `${existingWorkers} workers already exist, skipping creation`,
+      );
       return;
     }
 
@@ -55,7 +57,7 @@ export class SeedWorkers {
           { day: 3, startTime: '09:00', endTime: '18:00' },
           { day: 4, startTime: '09:00', endTime: '18:00' },
           { day: 5, startTime: '09:00', endTime: '18:00' },
-        ]
+        ],
       },
       {
         firstName: 'Priya',
@@ -78,7 +80,7 @@ export class SeedWorkers {
           { day: 4, startTime: '08:00', endTime: '20:00' },
           { day: 5, startTime: '08:00', endTime: '20:00' },
           { day: 6, startTime: '08:00', endTime: '16:00' },
-        ]
+        ],
       },
       {
         firstName: 'Rajesh',
@@ -102,7 +104,7 @@ export class SeedWorkers {
           { day: 4, startTime: '07:00', endTime: '21:00' },
           { day: 5, startTime: '07:00', endTime: '21:00' },
           { day: 6, startTime: '07:00', endTime: '21:00' },
-        ]
+        ],
       },
       {
         firstName: 'Sunita',
@@ -114,8 +116,8 @@ export class SeedWorkers {
         rating: 4.6,
         reviewCount: 45,
         serviceRadiusKm: 25, // Increased from 3 to 25km for better coverage
-        currentLat: 28.5820000,
-        currentLng: 77.4370000,
+        currentLat: 28.582,
+        currentLng: 77.437,
         isActive: true,
         services: [services[1], services[6]].filter(Boolean),
         availabilitySchedule: [
@@ -124,7 +126,7 @@ export class SeedWorkers {
           { day: 3, startTime: '10:00', endTime: '19:00' },
           { day: 4, startTime: '10:00', endTime: '19:00' },
           { day: 5, startTime: '10:00', endTime: '19:00' },
-        ]
+        ],
       },
       {
         firstName: 'Vikram',
@@ -136,8 +138,8 @@ export class SeedWorkers {
         rating: 4.4,
         reviewCount: 112,
         serviceRadiusKm: 25, // Increased from 5 to 25km for better coverage
-        currentLat: 28.5780000,
-        currentLng: 77.4420000,
+        currentLat: 28.578,
+        currentLng: 77.442,
         isActive: true,
         services: services.slice(0, 3),
         availabilitySchedule: [
@@ -148,7 +150,7 @@ export class SeedWorkers {
           { day: 4, startTime: '06:00', endTime: '20:00' },
           { day: 5, startTime: '06:00', endTime: '20:00' },
           { day: 6, startTime: '06:00', endTime: '14:00' },
-        ]
+        ],
       },
       {
         firstName: 'Neha',
@@ -160,8 +162,8 @@ export class SeedWorkers {
         rating: 4.7,
         reviewCount: 95,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5830000,
-        currentLng: 77.4360000,
+        currentLat: 28.583,
+        currentLng: 77.436,
         isActive: true,
         services: [services[7]].filter(Boolean), // Childcare service
         availabilitySchedule: [
@@ -171,7 +173,7 @@ export class SeedWorkers {
           { day: 4, startTime: '08:00', endTime: '20:00' },
           { day: 5, startTime: '08:00', endTime: '20:00' },
           { day: 6, startTime: '09:00', endTime: '18:00' },
-        ]
+        ],
       },
       {
         firstName: 'Sanjay',
@@ -183,8 +185,8 @@ export class SeedWorkers {
         rating: 4.6,
         reviewCount: 78,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5770000,
-        currentLng: 77.4430000,
+        currentLat: 28.577,
+        currentLng: 77.443,
         isActive: true,
         services: [services[8]].filter(Boolean), // Gardening service
         availabilitySchedule: [
@@ -194,7 +196,7 @@ export class SeedWorkers {
           { day: 4, startTime: '07:00', endTime: '17:00' },
           { day: 5, startTime: '07:00', endTime: '17:00' },
           { day: 6, startTime: '08:00', endTime: '14:00' },
-        ]
+        ],
       },
       {
         firstName: 'Anita',
@@ -206,8 +208,8 @@ export class SeedWorkers {
         rating: 4.8,
         reviewCount: 67,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5840000,
-        currentLng: 77.4350000,
+        currentLat: 28.584,
+        currentLng: 77.435,
         isActive: true,
         services: [services[9]].filter(Boolean), // Senior care service
         availabilitySchedule: [
@@ -218,7 +220,7 @@ export class SeedWorkers {
           { day: 4, startTime: '08:00', endTime: '20:00' },
           { day: 5, startTime: '08:00', endTime: '20:00' },
           { day: 6, startTime: '09:00', endTime: '17:00' },
-        ]
+        ],
       },
       {
         firstName: 'Manoj',
@@ -230,8 +232,8 @@ export class SeedWorkers {
         rating: 4.5,
         reviewCount: 145,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5760000,
-        currentLng: 77.4440000,
+        currentLat: 28.576,
+        currentLng: 77.444,
         isActive: true,
         services: services.slice(0, 4), // Multiple services
         availabilitySchedule: [
@@ -241,7 +243,7 @@ export class SeedWorkers {
           { day: 4, startTime: '06:00', endTime: '18:00' },
           { day: 5, startTime: '06:00', endTime: '18:00' },
           { day: 6, startTime: '07:00', endTime: '15:00' },
-        ]
+        ],
       },
       {
         firstName: 'Pooja',
@@ -253,8 +255,8 @@ export class SeedWorkers {
         rating: 4.9,
         reviewCount: 88,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5850000,
-        currentLng: 77.4340000,
+        currentLat: 28.585,
+        currentLng: 77.434,
         isActive: true,
         services: [services[2], services[10]].filter(Boolean), // Cooking and healthy meals
         availabilitySchedule: [
@@ -264,7 +266,7 @@ export class SeedWorkers {
           { day: 4, startTime: '09:00', endTime: '21:00' },
           { day: 5, startTime: '09:00', endTime: '21:00' },
           { day: 6, startTime: '10:00', endTime: '18:00' },
-        ]
+        ],
       },
       {
         firstName: 'Deepak',
@@ -276,8 +278,8 @@ export class SeedWorkers {
         rating: 4.4,
         reviewCount: 102,
         serviceRadiusKm: 25, // Increased for better coverage
-        currentLat: 28.5750000,
-        currentLng: 77.4450000,
+        currentLat: 28.575,
+        currentLng: 77.445,
         isActive: true,
         services: [services[5], services[11]].filter(Boolean), // Errands and shopping
         availabilitySchedule: [
@@ -288,14 +290,14 @@ export class SeedWorkers {
           { day: 5, startTime: '08:00', endTime: '20:00' },
           { day: 6, startTime: '09:00', endTime: '17:00' },
           { day: 0, startTime: '10:00', endTime: '16:00' },
-        ]
-      }
+        ],
+      },
     ];
 
     for (const workerData of workers) {
       // Check if user already exists
       const existingUser = await userRepository.findOne({
-        where: { email: workerData.email }
+        where: { email: workerData.email },
       });
 
       if (existingUser) {
@@ -338,22 +340,61 @@ export class SeedWorkers {
       });
 
       await workerRepository.save(worker);
-      this.logger.log(`Created worker: ${workerData.firstName} ${workerData.lastName} at (${workerData.currentLat}, ${workerData.currentLng})`);
+      this.logger.log(
+        `Created worker: ${workerData.firstName} ${workerData.lastName} at (${workerData.currentLat}, ${workerData.currentLng})`,
+      );
     }
 
     this.logger.log('Worker seeding completed');
     await this.verifyWorkerData(workerRepository);
   }
 
-  private async createSampleServices(serviceRepository: Repository<Service>): Promise<void> {
+  private async createSampleServices(
+    serviceRepository: Repository<Service>,
+  ): Promise<void> {
     const sampleServices = [
-      { name: 'Home Cleaning', description: 'Complete home cleaning service', category: 'Cleaning', basePrice: 500 },
-      { name: 'Deep Cleaning', description: 'Deep cleaning for kitchens and bathrooms', category: 'Cleaning', basePrice: 800 },
-      { name: 'Cooking', description: 'Home cooking service', category: 'Cooking', basePrice: 400 },
-      { name: 'Meal Preparation', description: 'Daily meal preparation', category: 'Cooking', basePrice: 600 },
-      { name: 'Driver', description: 'Personal driver service', category: 'Driving', basePrice: 500 },
-      { name: 'Errands', description: 'Running errands and grocery shopping', category: 'Errands', basePrice: 300 },
-      { name: 'Laundry', description: 'Washing, drying, and ironing', category: 'Laundry', basePrice: 350 },
+      {
+        name: 'Home Cleaning',
+        description: 'Complete home cleaning service',
+        category: 'Cleaning',
+        basePrice: 500,
+      },
+      {
+        name: 'Deep Cleaning',
+        description: 'Deep cleaning for kitchens and bathrooms',
+        category: 'Cleaning',
+        basePrice: 800,
+      },
+      {
+        name: 'Cooking',
+        description: 'Home cooking service',
+        category: 'Cooking',
+        basePrice: 400,
+      },
+      {
+        name: 'Meal Preparation',
+        description: 'Daily meal preparation',
+        category: 'Cooking',
+        basePrice: 600,
+      },
+      {
+        name: 'Driver',
+        description: 'Personal driver service',
+        category: 'Driving',
+        basePrice: 500,
+      },
+      {
+        name: 'Errands',
+        description: 'Running errands and grocery shopping',
+        category: 'Errands',
+        basePrice: 300,
+      },
+      {
+        name: 'Laundry',
+        description: 'Washing, drying, and ironing',
+        category: 'Laundry',
+        basePrice: 350,
+      },
     ];
 
     for (const serviceData of sampleServices) {
@@ -363,17 +404,21 @@ export class SeedWorkers {
     }
   }
 
-  private async verifyWorkerData(workerRepository: Repository<Worker>): Promise<void> {
+  private async verifyWorkerData(
+    workerRepository: Repository<Worker>,
+  ): Promise<void> {
     this.logger.log('Verifying seeded worker data...');
 
     const workers = await workerRepository.find({
-      relations: ['user', 'services']
+      relations: ['user', 'services'],
     });
 
     this.logger.log(`Found ${workers.length} workers in database`);
 
     for (const worker of workers) {
-      this.logger.debug(`Worker: ${worker.user.firstName} ${worker.user.lastName} - Location: (${worker.currentLat}, ${worker.currentLng}), Rating: ${worker.rating}`);
+      this.logger.debug(
+        `Worker: ${worker.user.firstName} ${worker.user.lastName} - Location: (${worker.currentLat}, ${worker.currentLng}), Rating: ${worker.rating}`,
+      );
     }
 
     this.logger.log('Worker data verification completed');

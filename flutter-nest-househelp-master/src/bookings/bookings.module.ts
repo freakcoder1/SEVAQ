@@ -11,9 +11,12 @@ import { ServiceRequest } from '../service-requests/entities/service-request.ent
 import { SlotsModule } from '../slots/slots.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Booking, Worker, Service, User, ServiceRequest]), SlotsModule],
-    controllers: [BookingsController],
-    providers: [BookingsService],
-    exports: [BookingsService],
+  imports: [
+    TypeOrmModule.forFeature([Booking, Worker, Service, User, ServiceRequest]),
+    SlotsModule,
+  ],
+  controllers: [BookingsController],
+  providers: [BookingsService],
+  exports: [BookingsService],
 })
-export class BookingsModule { }
+export class BookingsModule {}

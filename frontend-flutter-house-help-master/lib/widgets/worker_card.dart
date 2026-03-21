@@ -33,7 +33,7 @@ class WorkerCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelectable
                 ? theme.colorScheme.surface
-                : theme.colorScheme.surface.withOpacity(0.6),
+                : theme.colorScheme.surface.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16),
             boxShadow: isSelectable
                 ? [

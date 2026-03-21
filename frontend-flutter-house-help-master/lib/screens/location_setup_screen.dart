@@ -95,10 +95,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
 
         // Check service availability
         if (locationProvider.currentLocationData != null) {
-          await locationProvider.checkServiceAvailability(
-            locationProvider.currentLocationData!.latitude ?? 0.0,
-            locationProvider.currentLocationData!.longitude ?? 0.0,
-          );
+          await locationProvider.checkServiceAvailability();
         }
 
         debugPrint(

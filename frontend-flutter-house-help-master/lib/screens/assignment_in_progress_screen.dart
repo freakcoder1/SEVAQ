@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/worker.dart';
 import '../models/service.dart';
+import 'package:flutter_house_help/models/location.dart';
 import '../providers/auth_provider.dart';
+import '../providers/location_provider.dart';
 import '../services/api_service.dart';
 import 'assignment_confirmed_screen.dart';
 import 'assignment_delayed_screen.dart';
@@ -295,10 +297,21 @@ class _AssignmentInProgressScreenState
                     _checkAssignmentStatus();
                   },
                   onManualSelection: () {
+                    final userId = _authProvider.user?.id;
+                    final locationProvider = Provider.of<LocationProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final initialLocation =
+                        locationProvider.currentLocationData;
+
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ServiceClarificationScreen(),
+                        builder: (_) => ServiceClarificationScreen(
+                          userId: userId,
+                          initialLocation: initialLocation,
+                        ),
                       ),
                     );
                   },

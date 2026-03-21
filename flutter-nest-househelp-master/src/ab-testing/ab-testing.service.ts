@@ -30,7 +30,7 @@ export enum AssignmentStrategy {
   HIGHEST_RATED_FIRST = 'highest_rated_first',
   BALANCED_LOAD = 'balanced_load',
   RANDOM = 'random',
-  CUSTOM_ALGORITHM = 'custom_algorithm'
+  CUSTOM_ALGORITHM = 'custom_algorithm',
 }
 
 export interface ExperimentResult {
@@ -54,7 +54,7 @@ export class AbTestingService {
     @InjectRepository(Worker)
     private workerRepository: Repository<Worker>,
     @InjectRepository(Booking)
-    private bookingRepository: Repository<Booking>
+    private bookingRepository: Repository<Booking>,
   ) {
     this.initializeExperiments();
   }
@@ -76,33 +76,41 @@ export class AbTestingService {
           name: 'Nearest First',
           assignmentStrategy: AssignmentStrategy.NEAREST_FIRST,
           trafficPercentage: 25,
-          metadata: { description: 'Assign to nearest available worker' }
+          metadata: { description: 'Assign to nearest available worker' },
         },
         {
           id: 'highest-rated',
           name: 'Highest Rated First',
           assignmentStrategy: AssignmentStrategy.HIGHEST_RATED_FIRST,
           trafficPercentage: 25,
-          metadata: { description: 'Assign to highest rated available worker' }
-        }
-      ]
+          metadata: { description: 'Assign to highest rated available worker' },
+        },
+      ],
     };
 
     this.experiments.set(defaultExperiment.id, defaultExperiment);
   }
 
-  async getAssignmentStrategy(booking: Booking, userId: string): Promise<AssignmentStrategy> {
+  async getAssignmentStrategy(
+    booking: Booking,
+    userId: string,
+  ): Promise<AssignmentStrategy> {
     const experiment = this.getActiveExperiment('assignment-strategy-test');
-    
-    if (!experiment || !this.shouldIncludeInExperiment(userId, experiment.trafficAllocation)) {
+
+    if (
+      !experiment ||
+      !this.shouldIncludeInExperiment(userId, experiment.trafficAllocation)
+    ) {
       return AssignmentStrategy.BALANCED_LOAD; // Default strategy
     }
 
     const variantId = this.getVariantForUser(userId, experiment);
-    const variant = experiment.variants.find(v => v.id === variantId);
-    
+    const variant = experiment.variants.find((v) => v.id === variantId);
+
     if (variant) {
-      this.logger.log(`User ${userId} assigned to variant ${variant.name} with strategy ${variant.assignmentStrategy}`);
+      this.logger.log(
+        `User ${userId} assigned to variant ${variant.name} with strategy ${variant.assignmentStrategy}`,
+      );
       return variant.assignmentStrategy;
     }
 
@@ -112,28 +120,33 @@ export class AbTestingService {
   private getActiveExperiment(experimentId: string): Experiment | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment) return null;
-    
+
     const now = new Date();
-    if (experiment.status === 'running' && 
-        now >= experiment.startDate && 
-        now <= experiment.endDate) {
+    if (
+      experiment.status === 'running' &&
+      now >= experiment.startDate &&
+      now <= experiment.endDate
+    ) {
       return experiment;
     }
-    
+
     return null;
   }
 
-  private shouldIncludeInExperiment(userId: string, trafficAllocation: number): boolean {
+  private shouldIncludeInExperiment(
+    userId: string,
+    trafficAllocation: number,
+  ): boolean {
     // Simple hash-based allocation
     const hash = this.hashUserId(userId);
-    return (hash % 100) < trafficAllocation;
+    return hash % 100 < trafficAllocation;
   }
 
   private hashUserId(userId: string): number {
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {
       const char = userId.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -148,7 +161,7 @@ export class AbTestingService {
     // Assign user to a variant based on traffic allocation
     const hash = this.hashUserId(userId);
     const randomValue = hash % 100;
-    
+
     let cumulativePercentage = 0;
     for (const variant of experiment.variants) {
       cumulativePercentage += variant.trafficPercentage;
@@ -165,20 +178,28 @@ export class AbTestingService {
   }
 
   async recordExperimentResult(
-    experimentId: string, 
-    variantId: string, 
-    bookingId: string, 
+    experimentId: string,
+    variantId: string,
+    bookingId: string,
     success: boolean,
-    assignmentTime: number
+    assignmentTime: number,
   ): Promise<void> {
     const experiment = this.experiments.get(experimentId);
     if (!experiment) return;
 
     // Store experiment result in database or analytics system
-    this.logger.log(`Experiment ${experimentId}: Variant ${variantId}, Booking ${bookingId}, Success: ${success}, Time: ${assignmentTime}`);
-    
+    this.logger.log(
+      `Experiment ${experimentId}: Variant ${variantId}, Booking ${bookingId}, Success: ${success}, Time: ${assignmentTime}`,
+    );
+
     // Could integrate with analytics database here
-    await this.storeExperimentResult(experimentId, variantId, bookingId, success, assignmentTime);
+    await this.storeExperimentResult(
+      experimentId,
+      variantId,
+      bookingId,
+      success,
+      assignmentTime,
+    );
   }
 
   private async storeExperimentResult(
@@ -186,21 +207,26 @@ export class AbTestingService {
     variantId: string,
     bookingId: string,
     success: boolean,
-    assignmentTime: number
+    assignmentTime: number,
   ): Promise<void> {
     // Implementation would store results in a dedicated analytics table
     // For now, just logging
   }
 
-  async getExperimentResults(experimentId: string): Promise<ExperimentResult[]> {
+  async getExperimentResults(
+    experimentId: string,
+  ): Promise<ExperimentResult[]> {
     const experiment = this.experiments.get(experimentId);
     if (!experiment) return [];
 
     // Calculate results for each variant
     const results: ExperimentResult[] = [];
-    
+
     for (const variant of experiment.variants) {
-      const result = await this.calculateVariantResult(experimentId, variant.id);
+      const result = await this.calculateVariantResult(
+        experimentId,
+        variant.id,
+      );
       results.push(result);
     }
 
@@ -213,7 +239,10 @@ export class AbTestingService {
     return results;
   }
 
-  private async calculateVariantResult(experimentId: string, variantId: string): Promise<ExperimentResult> {
+  private async calculateVariantResult(
+    experimentId: string,
+    variantId: string,
+  ): Promise<ExperimentResult> {
     // Query database for assignments related to this variant
     // This would require storing experiment assignment metadata
     const sampleSize = Math.floor(Math.random() * 100) + 50; // Mock data
@@ -226,18 +255,21 @@ export class AbTestingService {
       metricValue: successRate,
       sampleSize,
       confidence,
-      isWinner: false
+      isWinner: false,
     };
   }
 
-  private determineWinner(results: ExperimentResult[], metric: string): ExperimentResult | null {
+  private determineWinner(
+    results: ExperimentResult[],
+    metric: string,
+  ): ExperimentResult | null {
     if (results.length === 0) return null;
 
     // Sort by metric value (higher is better for success rate)
     results.sort((a, b) => b.metricValue - a.metricValue);
-    
+
     const winner = results[0];
-    
+
     // Check if winner has sufficient confidence
     if (winner.confidence > 0.95) {
       winner.isWinner = true;
@@ -250,15 +282,18 @@ export class AbTestingService {
   createExperiment(experiment: Omit<Experiment, 'id'>): Experiment {
     const newExperiment: Experiment = {
       ...experiment,
-      id: this.generateId()
+      id: this.generateId(),
     };
-    
+
     this.experiments.set(newExperiment.id, newExperiment);
     this.logger.log(`Created experiment: ${newExperiment.name}`);
     return newExperiment;
   }
 
-  updateExperiment(experimentId: string, updates: Partial<Experiment>): Experiment | null {
+  updateExperiment(
+    experimentId: string,
+    updates: Partial<Experiment>,
+  ): Experiment | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment) return null;
 

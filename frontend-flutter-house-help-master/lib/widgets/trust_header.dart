@@ -80,9 +80,11 @@ class TrustHeader extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: systemStatus.statusColor.withOpacity(0.1),
+        color: systemStatus.statusColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: systemStatus.statusColor.withOpacity(0.3)),
+        border: Border.all(
+          color: systemStatus.statusColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
@@ -108,7 +110,7 @@ class TrustHeader extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: systemStatus.statusColor.withOpacity(0.3),
+                  color: systemStatus.statusColor.withValues(alpha: 0.3),
                 ),
               ),
               child: Text(

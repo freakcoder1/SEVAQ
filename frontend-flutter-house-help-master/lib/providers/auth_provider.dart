@@ -38,8 +38,31 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  // Get user ID - prefer publicId (UUID) for modern APIs, fall back to id for legacy
+  dynamic get userId {
+    // Prefer publicId (UUID) for subscription and modern API operations
+    if (_currentUser?.publicId != null && _currentUser!.publicId.isNotEmpty) {
+      return _currentUser!.publicId;
+    }
+    // Fall back to cached userId from SharedPreferences
+    if (_cachedUserId != null) {
+      return _cachedUserId;
+    }
+    // Last resort: use id if available (legacy support)
+    if (_currentUser?.id != null && _currentUser!.id != 0) {
+      return _currentUser!.id;
+    }
+    return null;
+  }
+
+  // Also expose cachedUserId for direct access if needed
+  static String? get cachedUserId => _cachedUserId;
+
   // Track if we've verified auth state at least once
   static bool _hasVerifiedAuth = false;
+
+  // PRODUCTION FIX: Mutex lock to prevent race conditions during auth operations
+  static bool _isAuthOperationInProgress = false;
 
   AuthProvider() {
     debugPrint('AuthProvider: Constructor called');
@@ -48,6 +71,28 @@ class AuthProvider with ChangeNotifier {
     _restoreAuthStateSync();
     // Then asynchronously refresh
     _initializeAuth();
+  }
+
+  /// PRODUCTION FIX: Check if an auth operation is already in progress
+  /// Prevents race conditions when multiple auth-related operations are triggered
+  bool get _canPerformAuthOperation {
+    if (_isAuthOperationInProgress) {
+      debugPrint('AuthProvider: Auth operation already in progress, skipping');
+      return false;
+    }
+    return true;
+  }
+
+  /// PRODUCTION FIX: Acquire auth operation lock
+  void _acquireAuthLock() {
+    _isAuthOperationInProgress = true;
+    debugPrint('AuthProvider: Auth lock acquired');
+  }
+
+  /// PRODUCTION FIX: Release auth operation lock
+  void _releaseAuthLock() {
+    _isAuthOperationInProgress = false;
+    debugPrint('AuthProvider: Auth lock released');
   }
 
   /// Synchronously restore auth state from SharedPreferences
@@ -134,18 +179,31 @@ class AuthProvider with ChangeNotifier {
   /// IMPORTANT: Returns false ONLY when we're sure user is NOT authenticated
   /// During loading phase, returns true to prevent navigation loop
   bool get isAuthenticated {
+    debugPrint('AuthProvider: isAuthenticated called');
+    debugPrint('AuthProvider: _cachedToken is null: ${_cachedToken == null}');
+    debugPrint('AuthProvider: _cachedUser is null: ${_cachedUser == null}');
+    debugPrint('AuthProvider: _currentUser is null: ${_currentUser == null}');
+    debugPrint('AuthProvider: _cacheLoaded: $_cacheLoaded');
+
     // If we have cached token and user, user is authenticated
     if (_cachedToken != null && _cachedUser != null) {
+      debugPrint('AuthProvider: isAuthenticated - returning TRUE (cached)');
       return true;
     }
 
     // If we have currentUser from a previous session, authenticated
     if (_currentUser != null) {
+      debugPrint(
+        'AuthProvider: isAuthenticated - returning TRUE (currentUser)',
+      );
       return true;
     }
 
     // If we have token but no cached user, try to refresh from API
     if (_cachedToken != null && _cachedUser == null) {
+      debugPrint(
+        'AuthProvider: isAuthenticated - have token but no user, refreshing...',
+      );
       _refreshUserFromApi();
       // Return false during refresh to prevent premature navigation
       // AuthWrapper will re-check after refresh completes
@@ -220,19 +278,34 @@ class AuthProvider with ChangeNotifier {
     String password, {
     BuildContext? context,
   }) async {
+    // PRODUCTION FIX: Prevent race conditions - skip if auth operation in progress
+    if (!_canPerformAuthOperation) {
+      debugPrint('AuthProvider: Login skipped - operation already in progress');
+      return false;
+    }
+
+    _acquireAuthLock();
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      debugPrint('AuthProvider: login() - Starting login attempt for $email');
       final response = await _apiService.post('auth/login', {
         'email': email,
         'password': password,
       });
 
+      debugPrint(
+        'AuthProvider: login() - Response received: ${response != null}',
+      );
+
       if (response != null) {
         final token = response['access_token'];
         final user = response['user'];
+
+        debugPrint('AuthProvider: login() - token is null: ${token == null}');
+        debugPrint('AuthProvider: login() - user is null: ${user == null}');
 
         if (token != null && user != null) {
           debugPrint('AuthProvider: Storing token and user data');
@@ -240,27 +313,64 @@ class AuthProvider with ChangeNotifier {
           debugPrint(
             'AuthProvider: Token starts with: ${token.substring(0, math.min(20, token.length))}...',
           );
-          // First parse the user data
-          _currentUser = User.fromJson(user);
+          debugPrint('AuthProvider: User data received: $user');
 
+          // First parse the user data
+          try {
+            _currentUser = User.fromJson(user);
+            debugPrint(
+              'AuthProvider: User parsed successfully: ${_currentUser?.email}',
+            );
+          } catch (e, stackTrace) {
+            debugPrint('AuthProvider: ERROR parsing user: $e');
+            debugPrint('AuthProvider: Stack trace: $stackTrace');
+            _isLoading = false;
+            _releaseAuthLock();
+            notifyListeners();
+            return false;
+          }
+
+          // IMPORTANT: Create fresh user from response BEFORE using it
+          // This ensures publicId is available for userId getter
+          final freshUser = User.fromJson(user);
+
+          // Store in secure storage
+          debugPrint('AuthProvider: Writing to secure storage...');
           await _storage.write(key: 'jwt_token', value: token);
-          await _storage.write(key: 'user_id', value: user['id'].toString());
+          await _storage.write(
+            key: 'user_id',
+            value: user['publicId'] ?? user['id'].toString(),
+          );
+          debugPrint('AuthProvider: Secure storage write complete');
 
           // Also save to SharedPreferences for synchronous restore on app resume
+          debugPrint('AuthProvider: Writing to SharedPreferences...');
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString(_TOKEN_KEY, token);
-          await prefs.setString(_USER_ID_KEY, user['id'].toString());
-          await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
+          await prefs.setString(
+            _USER_ID_KEY,
+            user['publicId'] ?? user['id'].toString(),
+          );
+          // Cache the FRESH user with publicId, not the old cached one
+          await prefs.setString(_CACHED_USER_KEY, freshUser.toJsonString());
+          debugPrint('AuthProvider: SharedPreferences write complete');
 
           // Update static cache immediately
+          debugPrint('AuthProvider: Updating static cache...');
           _cachedToken = token;
-          _cachedUserId = user['id'].toString();
-          _cachedUser = _currentUser;
+          _cachedUserId = user['publicId'] ?? user['id'].toString();
+          _cachedUser = freshUser;
+          _currentUser = freshUser;
           _cacheLoaded = true;
           _isLoading = false;
 
+          debugPrint(
+            'AuthProvider: Static cache updated - _cachedToken is null: ${_cachedToken == null}, _cachedUser is null: ${_cachedUser == null}',
+          );
+
           // Fetch bookings after login
           if (context != null) {
+            debugPrint('AuthProvider: Fetching bookings...');
             final bookingProvider = Provider.of<BookingProvider>(
               context,
               listen: false,
@@ -268,19 +378,28 @@ class AuthProvider with ChangeNotifier {
             await bookingProvider.fetchBookings();
           }
 
+          debugPrint('AuthProvider: Notifying listeners and returning true');
           notifyListeners();
+          _releaseAuthLock();
+          debugPrint('AuthProvider: login() - About to return true');
           return true;
+        } else {
+          debugPrint('AuthProvider: ERROR - token or user is null!');
         }
+      } else {
+        debugPrint('AuthProvider: ERROR - response is null!');
       }
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
+      _releaseAuthLock();
       notifyListeners();
       return false;
     }
 
     _isLoading = false;
     _errorMessage = 'Invalid credentials';
+    _releaseAuthLock();
     notifyListeners();
     return false;
   }
@@ -291,6 +410,15 @@ class AuthProvider with ChangeNotifier {
     String firstName,
     String lastName,
   ) async {
+    // PRODUCTION FIX: Prevent race conditions - skip if auth operation in progress
+    if (!_canPerformAuthOperation) {
+      debugPrint(
+        'AuthProvider: Register skipped - operation already in progress',
+      );
+      return false;
+    }
+
+    _acquireAuthLock();
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -315,17 +443,21 @@ class AuthProvider with ChangeNotifier {
           // Also save to SharedPreferences for synchronous restore on app resume
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString(_TOKEN_KEY, token);
-          await prefs.setString(_USER_ID_KEY, user['id'].toString());
+          await prefs.setString(
+            _USER_ID_KEY,
+            user['publicId'] ?? user['id'].toString(),
+          );
           _currentUser = User.fromJson(user);
           await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
 
           // Update static cache
           _cachedToken = token;
-          _cachedUserId = user['id'].toString();
+          _cachedUserId = user['publicId'] ?? user['id'].toString();
           _cachedUser = _currentUser;
           _cacheLoaded = true;
 
           _isLoading = false;
+          _releaseAuthLock();
           notifyListeners();
           return true;
         }
@@ -333,12 +465,14 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
+      _releaseAuthLock();
       notifyListeners();
       return false;
     }
 
     _isLoading = false;
     _errorMessage = 'Registration failed';
+    _releaseAuthLock();
     notifyListeners();
     return false;
   }
@@ -426,6 +560,85 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('API Health Check Failed: $e');
     }
+  }
+
+  /// Login with Firebase phone authentication
+  ///
+  /// [phone] - Phone number in international format
+  /// [idToken] - Firebase ID token
+  ///
+  /// Returns true if login successful
+  Future<bool> loginWithFirebase({
+    required String phone,
+    required String idToken,
+  }) async {
+    // PRODUCTION FIX: Prevent race conditions - skip if auth operation in progress
+    if (!_canPerformAuthOperation) {
+      debugPrint(
+        'AuthProvider: Firebase login skipped - operation already in progress',
+      );
+      return false;
+    }
+
+    _acquireAuthLock();
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.post('auth/otp/verify-login', {
+        'phone': phone,
+        'idToken': idToken,
+      });
+
+      if (response != null) {
+        final token = response['access_token'];
+        final user = response['user'];
+
+        if (token != null && user != null) {
+          debugPrint('AuthProvider: Firebase login successful');
+          debugPrint('AuthProvider: Token length: ${token.length}');
+
+          _currentUser = User.fromJson(user);
+
+          await _storage.write(key: 'jwt_token', value: token);
+          await _storage.write(
+            key: 'user_id',
+            value: user['publicId'] ?? user['id'].toString(),
+          );
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_TOKEN_KEY, token);
+          await prefs.setString(
+            _USER_ID_KEY,
+            user['publicId'] ?? user['id'].toString(),
+          );
+          await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
+
+          _cachedToken = token;
+          _cachedUserId = user['publicId'] ?? user['id'].toString();
+          _cachedUser = _currentUser;
+          _cacheLoaded = true;
+          _isLoading = false;
+
+          _releaseAuthLock();
+          notifyListeners();
+          return true;
+        }
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      _releaseAuthLock();
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = false;
+    _errorMessage = 'Firebase login failed';
+    _releaseAuthLock();
+    notifyListeners();
+    return false;
   }
 
   /// Enhanced authentication check that considers initialization state

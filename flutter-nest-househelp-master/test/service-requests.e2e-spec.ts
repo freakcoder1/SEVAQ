@@ -26,7 +26,7 @@ describe('ServiceRequests (e2e)', () => {
       serviceId: '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b', // Valid UUID from service mapper
       date: '2024-01-15T10:00:00.000Z', // ISO string
       timeWindow: 'morning',
-      priceSnapshot: 500.00,
+      priceSnapshot: 500.0,
     };
 
     const response = await request(app.getHttpServer())
@@ -47,17 +47,20 @@ describe('ServiceRequests (e2e)', () => {
         serviceId: '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b', // Valid UUID from service mapper
         date: '2024-01-15T10:00:00.000Z', // ISO string
         timeWindow: 'morning',
-        priceSnapshot: 500.00,
+        priceSnapshot: 500.0,
       });
 
     expect(createResponse.status).toBe(201);
     const requestId = createResponse.body.requestId;
 
-    const response = await request(app.getHttpServer())
-      .get(`/service-requests/${requestId}`);
+    const response = await request(app.getHttpServer()).get(
+      `/service-requests/${requestId}`,
+    );
 
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('assignmentStatus');
-    expect(['REQUESTED', 'ASSIGNED', 'FAILED_TO_ASSIGN']).toContain(response.body.assignmentStatus);
+    expect(['REQUESTED', 'ASSIGNED', 'FAILED_TO_ASSIGN']).toContain(
+      response.body.assignmentStatus,
+    );
   });
 });

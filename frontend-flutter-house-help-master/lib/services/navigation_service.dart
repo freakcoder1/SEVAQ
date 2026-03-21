@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
+import 'package:flutter_house_help/models/location.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/assignment_provider.dart';
+import '../providers/location_provider.dart';
 import '../screens/service_clarification_screen.dart';
 import '../screens/assignment_in_progress_screen.dart';
 import '../screens/professional_assigned_screen.dart';
@@ -21,9 +23,16 @@ class NavigationService {
   Future<void> navigateToServiceClarification({
     required BuildContext context,
     Service? service,
+    dynamic userId,
+    Location? initialLocation,
   }) async {
     await navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (context) => ServiceClarificationScreen()),
+      MaterialPageRoute(
+        builder: (context) => ServiceClarificationScreen(
+          userId: userId,
+          initialLocation: initialLocation,
+        ),
+      ),
     );
   }
 

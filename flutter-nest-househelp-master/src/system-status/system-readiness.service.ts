@@ -17,15 +17,15 @@ export class SystemReadinessService {
   async checkSystemReadiness(): Promise<SystemReadinessDto> {
     // Get worker statistics
     const workerCount = await this.workerRepository.count({
-      where: { isActive: true }
+      where: { isActive: true },
     });
 
     const workersWithLocation = await this.workerRepository.count({
-      where: { 
+      where: {
         isActive: true,
         latitude: Not(IsNull()),
-        longitude: Not(IsNull())
-      }
+        longitude: Not(IsNull()),
+      },
     });
 
     // Get service statistics
@@ -36,7 +36,7 @@ export class SystemReadinessService {
       where: {
         isActive: true,
       },
-      relations: ['services']
+      relations: ['services'],
     });
 
     // Determine readiness status

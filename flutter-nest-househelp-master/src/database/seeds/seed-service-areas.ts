@@ -15,8 +15,8 @@ export class SeedServiceAreas {
     // Check if 201306 area already exists
     const existingArea = await serviceAreaRepository.findOne({
       where: {
-        name: '201306 Area'
-      }
+        name: '201306 Area',
+      },
     });
 
     if (existingArea) {
@@ -25,28 +25,34 @@ export class SeedServiceAreas {
       return;
     }
 
-    this.logger.log('Creating 201306 service area with approximate coordinates for Noida/Greater Noida region');
+    this.logger.log(
+      'Creating 201306 service area with approximate coordinates for Noida/Greater Noida region',
+    );
 
     // Create 201306 service area
     // Coordinates for 201306 postal code area (Noida/Greater Noida region, India)
     const serviceArea201306 = serviceAreaRepository.create({
       name: '201306 Area',
       pincode: '201306',
-      minLat: 28.6100,  // Approximate latitude for 201306
-      maxLat: 28.6300,
-      minLng: 77.3600,  // Approximate longitude for 201306
-      maxLng: 77.3800,
+      minLat: 28.61, // Approximate latitude for 201306
+      maxLat: 28.63,
+      minLng: 77.36, // Approximate longitude for 201306
+      maxLng: 77.38,
       isActive: true,
       coverageMap: {
         type: 'MultiPolygon',
-        coordinates: [[[
-          [77.3600, 28.6100],
-          [77.3800, 28.6100],
-          [77.3800, 28.6300],
-          [77.3600, 28.6300],
-          [77.3600, 28.6100]
-        ]]]
-      }
+        coordinates: [
+          [
+            [
+              [77.36, 28.61],
+              [77.38, 28.61],
+              [77.38, 28.63],
+              [77.36, 28.63],
+              [77.36, 28.61],
+            ],
+          ],
+        ],
+      },
     });
 
     await serviceAreaRepository.save(serviceArea201306);
@@ -56,28 +62,28 @@ export class SeedServiceAreas {
     const microZones = [
       {
         name: '201306 - Sector 1',
-        centerLat: 28.6150,
-        centerLng: 77.3650,
+        centerLat: 28.615,
+        centerLng: 77.365,
         radiusKm: 1.0,
         zoneType: 'static',
-        isActive: true
+        isActive: true,
       },
       {
         name: '201306 - Sector 2',
-        centerLat: 28.6200,
-        centerLng: 77.3700,
+        centerLat: 28.62,
+        centerLng: 77.37,
         radiusKm: 1.0,
         zoneType: 'static',
-        isActive: true
+        isActive: true,
       },
       {
         name: '201306 - Sector 3',
-        centerLat: 28.6250,
-        centerLng: 77.3750,
+        centerLat: 28.625,
+        centerLng: 77.375,
         radiusKm: 1.0,
         zoneType: 'static',
-        isActive: true
-      }
+        isActive: true,
+      },
     ];
 
     for (const zoneData of microZones) {
@@ -86,39 +92,54 @@ export class SeedServiceAreas {
         serviceArea: serviceArea201306,
         boundaries: {
           type: 'Polygon',
-          coordinates: [[
-            [zoneData.centerLng - 0.005, zoneData.centerLat - 0.005],
-            [zoneData.centerLng + 0.005, zoneData.centerLat - 0.005],
-            [zoneData.centerLng + 0.005, zoneData.centerLat + 0.005],
-            [zoneData.centerLng - 0.005, zoneData.centerLat + 0.005],
-            [zoneData.centerLng - 0.005, zoneData.centerLat - 0.005]
-          ]]
-        }
+          coordinates: [
+            [
+              [zoneData.centerLng - 0.005, zoneData.centerLat - 0.005],
+              [zoneData.centerLng + 0.005, zoneData.centerLat - 0.005],
+              [zoneData.centerLng + 0.005, zoneData.centerLat + 0.005],
+              [zoneData.centerLng - 0.005, zoneData.centerLat + 0.005],
+              [zoneData.centerLng - 0.005, zoneData.centerLat - 0.005],
+            ],
+          ],
+        },
       });
 
       await microZoneRepository.save(microZone);
-      this.logger.log(`Created micro-zone: ${zoneData.name} at (${zoneData.centerLat}, ${zoneData.centerLng})`);
+      this.logger.log(
+        `Created micro-zone: ${zoneData.name} at (${zoneData.centerLat}, ${zoneData.centerLng})`,
+      );
     }
 
     this.logger.log('Service area seeding completed for 201306');
     await this.verifySeedData(serviceAreaRepository, microZoneRepository);
   }
 
-  private async verifySeedData(serviceAreaRepository: Repository<ServiceArea>, microZoneRepository: Repository<MicroZone>): Promise<void> {
+  private async verifySeedData(
+    serviceAreaRepository: Repository<ServiceArea>,
+    microZoneRepository: Repository<MicroZone>,
+  ): Promise<void> {
     this.logger.log('Verifying seeded data...');
 
-    const serviceAreas = await serviceAreaRepository.find({ where: { isActive: true } });
+    const serviceAreas = await serviceAreaRepository.find({
+      where: { isActive: true },
+    });
     this.logger.log(`Found ${serviceAreas.length} active service areas`);
-    
-    const microZones = await microZoneRepository.find({ where: { isActive: true } });
+
+    const microZones = await microZoneRepository.find({
+      where: { isActive: true },
+    });
     this.logger.log(`Found ${microZones.length} active micro-zones`);
 
     for (const area of serviceAreas) {
-      this.logger.debug(`Service Area: ${area.name} - bounds: [${area.minLat}, ${area.maxLat}] x [${area.minLng}, ${area.maxLng}]`);
+      this.logger.debug(
+        `Service Area: ${area.name} - bounds: [${area.minLat}, ${area.maxLat}] x [${area.minLng}, ${area.maxLng}]`,
+      );
     }
 
     for (const zone of microZones) {
-      this.logger.debug(`Micro Zone: ${zone.name} - center: (${zone.centerLat}, ${zone.centerLng}), radius: ${zone.radiusKm}km`);
+      this.logger.debug(
+        `Micro Zone: ${zone.name} - center: (${zone.centerLat}, ${zone.centerLng}), radius: ${zone.radiusKm}km`,
+      );
     }
 
     this.logger.log('Seed data verification completed');

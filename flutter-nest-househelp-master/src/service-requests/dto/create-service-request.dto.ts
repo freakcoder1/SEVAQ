@@ -1,4 +1,11 @@
-import { IsString, IsDateString, IsEnum, IsNumber, IsOptional, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { LocationDto } from './location.dto';
 

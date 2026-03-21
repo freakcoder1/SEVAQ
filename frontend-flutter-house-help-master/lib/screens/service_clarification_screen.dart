@@ -1,25 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/service_option.dart';
-import '../models/worker.dart';
-import '../models/user.dart';
-import '../models/service.dart';
-import '../providers/worker_provider.dart';
-import '../services/api_service.dart';
-import '../utils/service_mapper.dart';
-import '../widgets/service_option_card.dart';
-import '../widgets/contextual_followup.dart';
-import '../widgets/reassurance_strip.dart';
-import 'service_engagement_type_screen.dart';
-import 'schedule_pricing_screen.dart';
-import 'assignment_in_progress_screen.dart';
-import 'availability_adjustment_screen.dart';
+import 'package:flutter_house_help/models/service_option.dart';
+import 'package:flutter_house_help/models/user.dart';
+import 'package:flutter_house_help/models/service.dart';
+import 'package:flutter_house_help/models/location.dart';
+import 'package:flutter_house_help/providers/auth_provider.dart';
+import 'package:flutter_house_help/providers/location_provider.dart';
+import 'package:flutter_house_help/services/api_service.dart';
+import 'package:flutter_house_help/utils/service_mapper.dart';
+import 'package:flutter_house_help/widgets/service_option_card.dart';
+import 'package:flutter_house_help/widgets/contextual_followup.dart';
+import 'package:flutter_house_help/widgets/reassurance_strip.dart';
+import 'package:flutter_house_help/screens/service_engagement_type_screen.dart';
+import 'package:flutter_house_help/screens/schedule_pricing_screen.dart';
+import 'package:flutter_house_help/screens/assignment_in_progress_screen.dart';
+import 'package:flutter_house_help/screens/availability_adjustment_screen.dart';
 
 /// Service Clarification Screen
 /// The most important screen in the product - bridges trust to execution
 /// Purpose: Confirm what kind of help the user needs, clarify scope, transition to execution
 class ServiceClarificationScreen extends StatefulWidget {
-  const ServiceClarificationScreen({Key? key}) : super(key: key);
+  final dynamic userId; // Accept both int and String (UUID)
+  final Location? initialLocation; // Pass location from parent
+
+  const ServiceClarificationScreen({
+    Key? key,
+    required this.userId,
+    this.initialLocation,
+  }) : super(key: key);
 
   @override
   State<ServiceClarificationScreen> createState() {
@@ -32,15 +40,13 @@ class _ServiceClarificationScreenState
     extends State<ServiceClarificationScreen> {
   ServiceOption? _selectedService;
   String? _followupResponse;
-  WorkerProvider? _workerProvider;
   final ApiService _apiService = ApiService();
   // Worker selection removed - Sevaq assigns professionals automatically
 
   @override
   void initState() {
     super.initState();
-    // Initialize worker provider
-    _workerProvider = Provider.of<WorkerProvider>(context, listen: false);
+    // No worker provider needed - Sevaq assigns automatically
   }
 
   /// Handle service selection
@@ -81,11 +87,39 @@ class _ServiceClarificationScreenState
   /// Navigate to service engagement type selection screen
   void _navigateToEngagementTypeSelection() {
     if (_selectedService != null) {
+      // Use userId and initialLocation from widget constructor (passed from parent)
+      final userId = widget.userId;
+      final currentLocation = widget.initialLocation;
+
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User not logged in'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // FIXED: Wrap navigation with MultiProvider to ensure AuthProvider is available
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ServiceEngagementTypeScreen(
-            selectedServiceOption: _selectedService!,
+          builder: (ctx) => MultiProvider(
+            providers: [
+              // Pass through the existing providers from the widget tree
+              Provider<AuthProvider>.value(
+                value: Provider.of<AuthProvider>(context, listen: false),
+              ),
+              Provider<LocationProvider>.value(
+                value: Provider.of<LocationProvider>(context, listen: false),
+              ),
+            ],
+            child: ServiceEngagementTypeScreen(
+              selectedServiceOption: _selectedService!,
+              userId: userId,
+              initialLocation: currentLocation,
+            ),
           ),
         ),
       );

@@ -26,7 +26,7 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => LocationProvider(prefs: prefs)),
+          ChangeNotifierProvider(create: (_) => LocationProvider()),
         ],
         child: MaterialApp(
           home: const SplashScreen(),

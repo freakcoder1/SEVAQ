@@ -1,46 +1,55 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpException, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpException,
+  HttpStatus,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { Subscription, Frequency, SubscriptionStatus } from './entities/subscription.entity';
+import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
+import {
+  Subscription,
+  PreferredTimeWindow,
+  SubscriptionStatus,
+} from './entities/subscription.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard)
 export class SubscriptionsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly scheduler: SubscriptionAssignmentScheduler,
+  ) {}
 
   @Post()
   async createSubscription(
-    @Body() body: {
+    @Body()
+    body: {
       serviceProfileId: number;
-      frequency: Frequency;
-      timeWindowStart: string;
-      timeWindowEnd: string;
+      preferredTimeWindow: PreferredTimeWindow;
       startDate: string;
-      customDays?: number[];
+      location: { lat: number; lng: number; address?: string };
+      monthlyPriceSnapshot?: number;
     },
     @Request() req,
   ): Promise<Subscription> {
     try {
-      // Parse time strings like "08:00" to Date objects
-      const parseTime = (timeStr: string): Date => {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-        return date;
-      };
-
-      const timeWindowStart = parseTime(body.timeWindowStart);
-      const timeWindowEnd = parseTime(body.timeWindowEnd);
       const startDate = new Date(body.startDate);
 
       return this.subscriptionsService.createSubscription(
-        parseInt(req.user.userId),
+        req.user.userId,
         body.serviceProfileId,
-        body.frequency,
-        timeWindowStart,
-        timeWindowEnd,
+        body.preferredTimeWindow,
         startDate,
-        body.customDays,
+        body.location,
+        body.monthlyPriceSnapshot ?? 0,
       );
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
@@ -48,13 +57,24 @@ export class SubscriptionsController {
   }
 
   @Get('user/:userId')
-  async getSubscriptionsByUserId(@Param('userId') userId: string): Promise<Subscription[]> {
-    return this.subscriptionsService.getSubscriptionsByUserId(parseInt(userId));
+  async getSubscriptionsByUserId(
+    @Param('userId') userId: string,
+  ): Promise<Subscription[]> {
+    // Handle both numeric ID and UUID (publicId)
+    const isNumeric = /^[0-9]+$/.test(userId);
+    if (isNumeric) {
+      return this.subscriptionsService.getSubscriptionsByUserId(userId);
+    } else {
+      // It's a UUID, use publicId
+      return this.subscriptionsService.getSubscriptionsByPublicId(userId);
+    }
   }
 
   @Get(':id')
   async getSubscriptionById(@Param('id') id: string): Promise<Subscription> {
-    const subscription = await this.subscriptionsService.getSubscriptionById(parseInt(id));
+    const subscription = await this.subscriptionsService.getSubscriptionById(
+      parseInt(id),
+    );
     if (!subscription) {
       throw new HttpException('Subscription not found', HttpStatus.NOT_FOUND);
     }
@@ -62,8 +82,11 @@ export class SubscriptionsController {
   }
 
   @Get('public/:publicId')
-  async getSubscriptionByPublicId(@Param('publicId') publicId: string): Promise<Subscription> {
-    const subscription = await this.subscriptionsService.getSubscriptionByPublicId(publicId);
+  async getSubscriptionByPublicId(
+    @Param('publicId') publicId: string,
+  ): Promise<Subscription> {
+    const subscription =
+      await this.subscriptionsService.getSubscriptionByPublicId(publicId);
     if (!subscription) {
       throw new HttpException('Subscription not found', HttpStatus.NOT_FOUND);
     }
@@ -103,7 +126,10 @@ export class SubscriptionsController {
     @Body() updates: Partial<Subscription>,
   ): Promise<Subscription> {
     try {
-      return this.subscriptionsService.updateSubscription(parseInt(id), updates);
+      return this.subscriptionsService.updateSubscription(
+        parseInt(id),
+        updates,
+      );
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
@@ -111,6 +137,21 @@ export class SubscriptionsController {
 
   @Get()
   async getAllSubscriptions(): Promise<Subscription[]> {
-    return this.subscriptionsService.getSubscriptionsByStatus(SubscriptionStatus.ACTIVE);
+    return this.subscriptionsService.getSubscriptionsByStatus(
+      SubscriptionStatus.ACTIVE,
+    );
+  }
+
+  @Post('admin/trigger-scheduler')
+  async triggerScheduler(): Promise<{ message: string }> {
+    try {
+      await this.scheduler.handleSubscriptionAssignments();
+      return { message: 'Scheduler triggered successfully' };
+    } catch (error) {
+      throw new HttpException(
+        `Scheduler trigger failed: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

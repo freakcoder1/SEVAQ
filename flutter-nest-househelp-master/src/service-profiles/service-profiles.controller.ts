@@ -1,10 +1,19 @@
-import { Controller, Get, Param, HttpException, HttpStatus, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  HttpException,
+  HttpStatus,
+  Query,
+} from '@nestjs/common';
 import { ServiceProfilesService } from './service-profiles.service';
 import { ServiceProfile, ServiceType } from './entities/service-profile.entity';
 
 @Controller('service-profiles')
 export class ServiceProfilesController {
-  constructor(private readonly serviceProfilesService: ServiceProfilesService) {}
+  constructor(
+    private readonly serviceProfilesService: ServiceProfilesService,
+  ) {}
 
   @Get()
   async getProfilesByServiceType(
@@ -14,17 +23,20 @@ export class ServiceProfilesController {
       let profiles: ServiceProfile[];
       if (serviceType) {
         const parsedType = serviceType.toUpperCase() as ServiceType;
-        profiles = await this.serviceProfilesService.getProfilesByServiceType(parsedType);
+        profiles =
+          await this.serviceProfilesService.getProfilesByServiceType(
+            parsedType,
+          );
       } else {
         profiles = await this.serviceProfilesService.getAllProfiles();
       }
-      
+
       // Convert monthlyPrice from Decimal to number for JSON serialization
-      const serializedProfiles = profiles.map(profile => ({
+      const serializedProfiles = profiles.map((profile) => ({
         ...profile,
         monthlyPrice: parseFloat(profile.monthlyPrice.toString()),
       }));
-      
+
       return {
         success: true,
         data: serializedProfiles,
@@ -35,8 +47,12 @@ export class ServiceProfilesController {
   }
 
   @Get(':id')
-  async getProfileById(@Param('id') id: string): Promise<{ success: boolean; data: any }> {
-    const profile = await this.serviceProfilesService.getProfileById(parseInt(id));
+  async getProfileById(
+    @Param('id') id: string,
+  ): Promise<{ success: boolean; data: any }> {
+    const profile = await this.serviceProfilesService.getProfileById(
+      parseInt(id),
+    );
     if (!profile) {
       throw new HttpException('Profile not found', HttpStatus.NOT_FOUND);
     }
@@ -50,8 +66,11 @@ export class ServiceProfilesController {
   }
 
   @Get('public/:publicId')
-  async getProfileByPublicId(@Param('publicId') publicId: string): Promise<{ success: boolean; data: any }> {
-    const profile = await this.serviceProfilesService.getProfileByPublicId(publicId);
+  async getProfileByPublicId(
+    @Param('publicId') publicId: string,
+  ): Promise<{ success: boolean; data: any }> {
+    const profile =
+      await this.serviceProfilesService.getProfileByPublicId(publicId);
     if (!profile) {
       throw new HttpException('Profile not found', HttpStatus.NOT_FOUND);
     }

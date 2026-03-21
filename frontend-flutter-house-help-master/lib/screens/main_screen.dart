@@ -56,47 +56,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  Widget _buildProviderErrorScreen(String errorMessage) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Error'), backgroundColor: Colors.red),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error, size: 64, color: Colors.red),
-            SizedBox(height: 16),
-            Text(
-              'Provider Error',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              errorMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                // Use pop() to return to AuthWrapper which will re-evaluate state
-                // and handle navigation appropriately based on auth/location status.
-                // Never push MainScreen directly - it bypasses AuthWrapper's provider scope
-                if (mounted) {
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: Text('Restart App', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   void initState() {
     super.initState();

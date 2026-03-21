@@ -119,29 +119,6 @@ class AssignmentFailedScreen extends StatelessWidget {
                       },
                     ),
 
-                    const SizedBox(height: 12),
-
-                    // Browse professionals
-                    _buildOption(
-                      context,
-                      icon: Icons.person_search,
-                      title: 'Browse professionals',
-                      subtitle: 'Find and select a professional manually',
-                      onTap: () {
-                        // Navigate to professional selection
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Professional browsing would open here',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
                     // Join waitlist
                     _buildOption(
                       context,

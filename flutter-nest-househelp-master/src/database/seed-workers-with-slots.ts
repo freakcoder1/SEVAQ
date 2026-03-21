@@ -44,8 +44,8 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
         { day: 4, startTime: '08:00', endTime: '18:00' }, // Thursday
         { day: 5, startTime: '08:00', endTime: '18:00' }, // Friday
         { day: 6, startTime: '09:00', endTime: '17:00' }, // Saturday
-        { day: 0, startTime: '10:00', endTime: '14:00' }  // Sunday
-      ]
+        { day: 0, startTime: '10:00', endTime: '14:00' }, // Sunday
+      ],
     },
     {
       firstName: 'Sunita',
@@ -74,8 +74,8 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
         { day: 4, startTime: '09:00', endTime: '19:00' }, // Thursday
         { day: 5, startTime: '09:00', endTime: '19:00' }, // Friday
         { day: 6, startTime: '10:00', endTime: '16:00' }, // Saturday
-        { day: 0, startTime: '11:00', endTime: '15:00' }  // Sunday
-      ]
+        { day: 0, startTime: '11:00', endTime: '15:00' }, // Sunday
+      ],
     },
     {
       firstName: 'Amit',
@@ -104,9 +104,9 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
         { day: 4, startTime: '07:00', endTime: '17:00' }, // Thursday
         { day: 5, startTime: '07:00', endTime: '17:00' }, // Friday
         { day: 6, startTime: '08:00', endTime: '14:00' }, // Saturday
-        { day: 0, startTime: '09:00', endTime: '13:00' }  // Sunday
-      ]
-    }
+        { day: 0, startTime: '09:00', endTime: '13:00' }, // Sunday
+      ],
+    },
   ];
 
   const userRepository = dataSource.getRepository(User);
@@ -134,7 +134,7 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
 
       // Create worker
       const worker = new Worker();
-      worker.userId = savedUser.id;
+      worker.userId = savedUser.id as any;
       worker.user = savedUser;
       worker.bio = workerData.bio;
       worker.rating = workerData.rating;
@@ -165,16 +165,25 @@ export async function seedWorkersWithSlots(dataSource: DataSource) {
       // Create time slots for the next 7 days
       await createWorkerSlots(dataSource, savedWorker, slotRepository);
 
-      console.log(`✅ Created worker: ${workerData.firstName} ${workerData.lastName}`);
+      console.log(
+        `✅ Created worker: ${workerData.firstName} ${workerData.lastName}`,
+      );
     } catch (error) {
-      console.error(`❌ Failed to create worker ${workerData.firstName} ${workerData.lastName}:`, error);
+      console.error(
+        `❌ Failed to create worker ${workerData.firstName} ${workerData.lastName}:`,
+        error,
+      );
     }
   }
 
   console.log('Workers seeding completed!');
 }
 
-async function createWorkerSlots(dataSource: DataSource, worker: Worker, slotRepository: any) {
+async function createWorkerSlots(
+  dataSource: DataSource,
+  worker: Worker,
+  slotRepository: any,
+) {
   const today = new Date();
 
   // Create slots for next 7 days
@@ -184,20 +193,42 @@ async function createWorkerSlots(dataSource: DataSource, worker: Worker, slotRep
 
     // Get worker's availability for this day
     const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const availability = worker.availabilitySchedule.find(avail => avail.day === dayOfWeek);
+    const availability = worker.availabilitySchedule.find(
+      (avail) => avail.day === dayOfWeek,
+    );
 
     // If no specific availability for this day, use default availability
     if (!availability) {
       // Use default availability for this day (9 AM to 6 PM UTC)
       const defaultStartTime = '09:00';
       const defaultEndTime = '18:00';
-      
+
       // Create slot with default availability
       const [startHour] = defaultStartTime.split(':').map(Number);
       const [endHour] = defaultEndTime.split(':').map(Number);
-      
-      const startTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), startHour, 0, 0, 0));
-      const endTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0, 0));
+
+      const startTime = new Date(
+        Date.UTC(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          currentDate.getDate(),
+          startHour,
+          0,
+          0,
+          0,
+        ),
+      );
+      const endTime = new Date(
+        Date.UTC(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          currentDate.getDate(),
+          endHour,
+          0,
+          0,
+          0,
+        ),
+      );
 
       const slot = new Slot();
       slot.date = currentDate;
@@ -217,11 +248,44 @@ async function createWorkerSlots(dataSource: DataSource, worker: Worker, slotRep
 
     // Create 3-hour time slots from start to end time
     for (let hour = startHour; hour < endHour; hour += 3) {
-      const startTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour, 0, 0, 0));
-      const endTime = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), hour + 3, 0, 0, 0));
+      const startTime = new Date(
+        Date.UTC(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          currentDate.getDate(),
+          hour,
+          0,
+          0,
+          0,
+        ),
+      );
+      const endTime = new Date(
+        Date.UTC(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          currentDate.getDate(),
+          hour + 3,
+          0,
+          0,
+          0,
+        ),
+      );
 
       // Skip if end time exceeds availability
-      if (endTime > new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), endHour, 0, 0, 0))) {
+      if (
+        endTime >
+        new Date(
+          Date.UTC(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate(),
+            endHour,
+            0,
+            0,
+            0,
+          ),
+        )
+      ) {
         break;
       }
 

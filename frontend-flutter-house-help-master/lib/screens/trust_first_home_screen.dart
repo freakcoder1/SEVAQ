@@ -4,6 +4,7 @@ import '../models/service.dart';
 import '../models/category_availability.dart';
 import '../models/worker.dart';
 import '../models/user.dart';
+import 'package:flutter_house_help/models/location.dart';
 import '../providers/provider_manager.dart';
 import '../providers/location_provider.dart';
 import '../providers/theme_provider.dart';
@@ -20,6 +21,7 @@ import '../widgets/trust_first_suggestions.dart';
 import '../widgets/support_signal.dart';
 import '../widgets/location_picker_dialog.dart';
 import '../widgets/pre_service_reminder_banner.dart';
+import '../widgets/subscription_reminder_banner.dart';
 import '../providers/booking_provider.dart';
 import 'service_details_screen.dart';
 import 'service_clarification_screen.dart';
@@ -178,9 +180,9 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
       if (!mounted) return;
 
       setState(() {
-        services = (response as List)
-            .map((item) => Service.fromJson(item))
-            .toList();
+        // Handle paginated response format: { data: [...], meta: {...} }
+        final List<dynamic> servicesData = response['data'] ?? [];
+        services = servicesData.map((item) => Service.fromJson(item)).toList();
         filteredServices = services;
         isLoading = false;
       });
@@ -259,10 +261,28 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     print('🔍 DEBUG: _currentRecommendation is: $_currentRecommendation');
     if (_currentRecommendation != null) {
       print('🔍 DEBUG: Navigating to Service Clarification Page');
-      // Navigate to Service Clarification Page first
+      // Get userId from AuthProvider using the new getter (includes fallback to cached value)
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userId = authProvider.userId;
+
+      // Get location from LocationProvider
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
+      final Location? initialLocation = locationProvider.currentLocationData;
+
+      print('🔍 DEBUG: userId from AuthProvider: $userId');
+
+      // Navigate to Service Clarification Page with userId and location
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ServiceClarificationScreen()),
+        MaterialPageRoute(
+          builder: (context) => ServiceClarificationScreen(
+            userId: userId,
+            initialLocation: initialLocation,
+          ),
+        ),
       );
     } else {
       print('🔍 DEBUG: No recommendation available');
@@ -272,11 +292,26 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
   void _navigateToServiceDetails(Service service) {
     final workerProvider = _workerProvider;
 
+    // Get userId from AuthProvider using the new getter (includes fallback to cached value)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.userId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (workerProvider != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ServiceDetailsScreen(service: service),
+          builder: (context) =>
+              ServiceDetailsScreen(service: service, userId: userId),
         ),
       );
     } else {
@@ -287,14 +322,16 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ServiceDetailsScreen(service: service),
+            builder: (context) =>
+                ServiceDetailsScreen(service: service, userId: userId),
           ),
         );
       } else {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ServiceDetailsScreen(service: service),
+            builder: (context) =>
+                ServiceDetailsScreen(service: service, userId: userId),
           ),
         );
       }
@@ -315,6 +352,9 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     _workerProvider = ProviderManager.safeGetProvider<WorkerProvider>(context);
     _recommendationProvider =
         ProviderManager.safeGetProvider<RecommendationProvider>(context);
+    final authProvider = ProviderManager.safeGetProvider<AuthProvider>(context);
+    final userId = authProvider?.user?.id;
+    final initialLocation = locationProvider?.currentLocationData;
 
     final isDarkMode = themeProvider?.isDarkMode ?? false;
 
@@ -350,7 +390,11 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
           ? _buildLoadingIndicator()
           : errorMessage.isNotEmpty
           ? _buildErrorWidget()
-          : _buildTrustFirstContent(locationProvider ?? LocationProvider()),
+          : _buildTrustFirstContent(
+              locationProvider ?? LocationProvider(),
+              userId: userId,
+              initialLocation: initialLocation,
+            ),
     );
   }
 
@@ -400,7 +444,11 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     );
   }
 
-  Widget _buildTrustFirstContent(LocationProvider locationProvider) {
+  Widget _buildTrustFirstContent(
+    LocationProvider locationProvider, {
+    required dynamic userId,
+    Location? initialLocation,
+  }) {
     return RefreshIndicator(
       onRefresh: () async {
         await _loadHomeData();
@@ -421,6 +469,20 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
 
             // Pre-Service Reminder Banner
             PreServiceReminderBanner(
+              authProvider: ProviderManager.safeGetProvider<AuthProvider>(
+                context,
+                listen: false,
+              ),
+              bookingProvider: ProviderManager.safeGetProvider<BookingProvider>(
+                context,
+                listen: false,
+              ),
+            ),
+
+            SizedBox(height: 16),
+
+            // Subscription Reminder Banner
+            SubscriptionReminderBanner(
               authProvider: ProviderManager.safeGetProvider<AuthProvider>(
                 context,
                 listen: false,
@@ -469,7 +531,10 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ServiceClarificationScreen(),
+                          builder: (context) => ServiceClarificationScreen(
+                            userId: userId,
+                            initialLocation: initialLocation,
+                          ),
                         ),
                       );
                     },
@@ -503,7 +568,10 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ServiceClarificationScreen(),
+                      builder: (context) => ServiceClarificationScreen(
+                        userId: userId,
+                        initialLocation: initialLocation,
+                      ),
                     ),
                   );
                 },

@@ -7,36 +7,41 @@ export class AssignmentsController {
   constructor(private readonly assignmentsService: AssignmentsService) {}
 
   @Post('assign')
-  async assignProfessional(@Body() assignmentRequest: {
-    bookingId: number;
-    serviceId: number;
-    userLat: number;
-    userLng: number;
-    startTime: Date;
-    endTime: Date;
-  }) {
+  async assignProfessional(
+    @Body()
+    assignmentRequest: {
+      bookingId: string;
+      serviceId: number;
+      userLat: number;
+      userLng: number;
+      startTime: string;
+      endTime: string;
+    },
+  ) {
     // 🔒 KILL-SWITCH GUARD: Prevent synchronous assignment
     // This endpoint MUST NOT perform assignment directly
     // Assignment happens asynchronously in background worker
     throw new Error(
       'CRITICAL: Attempted synchronous assignment via /assignments/assign endpoint!\n' +
-      'This violates the managed service contract.\n' +
-      'Use /service-requests for intent capture instead.\n' +
-      'Assignment must happen asynchronously in background worker only.'
+        'This violates the managed service contract.\n' +
+        'Use /service-requests for intent capture instead.\n' +
+        'Assignment must happen asynchronously in background worker only.',
     );
-    
+
     return this.assignmentsService.assignProfessional(assignmentRequest);
   }
 
   @Post('reassign')
-  async reassignProfessional(@Body() reassignmentRequest: {
-    bookingId: number;
-  }) {
-    return this.assignmentsService.reassignProfessional(reassignmentRequest.bookingId);
+  async reassignProfessional(
+    @Body() reassignmentRequest: { bookingId: string },
+  ) {
+    return this.assignmentsService.reassignProfessional(
+      reassignmentRequest.bookingId,
+    );
   }
 
   @Get(':bookingId/status')
-  async getAssignmentStatus(@Param('bookingId') bookingId: number) {
+  async getAssignmentStatus(@Param('bookingId') bookingId: string) {
     return this.assignmentsService.getAssignmentStatus(bookingId);
   }
 
@@ -49,18 +54,23 @@ export class AssignmentsController {
 
   @Post('create-booking-with-assignment')
   async createBookingWithAssignment(@Body() createBookingDto: any) {
-    return this.assignmentsService.createBookingWithAssignment(createBookingDto);
+    return this.assignmentsService.createBookingWithAssignment(
+      createBookingDto,
+    );
   }
 
   @Post('start-assignment-flow')
-  async startAssignmentFlow(@Body() assignmentFlowRequest: {
-    serviceId: number;
-    userLat: number;
-    userLng: number;
-    startTime: Date;
-    endTime: Date;
-    userId: string;
-  }) {
+  async startAssignmentFlow(
+    @Body()
+    assignmentFlowRequest: {
+      serviceId: number;
+      userLat: number;
+      userLng: number;
+      startTime: string;
+      endTime: string;
+      userId: string;
+    },
+  ) {
     // 1. Create booking first
     const booking = await this.assignmentsService.createBookingWithAssignment({
       userId: assignmentFlowRequest.userId,
@@ -69,7 +79,7 @@ export class AssignmentsController {
       endTime: assignmentFlowRequest.endTime,
       amount: 500.0, // Default amount for testing
       status: 'PENDING',
-      type: 'SCHEDULED'
+      type: 'SCHEDULED',
     });
 
     // 2. Trigger assignment for the created booking
@@ -79,44 +89,54 @@ export class AssignmentsController {
       userLat: assignmentFlowRequest.userLat,
       userLng: assignmentFlowRequest.userLng,
       startTime: assignmentFlowRequest.startTime,
-      endTime: assignmentFlowRequest.endTime
+      endTime: assignmentFlowRequest.endTime,
     });
 
     return {
       booking,
-      assignment: assignmentResult
+      assignment: assignmentResult,
     };
   }
 
   // NEW: Two-phase assignment endpoints
 
   @Post('check-availability')
-  async checkAvailability(@Body() availabilityRequest: {
-    serviceId: number;
-    userLat: number;
-    userLng: number;
-    startTime: Date;
-    endTime: Date;
-  }) {
-    return this.assignmentsService.checkAvailabilityForAssignment(availabilityRequest);
+  async checkAvailability(
+    @Body()
+    availabilityRequest: {
+      serviceId: number;
+      userLat: number;
+      userLng: number;
+      startTime: string;
+      endTime: string;
+    },
+  ) {
+    return this.assignmentsService.checkAvailabilityForAssignment(
+      availabilityRequest,
+    );
   }
 
   @Post('attempt-assignment')
-  async attemptAssignment(@Body() assignmentRequest: {
-    bookingId: number;
-    serviceId: number;
-    userLat: number;
-    userLng: number;
-    startTime: Date;
-    endTime: Date;
-  }) {
+  async attemptAssignment(
+    @Body()
+    assignmentRequest: {
+      bookingId: number;
+      serviceId: number;
+      userLat: number;
+      userLng: number;
+      startTime: string;
+      endTime: string;
+    },
+  ) {
     // 🔒 KILL-SWITCH GUARD: Legacy endpoint for testing only
     // This should be removed in production
-    console.warn('⚠️  WARNING: Using legacy /assignments/attempt-assignment endpoint');
+    console.warn(
+      '⚠️  WARNING: Using legacy /assignments/attempt-assignment endpoint',
+    );
     console.warn('⚠️  This endpoint should be removed in production');
-    
+
     console.log('🔍 Attempting assignment with request:', assignmentRequest);
-    
+
     return this.assignmentsService.attemptAssignment(assignmentRequest);
   }
 }

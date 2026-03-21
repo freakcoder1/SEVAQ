@@ -6,5 +6,4 @@ export class LocationDto {
 
   @IsNumber()
   lng: number;
-
 }

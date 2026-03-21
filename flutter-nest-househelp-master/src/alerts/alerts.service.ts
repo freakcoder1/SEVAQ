@@ -10,7 +10,7 @@ export interface AlertRule {
   name: string;
   metricType: string;
   threshold: number;
-  operator: 'gt' | 'lt' | 'eq';
+  operator: 'gt' | 'lt' | 'eq' | 'lte' | 'gte';
   timeWindow: number; // minutes
   severity: 'low' | 'medium' | 'high' | 'critical';
   enabled: boolean;
@@ -44,7 +44,7 @@ export class AlertsService {
     @InjectRepository(SystemPerformanceMetric)
     private systemPerformanceMetricsRepository: Repository<SystemPerformanceMetric>,
     private metricsService: MetricsService,
-    private notificationsService: NotificationsService
+    private notificationsService: NotificationsService,
   ) {
     this.initializeAlertRules();
     this.startAlertMonitoring();
@@ -60,7 +60,7 @@ export class AlertsService {
         operator: 'lt',
         timeWindow: 30,
         severity: 'high',
-        enabled: true
+        enabled: true,
       },
       {
         id: 'assignment-time-high',
@@ -70,17 +70,17 @@ export class AlertsService {
         operator: 'gt',
         timeWindow: 30,
         severity: 'medium',
-        enabled: true
+        enabled: true,
       },
       {
         id: 'system-health-poor',
         name: 'System Health Poor',
-        metricType: 'system_health',
-        threshold: 0,
-        operator: 'eq',
+        metricType: 'system_health_score',
+        threshold: 25, // Poor health is score <= 25
+        operator: 'lte',
         timeWindow: 10,
         severity: 'critical',
-        enabled: true
+        enabled: true,
       },
       {
         id: 'queue-length-high',
@@ -90,25 +90,37 @@ export class AlertsService {
         operator: 'gt',
         timeWindow: 15,
         severity: 'medium',
-        enabled: true
-      }
+        enabled: true,
+      },
     ];
   }
 
   private startAlertMonitoring(): void {
     // Check alerts every 5 minutes
-    setInterval(async () => {
-      await this.checkAlertRules();
-    }, 5 * 60 * 1000);
+    setInterval(
+      async () => {
+        await this.checkAlertRules();
+      },
+      5 * 60 * 1000,
+    );
   }
 
   async checkAlertRules(): Promise<void> {
     const systemMetrics = await this.metricsService.getSystemMetrics();
-    
+
     for (const rule of this.alertRules) {
       if (!rule.enabled) continue;
 
       const currentValue = this.getMetricValue(systemMetrics, rule.metricType);
+
+      // Skip alert check if no data available (prevents false positives)
+      if (currentValue === null) {
+        this.logger.debug(
+          `Skipping alert check for ${rule.id}: no data available`,
+        );
+        continue;
+      }
+
       const shouldTrigger = this.evaluateRule(currentValue, rule);
 
       if (shouldTrigger) {
@@ -122,17 +134,41 @@ export class AlertsService {
   private getMetricValue(metrics: any, metricType: string): number {
     switch (metricType) {
       case 'assignment_success_rate':
-        return metrics.assignmentSuccessRate;
+        // Return null if no data to prevent false alerts
+        return metrics.assignmentSuccessRate ?? null;
       case 'average_assignment_time':
-        return metrics.averageAssignmentTime;
+        return metrics.averageAssignmentTime ?? 0;
       case 'queue_length':
-        return metrics.queueLength;
+        return metrics.queueLength ?? 0;
+      case 'system_health_score':
+        // Convert string health to numeric score
+        return this.convertHealthToScore(metrics.systemHealth);
       default:
         return 0;
     }
   }
 
+  private convertHealthToScore(health: string): number {
+    switch (health) {
+      case 'excellent':
+        return 100;
+      case 'good':
+        return 75;
+      case 'fair':
+        return 50;
+      case 'poor':
+        return 25;
+      default:
+        return 50;
+    }
+  }
+
   private evaluateRule(value: number, rule: AlertRule): boolean {
+    // Don't trigger alerts if no data (null)
+    if (value === null || value === undefined) {
+      return false;
+    }
+
     switch (rule.operator) {
       case 'gt':
         return value > rule.threshold;
@@ -140,19 +176,31 @@ export class AlertsService {
         return value < rule.threshold;
       case 'eq':
         return value === rule.threshold;
+      case 'lte':
+        return value <= rule.threshold;
+      case 'gte':
+        return value >= rule.threshold;
       default:
         return false;
     }
   }
 
-  private async triggerAlert(rule: AlertRule, currentValue: number): Promise<void> {
+  private async triggerAlert(
+    rule: AlertRule,
+    currentValue: number,
+  ): Promise<void> {
     const alertId = `alert_${rule.id}_${Date.now()}`;
 
     if (this.activeAlerts.has(rule.id)) {
       // Check for escalation
       const existingAlert = this.activeAlerts.get(rule.id)!;
-      const timeSinceTrigger = (new Date().getTime() - existingAlert.timestamp.getTime()) / (1000 * 60); // minutes
-      const maxAllowedLevel = this.escalationConfig.filter(config => timeSinceTrigger >= config.timeThreshold).pop()?.level || 1;
+      const timeSinceTrigger =
+        (new Date().getTime() - existingAlert.timestamp.getTime()) /
+        (1000 * 60); // minutes
+      const maxAllowedLevel =
+        this.escalationConfig
+          .filter((config) => timeSinceTrigger >= config.timeThreshold)
+          .pop()?.level || 1;
 
       if (maxAllowedLevel > existingAlert.currentLevel) {
         // Escalate
@@ -161,9 +209,11 @@ export class AlertsService {
         existingAlert.escalationHistory.push({
           level: maxAllowedLevel,
           timestamp: new Date(),
-          message: `Escalated to level ${maxAllowedLevel} after ${Math.round(timeSinceTrigger)} minutes`
+          message: `Escalated to level ${maxAllowedLevel} after ${Math.round(timeSinceTrigger)} minutes`,
         });
-        this.logger.warn(`ALERT ESCALATED: ${existingAlert.message} to level ${maxAllowedLevel}`);
+        this.logger.warn(
+          `ALERT ESCALATED: ${existingAlert.message} to level ${maxAllowedLevel}`,
+        );
         await this.sendNotification(existingAlert);
       }
       return;
@@ -178,8 +228,10 @@ export class AlertsService {
       acknowledged: false,
       resolved: false,
       currentLevel: 1,
-      escalationHistory: [{ level: 1, timestamp: new Date(), message: 'Alert triggered' }],
-      lastEscalationTime: new Date()
+      escalationHistory: [
+        { level: 1, timestamp: new Date(), message: 'Alert triggered' },
+      ],
+      lastEscalationTime: new Date(),
     };
 
     this.activeAlerts.set(rule.id, alert);
@@ -196,7 +248,7 @@ export class AlertsService {
       alert.escalationHistory.push({
         level: alert.currentLevel,
         timestamp: new Date(),
-        message: 'Alert auto-resolved'
+        message: 'Alert auto-resolved',
       });
       this.logger.log(`Alert resolved for rule: ${ruleId}`);
       this.activeAlerts.delete(ruleId);
@@ -208,9 +260,14 @@ export class AlertsService {
       const subject = `Alert Level ${alert.currentLevel}: ${alert.severity.toUpperCase()} - ${alert.message}`;
       const message = `${alert.message} (Level ${alert.currentLevel})`;
       await this.notificationsService.notifyAdmins(subject, message);
-      this.logger.log(`Notification sent for alert: ${alert.message} at level ${alert.currentLevel}`);
+      this.logger.log(
+        `Notification sent for alert: ${alert.message} at level ${alert.currentLevel}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to send notification for alert: ${alert.message}`, error);
+      this.logger.error(
+        `Failed to send notification for alert: ${alert.message}`,
+        error,
+      );
     }
   }
 
@@ -219,7 +276,9 @@ export class AlertsService {
   }
 
   acknowledgeAlert(alertId: string): void {
-    const alert = Array.from(this.activeAlerts.values()).find(a => a.id === alertId);
+    const alert = Array.from(this.activeAlerts.values()).find(
+      (a) => a.id === alertId,
+    );
     if (alert) {
       alert.acknowledged = true;
       this.logger.log(`Alert acknowledged: ${alert.message}`);
@@ -227,7 +286,9 @@ export class AlertsService {
   }
 
   resolveAlertManually(alertId: string): void {
-    const alert = Array.from(this.activeAlerts.values()).find(a => a.id === alertId);
+    const alert = Array.from(this.activeAlerts.values()).find(
+      (a) => a.id === alertId,
+    );
     if (alert) {
       alert.resolved = true;
       this.activeAlerts.delete(alert.ruleId);
@@ -240,9 +301,12 @@ export class AlertsService {
   }
 
   updateAlertRule(ruleId: string, updates: Partial<AlertRule>): void {
-    const ruleIndex = this.alertRules.findIndex(r => r.id === ruleId);
+    const ruleIndex = this.alertRules.findIndex((r) => r.id === ruleId);
     if (ruleIndex !== -1) {
-      this.alertRules[ruleIndex] = { ...this.alertRules[ruleIndex], ...updates };
+      this.alertRules[ruleIndex] = {
+        ...this.alertRules[ruleIndex],
+        ...updates,
+      };
       this.logger.log(`Alert rule updated: ${ruleId}`);
     }
   }

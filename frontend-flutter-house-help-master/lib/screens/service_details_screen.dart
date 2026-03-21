@@ -7,9 +7,13 @@ import 'subscription_profiles_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Service service;
+  final dynamic userId; // Accept both int and String (UUID)
 
-  const ServiceDetailsScreen({Key? key, required this.service})
-    : super(key: key);
+  const ServiceDetailsScreen({
+    Key? key,
+    required this.service,
+    required this.userId,
+  }) : super(key: key);
 
   @override
   _ServiceDetailsScreenState createState() => _ServiceDetailsScreenState();
@@ -94,7 +98,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+                border: Border.all(color: theme.primaryColor.withValues(alpha:0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,7 +114,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   // Monthly Service Option (Primary)
                   Container(
                     decoration: BoxDecoration(
-                      color: theme.primaryColor.withOpacity(0.05),
+                      color: theme.primaryColor.withValues(alpha:0.05),
                       border: Border.all(color: theme.primaryColor, width: 2),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -123,6 +127,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                               serviceType: widget.service.category
                                   .toUpperCase(),
                               serviceName: widget.service.name,
+                              userId: widget.userId,
                             ),
                           ),
                         );
@@ -235,7 +240,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+                border: Border.all(color: theme.primaryColor.withValues(alpha:0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +313,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+                border: Border.all(color: theme.primaryColor.withValues(alpha:0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +401,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+                border: Border.all(color: theme.primaryColor.withValues(alpha:0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

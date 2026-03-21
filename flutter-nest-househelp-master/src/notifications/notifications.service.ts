@@ -12,6 +12,7 @@ import * as admin from 'firebase-admin';
 export class NotificationsService {
   private transporter: nodemailer.Transporter;
   private twilioClient: Twilio;
+  private firebaseInitialized: boolean = false;
 
   constructor(
     private configService: ConfigService,
@@ -36,19 +37,44 @@ export class NotificationsService {
     const authToken = this.configService.get('TWILIO_AUTH_TOKEN');
     this.twilioClient = new Twilio(accountSid, authToken);
 
-    // Configure Firebase Admin SDK
-    try {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: this.configService.get('FIREBASE_PROJECT_ID'),
-          clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
-          privateKey: this.configService.get('FIREBASE_PRIVATE_KEY')?.replace(/\\n/g, '\n'),
-        }),
-      });
-    } catch (error) {
-      if (!admin.apps.length) {
-        console.error('Error initializing Firebase Admin SDK:', error);
+    // Configure Firebase Admin SDK (optional - only if credentials are provided)
+    this.initializeFirebase();
+  }
+
+  private initializeFirebase(): void {
+    const projectId = this.configService.get('FIREBASE_PROJECT_ID');
+    const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
+    const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
+
+    // Only initialize if all required credentials are provided
+    if (
+      projectId &&
+      clientEmail &&
+      privateKey &&
+      projectId !== 'your-firebase-project-id'
+    ) {
+      try {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+          }),
+        });
+        this.firebaseInitialized = true;
+        console.log('Firebase Admin SDK initialized successfully');
+      } catch (error) {
+        console.warn(
+          'Firebase Admin SDK initialization failed, push notifications will be skipped:',
+          error.message,
+        );
+        this.firebaseInitialized = false;
       }
+    } else {
+      console.warn(
+        'Firebase Admin SDK credentials not configured, push notifications will be skipped',
+      );
+      this.firebaseInitialized = false;
     }
   }
 
@@ -79,17 +105,28 @@ export class NotificationsService {
     }
   }
 
-  async sendPushNotification(to: string, title: string, body: string): Promise<void> {
+  async sendPushNotification(
+    fcmToken: string,
+    title: string,
+    body: string,
+  ): Promise<void> {
     try {
       // Check if Firebase Admin SDK is initialized
-      if (!admin.apps.length) {
-        console.warn('Firebase Admin SDK not initialized, skipping push notification');
+      if (!this.firebaseInitialized) {
+        console.warn(
+          'Firebase Admin SDK not initialized, skipping push notification',
+        );
         return;
       }
-      
-      // Assuming 'to' is the FCM token
+
+      // Check if FCM token is provided
+      if (!fcmToken) {
+        console.warn('No FCM token provided, skipping push notification');
+        return;
+      }
+
       const message = {
-        token: to,
+        token: fcmToken,
         notification: {
           title: title,
           body: body,
@@ -126,26 +163,38 @@ export class NotificationsService {
     }
   }
 
-  async sendPreServiceReminder(booking: Booking, reminderType: '24h' | '2h'): Promise<void> {
-    const user = await this.usersRepository.findOne({ where: { id: booking.userId } });
+  async sendPreServiceReminder(
+    booking: Booking,
+    reminderType: '24h' | '2h',
+  ): Promise<void> {
+    const user = await this.usersRepository.findOne({
+      where: { id: booking.userId },
+    });
     if (!user) {
       console.error(`User not found for booking ${booking.id}`);
       return;
     }
 
     const timeString = this.formatTime(booking.startTime);
-    
+
     if (reminderType === '24h') {
       // T-24 hours reminder
       const pushTitle = 'Service scheduled for tomorrow';
-      const pushBody = `Your SEVAQ service is scheduled for tomorrow at ${timeString}. We’ll take care of everything.`;
-      
-      await this.sendPushNotification(user.id.toString(), pushTitle, pushBody);
-      
+      const pushBody = `Your SEVAQ service is scheduled for tomorrow at ${timeString}. We'll take care of everything.`;
+
+      // Use user's FCM token for push notification
+      if (user.fcmToken) {
+        await this.sendPushNotification(user.fcmToken, pushTitle, pushBody);
+      } else {
+        console.warn(
+          `No FCM token for user ${user.id}, skipping push notification`,
+        );
+      }
+
       if (user.email) {
         await this.sendEmail(user.email, pushTitle, pushBody);
       }
-      
+
       if (user.phone) {
         await this.sendSms(user.phone, pushBody);
       }
@@ -153,13 +202,20 @@ export class NotificationsService {
       // T-2 hours reminder
       const pushTitle = 'Your service is coming up';
       const pushBody = `Your SEVAQ service starts at ${timeString}. Everything is on track.`;
-      
-      await this.sendPushNotification(user.id.toString(), pushTitle, pushBody);
-      
+
+      // Use user's FCM token for push notification
+      if (user.fcmToken) {
+        await this.sendPushNotification(user.fcmToken, pushTitle, pushBody);
+      } else {
+        console.warn(
+          `No FCM token for user ${user.id}, skipping push notification`,
+        );
+      }
+
       if (user.email) {
         await this.sendEmail(user.email, pushTitle, pushBody);
       }
-      
+
       if (user.phone) {
         await this.sendSms(user.phone, pushBody);
       }
@@ -170,109 +226,172 @@ export class NotificationsService {
     const bookings = await this.findBookingsNeedingReminders();
     for (const booking of bookings) {
       const reminderType = await this.determineReminderType(booking);
-      await this.sendPreServiceReminder(booking, reminderType);
+      if (reminderType) {
+        await this.sendPreServiceReminder(booking, reminderType);
+      }
     }
   }
 
-  private async determineReminderType(booking: Booking): Promise<'24h' | '2h'> {
+  private async determineReminderType(
+    booking: Booking,
+  ): Promise<'24h' | '2h' | null> {
     const now = new Date();
-    // Handle cases where date or startTime might not be Date objects
-    const bookingDate = booking.date instanceof Date ? booking.date : new Date(booking.date);
-    const bookingTime = booking.startTime instanceof Date ? booking.startTime : new Date(`1970-01-01T${booking.startTime}`);
-    
-    const bookingDateTime = new Date(
-      bookingDate.getFullYear(),
-      bookingDate.getMonth(),
-      bookingDate.getDate(),
-      bookingTime.getHours(),
-      bookingTime.getMinutes()
-    );
+    // startTime is now a time string (HH:mm:ss), so we need to parse it
+    const parseTimeToDate = (timeStr: string): Date => {
+      if (typeof timeStr === 'string' && timeStr.includes(':')) {
+        // Time string HH:mm:ss - combine with today's date
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1] || '0', 10);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date;
+      }
+      // Fallback
+      return new Date();
+    };
 
-    const timeUntilBooking = bookingDateTime.getTime() - now.getTime();
+    const bookingDateTime = parseTimeToDate(booking.startTime);
 
-    // Check if booking needs 24h or 2h reminder
-    const is24hReminder = timeUntilBooking >= 23.5 * 60 * 60 * 1000 && timeUntilBooking <= 24.5 * 60 * 60 * 1000;
-    const is2hReminder = timeUntilBooking >= 1.5 * 60 * 60 * 1000 && timeUntilBooking <= 2.5 * 60 * 60 * 1000;
-    const isTestReminder = timeUntilBooking >= 4 * 60 * 60 * 1000 && timeUntilBooking <= 5 * 60 * 60 * 1000;
+    // Calculate hours difference
+    const hoursDifference =
+      (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    if (is24hReminder) return '24h';
-    if (is2hReminder) return '2h';
-    if (isTestReminder) return '2h'; // treat test as 2h for now
-
-    return '2h'; // default
-  }
-
-  async findBookingsNeedingReminders(userId?: string): Promise<Booking[]> {
-    const now = new Date();
-    console.log('Finding bookings needing reminders at:', now.toISOString(), 'for userId:', userId);
-
-    const queryBuilder = this.bookingsRepository.createQueryBuilder('booking');
-    const query = queryBuilder
-      .leftJoinAndSelect('booking.user', 'user')
-      .leftJoinAndSelect('booking.worker', 'worker')
-      .leftJoinAndSelect('worker.user', 'workerUser')
-      .leftJoinAndSelect('booking.service', 'service')
-      .where('booking.status IN (:...statuses)', { statuses: ['confirmed', 'requested'] });
-
-    if (userId) {
-      query.andWhere('booking.userId = :userId', { userId });
+    if (hoursDifference <= 2 && hoursDifference > 0) {
+      return '2h';
+    } else if (hoursDifference > 2 && hoursDifference <= 26) {
+      return '24h';
     }
 
-    const bookings = await query.getMany();
-
-    console.log('Total confirmed bookings found:', bookings.length);
-
-    // Filter bookings that need reminders
-    return bookings.filter(booking => {
-      // Handle cases where date or startTime might not be Date objects
-      const bookingDate = booking.date instanceof Date ? booking.date : new Date(booking.date);
-      const bookingTime = booking.startTime instanceof Date ? booking.startTime : new Date(`1970-01-01T${booking.startTime}`);
-      
-      const bookingDateTime = new Date(
-        bookingDate.getFullYear(),
-        bookingDate.getMonth(),
-        bookingDate.getDate(),
-        bookingTime.getHours(),
-        bookingTime.getMinutes()
-      );
-
-      const timeUntilBooking = bookingDateTime.getTime() - now.getTime();
-
-      // Check if booking needs 24h or 2h reminder
-      const is24hReminder = timeUntilBooking >= 23.5 * 60 * 60 * 1000 && timeUntilBooking <= 24.5 * 60 * 60 * 1000;
-      const is2hReminder = timeUntilBooking >= 1.5 * 60 * 60 * 1000 && timeUntilBooking <= 2.5 * 60 * 60 * 1000;
-      
-      // For testing purposes, include bookings with timeUntil between 1-24 hours
-      const isTestReminder = timeUntilBooking >= 1 * 60 * 60 * 1000 && timeUntilBooking <= 24 * 60 * 60 * 1000;
-
-      // Debug log for each booking
-      console.log(`Booking ID: ${booking.id}, Date: ${booking.date}, Time: ${booking.startTime}, Time Until Booking: ${(timeUntilBooking / 1000 / 60).toFixed(2)} minutes`);
-
-      return is24hReminder || is2hReminder || isTestReminder;
-    });
+    return null; // Not within reminder window
   }
 
-
-
-  private formatTime(time: any): string {
-    // Handle cases where time might not be a Date object (e.g., string like '08:00:00')
+  private formatTime(time: string | Date): string {
+    // Handle both string and Date inputs
     let dateTime: Date;
     if (time instanceof Date) {
       dateTime = time;
     } else {
-      // If time is a string like '08:00:00', create a date object with that time
-      dateTime = new Date(`1970-01-01T${time}`);
+      // Parse time string (format: HH:mm or HH:mm:ss)
+      const parts = time.split(':');
+      dateTime = new Date();
+      dateTime.setHours(parseInt(parts[0], 10));
+      dateTime.setMinutes(parseInt(parts[1], 10));
+      dateTime.setSeconds(parts[2] ? parseInt(parts[2], 10) : 0);
     }
-    
-    let hours = dateTime.getHours();
+
+    const hours = dateTime.getHours();
     const minutes = dateTime.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';
-    
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 should be 12
-    
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes.toString();
-    
-    return `${hours}:${minutesStr} ${ampm}`;
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
+  }
+
+  async findUpcomingBookings(): Promise<Booking[]> {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    return this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.worker', 'worker')
+      .leftJoinAndSelect('worker.user', 'workerUser')
+      .leftJoinAndSelect('booking.service', 'service')
+      .where('booking.status = :status', { status: 'confirmed' })
+      .andWhere('booking.date >= :today', {
+        today: now.toISOString().split('T')[0],
+      })
+      .andWhere('booking.date <= :tomorrow', {
+        tomorrow: tomorrow.toISOString().split('T')[0],
+      })
+      .orderBy('booking.date', 'ASC')
+      .addOrderBy('booking.startTime', 'ASC')
+      .getMany();
+  }
+
+  async findBookingsNeedingReminders(userId?: string): Promise<Booking[]> {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const twentySixHoursFromNow = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+
+    try {
+      let query = this.bookingsRepository
+        .createQueryBuilder('booking')
+        .leftJoinAndSelect('booking.user', 'user')
+        .leftJoinAndSelect('booking.worker', 'worker')
+        .leftJoinAndSelect('worker.user', 'workerUser')
+        .leftJoinAndSelect('booking.service', 'service')
+        .where('booking.status = :status', { status: 'confirmed' })
+        .andWhere('booking.date >= :today', {
+          today: now.toISOString().split('T')[0],
+        })
+        .andWhere('booking.date <= :tomorrow', {
+          tomorrow: tomorrow.toISOString().split('T')[0],
+        });
+
+      if (userId) {
+        query = query.andWhere('booking.userId = :userId', { userId });
+      }
+
+      const bookings = await query.getMany();
+
+      // Filter to only include bookings within the 24h-26h window
+      return bookings.filter((booking) => {
+        // startTime is now a time string (HH:mm:ss)
+        const timeParts = booking.startTime.split(':');
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1] || '0', 10);
+        
+        const bookingDateTime = new Date();
+        bookingDateTime.setHours(hours, minutes, 0, 0);
+        bookingDateTime.setSeconds(0);
+        bookingDateTime.setMilliseconds(0);
+
+        const hoursDifference =
+          (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        return hoursDifference > 2 && hoursDifference <= 26;
+      });
+    } catch (error) {
+      console.error('Error finding bookings needing reminders:', error);
+      return [];
+    }
+  }
+
+  async findAllUserBookings(userPublicId: string): Promise<Booking[]> {
+    // First, find the user by their publicId (UUID from JWT)
+    const user = await this.usersRepository.findOne({
+      where: { publicId: userPublicId } as any,
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    // Use the internal numeric user.id for the booking query
+    return this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.worker', 'worker')
+      .leftJoinAndSelect('worker.user', 'workerUser')
+      .leftJoinAndSelect('booking.service', 'service')
+      .where('booking.userId = :userId', { userId: user.id })
+      .orderBy('booking.date', 'ASC')
+      .addOrderBy('booking.startTime', 'ASC')
+      .getMany();
+  }
+
+  async findAllBookings(): Promise<Booking[]> {
+    return this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.worker', 'worker')
+      .leftJoinAndSelect('worker.user', 'workerUser')
+      .leftJoinAndSelect('booking.service', 'service')
+      .orderBy('booking.date', 'ASC')
+      .addOrderBy('booking.startTime', 'ASC')
+      .getMany();
   }
 }

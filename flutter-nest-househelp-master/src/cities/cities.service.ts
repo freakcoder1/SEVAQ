@@ -13,19 +13,19 @@ export class CitiesService {
   async findAll(): Promise<City[]> {
     return this.citiesRepository.find({
       where: { isActive: true },
-      order: { name: 'ASC' }
+      order: { name: 'ASC' },
     });
   }
 
   async findOne(id: string): Promise<City | null> {
     return this.citiesRepository.findOne({
-      where: { id, isActive: true }
+      where: { id, isActive: true },
     });
   }
 
   async findBySlug(slug: string): Promise<City | null> {
     return this.citiesRepository.findOne({
-      where: { slug, isActive: true }
+      where: { slug, isActive: true },
     });
   }
 
@@ -55,26 +55,27 @@ export class CitiesService {
     activeBookings: number;
     averageRating: number;
   }> {
-    const [workersCount, bookingsCount, activeBookingsCount] = await Promise.all([
-      this.citiesRepository
-        .createQueryBuilder('city')
-        .leftJoin('city.workers', 'worker')
-        .where('city.id = :cityId', { cityId })
-        .getCount(),
-      this.citiesRepository
-        .createQueryBuilder('city')
-        .leftJoin('city.bookings', 'booking')
-        .where('city.id = :cityId', { cityId })
-        .getCount(),
-      this.citiesRepository
-        .createQueryBuilder('city')
-        .leftJoin('city.bookings', 'booking')
-        .where('city.id = :cityId', { cityId })
-        .andWhere('booking.assignmentState IN (:...states)', { 
-          states: ['PENDING', 'ASSIGNMENT_IN_PROGRESS', 'ASSIGNED'] 
-        })
-        .getCount()
-    ]);
+    const [workersCount, bookingsCount, activeBookingsCount] =
+      await Promise.all([
+        this.citiesRepository
+          .createQueryBuilder('city')
+          .leftJoin('city.workers', 'worker')
+          .where('city.id = :cityId', { cityId })
+          .getCount(),
+        this.citiesRepository
+          .createQueryBuilder('city')
+          .leftJoin('city.bookings', 'booking')
+          .where('city.id = :cityId', { cityId })
+          .getCount(),
+        this.citiesRepository
+          .createQueryBuilder('city')
+          .leftJoin('city.bookings', 'booking')
+          .where('city.id = :cityId', { cityId })
+          .andWhere('booking.assignmentState IN (:...states)', {
+            states: ['PENDING', 'ASSIGNMENT_IN_PROGRESS', 'ASSIGNED'],
+          })
+          .getCount(),
+      ]);
 
     const averageRating = await this.citiesRepository
       .createQueryBuilder('city')
@@ -87,7 +88,7 @@ export class CitiesService {
       totalWorkers: workersCount,
       totalBookings: bookingsCount,
       activeBookings: activeBookingsCount,
-      averageRating: parseFloat(averageRating.avgRating) || 0
+      averageRating: parseFloat(averageRating.avgRating) || 0,
     };
   }
 }

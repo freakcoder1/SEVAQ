@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/user.dart';
+import '../models/location.dart';
 import '../providers/auth_provider.dart';
+import '../providers/location_provider.dart';
 import '../services/api_service.dart';
 import 'schedule_pricing_screen.dart';
 import 'service_clarification_screen.dart';
@@ -177,9 +179,21 @@ class _AvailabilityAdjustmentScreenState
   }
 
   void _tryDifferentService() {
+    final userId = _authProvider.user?.id;
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
+    final initialLocation = locationProvider.currentLocationData;
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => ServiceClarificationScreen()),
+      MaterialPageRoute(
+        builder: (_) => ServiceClarificationScreen(
+          userId: userId,
+          initialLocation: initialLocation,
+        ),
+      ),
     );
   }
 

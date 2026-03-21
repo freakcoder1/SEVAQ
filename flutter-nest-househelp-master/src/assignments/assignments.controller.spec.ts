@@ -58,7 +58,9 @@ describe('AssignmentsController', () => {
       const result = await controller.assignProfessional(createAssignmentDto);
 
       expect(result).toEqual(mockResult);
-      expect(mockAssignmentService.assignProfessional).toHaveBeenCalledWith(createAssignmentDto);
+      expect(mockAssignmentService.assignProfessional).toHaveBeenCalledWith(
+        createAssignmentDto,
+      );
     });
 
     it('should throw NotFoundException when booking not found', async () => {
@@ -67,9 +69,13 @@ describe('AssignmentsController', () => {
         preferredWorkerId: 'worker1',
       };
 
-      mockAssignmentService.assignProfessional.mockRejectedValue(new NotFoundException('Booking not found'));
+      mockAssignmentService.assignProfessional.mockRejectedValue(
+        new NotFoundException('Booking not found'),
+      );
 
-      await expect(controller.assignProfessional(createAssignmentDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.assignProfessional(createAssignmentDto),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException when booking already assigned', async () => {
@@ -78,9 +84,13 @@ describe('AssignmentsController', () => {
         preferredWorkerId: 'worker1',
       };
 
-      mockAssignmentService.assignProfessional.mockRejectedValue(new ConflictException('Booking already assigned'));
+      mockAssignmentService.assignProfessional.mockRejectedValue(
+        new ConflictException('Booking already assigned'),
+      );
 
-      await expect(controller.assignProfessional(createAssignmentDto)).rejects.toThrow(ConflictException);
+      await expect(
+        controller.assignProfessional(createAssignmentDto),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -99,15 +109,21 @@ describe('AssignmentsController', () => {
       const result = await controller.getAssignmentStatus(bookingId);
 
       expect(result).toEqual(mockResult);
-      expect(mockAssignmentService.getAssignmentStatus).toHaveBeenCalledWith(bookingId);
+      expect(mockAssignmentService.getAssignmentStatus).toHaveBeenCalledWith(
+        bookingId,
+      );
     });
 
     it('should throw NotFoundException when booking not found', async () => {
       const bookingId = '1';
 
-      mockAssignmentService.getAssignmentStatus.mockRejectedValue(new NotFoundException('Booking not found'));
+      mockAssignmentService.getAssignmentStatus.mockRejectedValue(
+        new NotFoundException('Booking not found'),
+      );
 
-      await expect(controller.getAssignmentStatus(bookingId)).rejects.toThrow(NotFoundException);
+      await expect(controller.getAssignmentStatus(bookingId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -125,12 +141,20 @@ describe('AssignmentsController', () => {
         assignedWorkerId: 'worker1',
       };
 
-      mockAssignmentService.updateAssignmentStatus.mockResolvedValue(mockResult);
+      mockAssignmentService.updateAssignmentStatus.mockResolvedValue(
+        mockResult,
+      );
 
-      const result = await controller.updateAssignmentStatus(bookingId, updateAssignmentDto);
+      const result = await controller.updateAssignmentStatus(
+        bookingId,
+        updateAssignmentDto,
+      );
 
       expect(result).toEqual(mockResult);
-      expect(mockAssignmentService.updateAssignmentStatus).toHaveBeenCalledWith(bookingId, updateAssignmentDto);
+      expect(mockAssignmentService.updateAssignmentStatus).toHaveBeenCalledWith(
+        bookingId,
+        updateAssignmentDto,
+      );
     });
 
     it('should throw NotFoundException when booking not found', async () => {
@@ -139,9 +163,13 @@ describe('AssignmentsController', () => {
         assignmentState: AssignmentState.ProfessionalAssigned,
       };
 
-      mockAssignmentService.updateAssignmentStatus.mockRejectedValue(new NotFoundException('Booking not found'));
+      mockAssignmentService.updateAssignmentStatus.mockRejectedValue(
+        new NotFoundException('Booking not found'),
+      );
 
-      await expect(controller.updateAssignmentStatus(bookingId, updateAssignmentDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.updateAssignmentStatus(bookingId, updateAssignmentDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -166,7 +194,9 @@ describe('AssignmentsController', () => {
       const result = await controller.getAvailableWorkers(serviceAreaId);
 
       expect(result).toEqual(mockWorkers);
-      expect(mockAssignmentService.findAvailableWorkers).toHaveBeenCalledWith(serviceAreaId);
+      expect(mockAssignmentService.findAvailableWorkers).toHaveBeenCalledWith(
+        serviceAreaId,
+      );
     });
   });
 
@@ -180,12 +210,19 @@ describe('AssignmentsController', () => {
         assignmentAttempts: 2,
       };
 
-      mockAssignmentService.handleAssignmentFailure.mockResolvedValue(mockResult);
+      mockAssignmentService.handleAssignmentFailure.mockResolvedValue(
+        mockResult,
+      );
 
-      const result = await controller.handleAssignmentFailure(bookingId, reason);
+      const result = await controller.handleAssignmentFailure(
+        bookingId,
+        reason,
+      );
 
       expect(result).toEqual(mockResult);
-      expect(mockAssignmentService.handleAssignmentFailure).toHaveBeenCalledWith(bookingId, reason);
+      expect(
+        mockAssignmentService.handleAssignmentFailure,
+      ).toHaveBeenCalledWith(bookingId, reason);
     });
   });
 
@@ -198,12 +235,16 @@ describe('AssignmentsController', () => {
         assignmentTimeout: new Date(),
       };
 
-      mockAssignmentService.handleAssignmentTimeout.mockResolvedValue(mockResult);
+      mockAssignmentService.handleAssignmentTimeout.mockResolvedValue(
+        mockResult,
+      );
 
       const result = await controller.handleAssignmentTimeout(bookingId);
 
       expect(result).toEqual(mockResult);
-      expect(mockAssignmentService.handleAssignmentTimeout).toHaveBeenCalledWith(bookingId);
+      expect(
+        mockAssignmentService.handleAssignmentTimeout,
+      ).toHaveBeenCalledWith(bookingId);
     });
   });
 
@@ -217,7 +258,9 @@ describe('AssignmentsController', () => {
         successRate: 85,
       };
 
-      mockAssignmentService.getAssignmentAnalytics.mockResolvedValue(mockAnalytics);
+      mockAssignmentService.getAssignmentAnalytics.mockResolvedValue(
+        mockAnalytics,
+      );
 
       const result = await controller.getAssignmentAnalytics();
 

@@ -1,6 +1,11 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -12,9 +17,24 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) { }
+    private dataSource: DataSource,
+  ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    // Check for existing email
+    const existingEmail = await this.findOneByEmail(createUserDto.email);
+    if (existingEmail) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Check for existing phone if provided
+    if (createUserDto.phone) {
+      const existingPhone = await this.findOneByPhone(createUserDto.phone);
+      if (existingPhone) {
+        throw new ConflictException('User with this phone number already exists');
+      }
+    }
+
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
 
@@ -23,14 +43,99 @@ export class UsersService {
       password: hashedPassword,
       publicId: uuidv4(),
     });
-    return this.usersRepository.save(user);
+
+    try {
+      return await this.usersRepository.save(user);
+    } catch (error) {
+      // Handle unique constraint violations from database
+      if (error.code === '23505') {
+        // PostgreSQL unique violation code
+        if (error.detail?.includes('email')) {
+          throw new ConflictException('User with this email already exists');
+        }
+        if (error.detail?.includes('phone')) {
+          throw new ConflictException('User with this phone number already exists');
+        }
+        throw new ConflictException('User with these credentials already exists');
+      }
+      throw new InternalServerErrorException('Failed to create user');
+    }
+  }
+
+  /**
+   * Create user within a transaction - for OTP flow to prevent race conditions
+   */
+  async createWithTransaction(
+    createUserDto: CreateUserDto,
+    phone: string,
+  ): Promise<User> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Use pessimistic lock to prevent concurrent creation
+      const existingUser = await queryRunner.manager.findOne(User, {
+        where: { phone },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (existingUser) {
+        await queryRunner.rollbackTransaction();
+        return existingUser;
+      }
+
+      const salt = await bcrypt.genSalt();
+      const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+
+      const user = queryRunner.manager.create(User, {
+        ...createUserDto,
+        password: hashedPassword,
+        publicId: uuidv4(),
+      });
+
+      const savedUser = await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return savedUser;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+
+      if (error.code === '23505') {
+        // Unique violation - user was created by another request
+        const existingUser = await this.findOneByPhone(phone);
+        if (existingUser) {
+          return existingUser;
+        }
+        throw new ConflictException('User creation conflict');
+      }
+
+      throw new InternalServerErrorException('Failed to create user');
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   findAll() {
     return this.usersRepository.find();
   }
 
-  findOne(id: number) {
+  async findAllPaginated(
+    skip: number,
+    take: number,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<[User[], number]> {
+    const order: any = {};
+    order[sortBy || 'createdAt'] = sortOrder;
+
+    return this.usersRepository.findAndCount({
+      skip,
+      take,
+      order,
+    });
+  }
+
+  findOne(id: string) {
     return this.usersRepository.findOneBy({ id });
   }
 
@@ -38,11 +143,19 @@ export class UsersService {
     return this.usersRepository.findOneBy({ email });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
+  async findOneByPhone(phone: string): Promise<User | null> {
+    return this.usersRepository.findOneBy({ phone });
+  }
+
+  update(id: string, updateUserDto: UpdateUserDto) {
     return this.usersRepository.update(id, updateUserDto);
   }
 
-  async remove(id: number) {
+  async updateFcmToken(id: string, fcmToken: string): Promise<void> {
+    await this.usersRepository.update(id, { fcmToken });
+  }
+
+  async remove(id: string) {
     const user = await this.findOne(id);
     if (!user) {
       throw new ForbiddenException('User not found');

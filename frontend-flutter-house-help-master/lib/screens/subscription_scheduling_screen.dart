@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../config/app_config.dart';
+import '../models/location.dart';
 import '../models/service_profile.dart';
-import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import 'service_request_in_progress_screen.dart';
+import 'subscription_confirmation_screen.dart';
 
-/// Subscription Scheduling Screen
-/// Purpose: Collect required inputs for subscription creation (frequency, time window, start date)
+/// Subscription Scheduling Screen (Canonical v1)
+///
+/// Purpose: Collect required inputs for daily subscription creation
+/// Eliminates frequency confusion - visits are always daily as a system promise
 class SubscriptionSchedulingScreen extends StatefulWidget {
   final ServiceProfile serviceProfile;
+  final dynamic
+  userId; // Accept both int and String (UUID) - kept for backward compat
+  final Location? initialLocation; // Pass location from parent
 
-  const SubscriptionSchedulingScreen({Key? key, required this.serviceProfile})
-    : super(key: key);
+  const SubscriptionSchedulingScreen({
+    Key? key,
+    required this.serviceProfile,
+    this.userId,
+    this.initialLocation,
+  }) : super(key: key);
 
   @override
   State<SubscriptionSchedulingScreen> createState() =>
@@ -22,22 +32,49 @@ class SubscriptionSchedulingScreen extends StatefulWidget {
 class _SubscriptionSchedulingScreenState
     extends State<SubscriptionSchedulingScreen> {
   late ApiService _apiService;
+  Location? _currentLocation;
+
+  // Resolve userId - use passed parameter (most reliable)
+  // Note: We don't access AuthProvider here because this screen may be pushed
+  // without being under the provider scope. The userId should be passed from parent.
+  // Returns the publicId (UUID String) for subscription operations.
+  dynamic get resolvedUserId {
+    // Use passed userId parameter
+    final id = widget.userId;
+    if (id is int) {
+      // Return int for legacy support (shouldn't happen with new flow)
+      return id;
+    } else if (id is String) {
+      // Return the publicId (UUID) as String
+      return id;
+    }
+    return null;
+  }
 
   // State variables
   DateTime? _selectedStartDate;
-  TimeWindow? _selectedTimeWindow;
-  Frequency _selectedFrequency = Frequency.weekly;
+  PreferredTimeWindow? _selectedTimeWindow;
   bool _isProcessing = false;
 
   // Constants
-  static const int MAX_DATE_PILLS = 7;
+  static const int MAX_DATE_PILLS = 5;
 
   @override
   void initState() {
     super.initState();
     _apiService = ApiService();
-    // Auto-select earliest viable date
+    // Use passed initial location or try to get from provider
+    _currentLocation = widget.initialLocation;
+    // Auto-select earliest viable date (tomorrow)
     _selectedStartDate = _getEarliestViableDate();
+    // Default to Morning time window
+    _selectedTimeWindow = PreferredTimeWindow.morning;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Location must be passed from parent screen - no fallback to provider
   }
 
   DateTime _getEarliestViableDate() {
@@ -56,33 +93,45 @@ class _SubscriptionSchedulingScreenState
     return dates;
   }
 
-  List<TimeWindow> _getTimeWindows() {
+  List<PreferredTimeWindow> _getTimeWindows() {
     return [
-      TimeWindow(
-        id: 'morning',
-        label: 'Morning',
-        startTime: 8,
-        endTime: 11,
-        helperText: 'Best availability',
-        isRecommended: true,
-      ),
-      TimeWindow(
-        id: 'afternoon',
-        label: 'Afternoon',
-        startTime: 12,
-        endTime: 15,
-        helperText: 'Good availability',
-        isRecommended: false,
-      ),
-      TimeWindow(
-        id: 'evening',
-        label: 'Evening',
-        startTime: 16,
-        endTime: 19,
-        helperText: 'Limited availability',
-        isRecommended: false,
-      ),
+      PreferredTimeWindow.morning,
+      PreferredTimeWindow.afternoon,
+      PreferredTimeWindow.evening,
     ];
+  }
+
+  String _formatTimeWindow(PreferredTimeWindow window) {
+    switch (window) {
+      case PreferredTimeWindow.morning:
+        return '8:00 – 11:00';
+      case PreferredTimeWindow.afternoon:
+        return '12:00 – 15:00';
+      case PreferredTimeWindow.evening:
+        return '16:00 – 19:00';
+    }
+  }
+
+  String _getTimeWindowLabel(PreferredTimeWindow window) {
+    switch (window) {
+      case PreferredTimeWindow.morning:
+        return 'Morning';
+      case PreferredTimeWindow.afternoon:
+        return 'Afternoon';
+      case PreferredTimeWindow.evening:
+        return 'Evening';
+    }
+  }
+
+  String _getTimeWindowDescription(PreferredTimeWindow window) {
+    switch (window) {
+      case PreferredTimeWindow.morning:
+        return 'Most households choose this';
+      case PreferredTimeWindow.afternoon:
+        return 'Good availability';
+      case PreferredTimeWindow.evening:
+        return 'Limited availability';
+    }
   }
 
   void _handleConfirmSubscription() async {
@@ -99,43 +148,144 @@ class _SubscriptionSchedulingScreenState
     setState(() => _isProcessing = true);
 
     try {
-      // Create subscription
-      final response = await _apiService.createSubscription(
+      // Check if location is available
+      if (_currentLocation == null) {
+        throw Exception('Location services not available');
+      }
+
+      // Create payment order with preferredTimeWindow
+      final paymentOrder = await _apiService.createSubscriptionOrder(
+        userId: resolvedUserId,
         serviceProfileId: widget.serviceProfile.id,
-        frequency: _selectedFrequency.toString().toUpperCase(),
-        timeWindowStart: _formatTime(_selectedTimeWindow!.startTime),
-        timeWindowEnd: _formatTime(_selectedTimeWindow!.endTime),
+        preferredTimeWindow: _selectedTimeWindow
+            .toString()
+            .split('.')
+            .last
+            .toUpperCase(),
         startDate: _selectedStartDate!,
-        endDate: _selectedStartDate!.add(
-          const Duration(days: 30),
-        ), // 1 month duration
+        lat: _currentLocation?.latitude ?? 0.0,
+        lng: _currentLocation?.longitude ?? 0.0,
       );
 
-      if (response != null && response['publicId'] != null) {
-        // Navigate to service request in progress screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ServiceRequestInProgressScreen(
-              serviceRequestId: response['publicId'],
-              service: null,
-              startTime: _selectedStartDate!.add(
-                Duration(hours: _selectedTimeWindow!.startTime),
-              ),
-              endTime: _selectedStartDate!.add(
-                Duration(hours: _selectedTimeWindow!.endTime),
-              ),
-              amount: widget.serviceProfile.monthlyPrice.toDouble(),
-            ),
-          ),
-        );
-      } else {
-        throw Exception(
-          'Failed to create subscription: Invalid response from server',
-        );
+      if (paymentOrder == null || paymentOrder['id'] == null) {
+        throw Exception('Failed to create payment order');
       }
+
+      // Initialize Razorpay
+      final razorpay = Razorpay();
+
+      // Configure payment options
+      final Map<String, dynamic> options = {
+        'key': AppConfig.razorpayTestKey, // Razorpay test key from config
+        'amount': paymentOrder['amount'], // Amount in paise
+        'currency': 'INR',
+        'name': 'SEVAQ Services',
+        'description':
+            'Daily Service Subscription - ${widget.serviceProfile.profileName}',
+        'order_id': paymentOrder['id'],
+        'prefill': {
+          'contact':
+              AppConfig.defaultContactNumber, // Default contact from config
+          'email': AppConfig.defaultEmail, // Default email from config
+        },
+        'theme': {'color': '#007bff'},
+      };
+
+      // Open payment gateway
+      razorpay.open(options);
+
+      // Listen for payment events
+      razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (
+        PaymentSuccessResponse response,
+      ) {
+        _handlePaymentSuccess(response, paymentOrder);
+      });
+
+      razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (
+        PaymentFailureResponse response,
+      ) {
+        _handlePaymentError(response);
+      });
+
+      razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (
+        ExternalWalletResponse response,
+      ) {
+        _handleExternalWallet(response);
+      });
     } catch (e) {
       print('🔍 DEBUG: Error in _handleConfirmSubscription: ${e.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  void _handlePaymentSuccess(
+    PaymentSuccessResponse response,
+    dynamic paymentOrder,
+  ) async {
+    try {
+      // Payment successful, create subscription
+      final paymentId = response.paymentId;
+      final signature = response.signature;
+
+      if (paymentId == null || signature == null) {
+        throw Exception('Payment verification failed: missing payment details');
+      }
+
+      final subscriptionResponse = await _apiService
+          .createSubscriptionAfterPayment(
+            paymentId: paymentId,
+            orderId: paymentOrder['id'],
+            signature: signature,
+            subscriptionData: {
+              'userId': paymentOrder['subscription']['userId'],
+              'serviceProfileId':
+                  paymentOrder['subscription']['serviceProfileId'],
+              'preferredTimeWindow':
+                  paymentOrder['subscription']['preferredTimeWindow'],
+              'startDate': paymentOrder['subscription']['startDate'],
+              'location': paymentOrder['subscription']['location'],
+              'monthlyPriceSnapshot':
+                  paymentOrder['subscription']['monthlyPriceSnapshot'],
+            },
+          );
+
+      if (subscriptionResponse != null &&
+          subscriptionResponse['status'] == 'success' &&
+          subscriptionResponse['subscription'] != null) {
+        // Subscription created successfully
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Subscription created successfully! Daily service will begin on your start date.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navigate to SubscriptionConfirmationScreen with SEVAQ messaging
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubscriptionConfirmationScreen(
+              serviceProfile: widget.serviceProfile,
+              startDate: _selectedStartDate ?? DateTime.now(),
+              timeWindow: _selectedTimeWindow?.name ?? 'MORNING',
+              userId: resolvedUserId,
+            ),
+          ),
+          (route) => route.isFirst,
+        );
+      } else {
+        throw Exception('Failed to create subscription after payment');
+      }
+    } catch (e) {
+      print('🔍 DEBUG: Error in _handlePaymentSuccess: ${e.toString()}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -147,8 +297,26 @@ class _SubscriptionSchedulingScreenState
     }
   }
 
-  String _formatTime(int hour) {
-    return '${hour.toString().padLeft(2, '0')}:00';
+  void _handlePaymentError(PaymentFailureResponse response) {
+    print('🔍 DEBUG: Payment failed: ${response.code} - ${response.message}');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment failed: ${response.message}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    setState(() => _isProcessing = false);
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    print('🔍 DEBUG: External wallet selected: ${response.walletName}');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('External wallet not supported'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    setState(() => _isProcessing = false);
   }
 
   @override
@@ -166,7 +334,14 @@ class _SubscriptionSchedulingScreenState
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Schedule ${widget.serviceProfile.profileName}'),
+        title: Text(
+          'Schedule your subscription',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        centerTitle: false,
       ),
       body: SafeArea(
         child: Column(
@@ -187,29 +362,28 @@ class _SubscriptionSchedulingScreenState
 
                     const SizedBox(height: 28),
 
-                    // 2️⃣ FREQUENCY SELECTION
-                    _buildFrequencySelection(theme),
+                    // 2️⃣ SERVICE SUMMARY (READ-ONLY)
+                    _buildServiceSummary(theme),
 
                     const SizedBox(height: 24),
 
-                    // 3️⃣ START DATE SELECTION
+                    // 3️⃣ SERVICE START DATE
                     _buildStartDateSelection(theme, dates),
 
                     const SizedBox(height: 24),
 
-                    // 4️⃣ TIME WINDOW SELECTION
+                    // 4️⃣ PREFERRED DAILY TIME WINDOW
                     _buildTimeWindowSelection(theme, timeWindows),
 
+                    const SizedBox(height: 16),
+
+                    // 5️⃣ SYSTEM CLARIFICATION TEXT
+                    _buildSystemClarification(theme),
+
                     const SizedBox(height: 24),
 
-                    // 5️⃣ PRICE DISPLAY
-                    _buildPriceDisplay(theme),
-
-                    const SizedBox(height: 24),
-                    Divider(height: 1),
-
-                    // 6️⃣ WHAT'S INCLUDED
-                    _buildWhatsIncluded(theme),
+                    // 6️⃣ TRUST NOTE
+                    _buildTrustNote(theme),
 
                     const SizedBox(height: 24),
                   ],
@@ -230,116 +404,73 @@ class _SubscriptionSchedulingScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Schedule your subscription',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+          'Choose when your daily service should start.',
+          style: theme.textTheme.bodyLarge?.copyWith(color: Colors.black54),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
-          'Choose a start date and time for your recurring service',
-          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
+          'SEVAQ will handle all recurring visits.',
+          style: theme.textTheme.bodyLarge?.copyWith(color: Colors.black54),
         ),
       ],
     );
   }
 
-  Widget _buildFrequencySelection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Service Frequency',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildFrequencyOption(
-                  theme,
-                  frequency: Frequency.weekly,
-                  label: 'Weekly',
-                  description: 'Service once a week',
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildFrequencyOption(
-                  theme,
-                  frequency: Frequency.biweekly,
-                  label: 'Bi-weekly',
-                  description: 'Service twice a week',
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildFrequencyOption(
-                  theme,
-                  frequency: Frequency.monthly,
-                  label: 'Monthly',
-                  description: 'Service once a month',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFrequencyOption(
-    ThemeData theme, {
-    required Frequency frequency,
-    required String label,
-    required String description,
-  }) {
-    final isSelected = _selectedFrequency == frequency;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedFrequency = frequency),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.primaryColor : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? theme.primaryColor : Colors.grey[300]!,
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
-              textAlign: TextAlign.center,
+  Widget _buildServiceSummary(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Selected plan',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isSelected
-                    ? Colors.white.withOpacity(0.8)
-                    : Colors.black54,
-              ),
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.serviceProfile.profileName} — ${widget.serviceProfile.serviceType}',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.serviceProfile.scopeDefinition,
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today, size: 16, color: theme.primaryColor),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Visits are scheduled daily as part of this plan.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -349,14 +480,14 @@ class _SubscriptionSchedulingScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Start Date',
+          'Service start date',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 60,
+          height: 70,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: dates.length,
@@ -365,7 +496,7 @@ class _SubscriptionSchedulingScreenState
               final isSelected =
                   _selectedStartDate != null &&
                   _isSameDay(date, _selectedStartDate!);
-              final isToday = _isSameDay(date, DateTime.now());
+
               final isTomorrow = _isSameDay(
                 date,
                 DateTime.now().add(const Duration(days: 1)),
@@ -380,7 +511,7 @@ class _SubscriptionSchedulingScreenState
                     color: isSelected
                         ? theme.primaryColor
                         : (index == 0
-                              ? theme.primaryColor.withOpacity(0.1)
+                              ? theme.primaryColor.withValues(alpha: 0.1)
                               : Colors.grey[100]),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
@@ -394,9 +525,7 @@ class _SubscriptionSchedulingScreenState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isToday
-                            ? 'Today'
-                            : isTomorrow
+                        isTomorrow
                             ? 'Tomorrow'
                             : DateFormat('EEE').format(date),
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -427,202 +556,187 @@ class _SubscriptionSchedulingScreenState
             },
           ),
         ),
+        const SizedBox(height: 8),
+        Text(
+          'Your service will begin on this date and continue daily.',
+          style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
+        ),
       ],
     );
   }
 
   Widget _buildTimeWindowSelection(
     ThemeData theme,
-    List<TimeWindow> timeWindows,
+    List<PreferredTimeWindow> timeWindows,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Time Window',
+          'Preferred daily time window',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 1,
-              childAspectRatio: 3,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: timeWindows.length,
-            itemBuilder: (context, index) {
-              final timeWindow = timeWindows[index];
-              final isSelected =
-                  _selectedTimeWindow != null &&
-                  _selectedTimeWindow!.id == timeWindow.id;
+        ...timeWindows.map((window) {
+          final isSelected =
+              _selectedTimeWindow != null && _selectedTimeWindow == window;
+          final isMorning = window == PreferredTimeWindow.morning;
 
-              return GestureDetector(
-                onTap: () => setState(() => _selectedTimeWindow = timeWindow),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? theme.primaryColor : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected
-                          ? theme.primaryColor
-                          : Colors.grey[300]!,
-                      width: 1,
-                    ),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTimeWindow = window),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected ? theme.primaryColor : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? theme.primaryColor : Colors.grey[300]!,
+                    width: 1,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Text(
+                                _getTimeWindowLabel(window),
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                              ),
+                              if (isMorning) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withValues(alpha: 0.2)
+                                        : theme.primaryColor.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Default',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : theme.primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
                           Text(
-                            timeWindow.label,
+                            _formatTimeWindow(window),
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : Colors.black87,
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.9)
+                                  : Colors.black54,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${timeWindow.startTime}:00 - ${timeWindow.endTime}:00',
+                            _getTimeWindowDescription(window),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: isSelected
-                                  ? Colors.white.withOpacity(0.8)
-                                  : Colors.black54,
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : Colors.black38,
                             ),
                           ),
-                          if (timeWindow.isRecommended)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                'Recommended',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isSelected
-                                      ? Colors.white.withOpacity(0.8)
-                                      : theme.primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
-                      if (isSelected)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_circle, color: Colors.white, size: 24),
+                  ],
                 ),
-              );
-            },
-          ),
-        ),
+              ),
+            ),
+          );
+        }).toList(),
       ],
     );
   }
 
-  Widget _buildPriceDisplay(ThemeData theme) {
+  Widget _buildSystemClarification(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Colors.blue[50],
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[100]!),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'Subscription Price',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+          Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "We'll assign a verified professional before your service begins. "
+              "Exact arrival time may vary slightly within your selected window.",
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.blue[900],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${widget.serviceProfile.profileName}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${widget.serviceProfile.monthlyPrice} / month',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                'Includes GST',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWhatsIncluded(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'What\'s Included',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTrustNote(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Text(
-                widget.serviceProfile.scopeDefinition,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Max Capacity: ${widget.serviceProfile.maxCapacityHint}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
+              Icon(Icons.verified_user, color: Colors.green[700], size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Covered by SEVAQ Service Guarantee',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 36),
+            child: Text(
+              "We'll assign a verified professional 24-48 hours before your service starts. "
+              "SEVAQ handles all monitoring and replacement.",
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -662,7 +776,7 @@ class _SubscriptionSchedulingScreenState
                     const Text('Processing...'),
                   ],
                 )
-              : const Text('Confirm Subscription'),
+              : const Text('Confirm & start daily service'),
         ),
       ),
     );
@@ -675,22 +789,5 @@ class _SubscriptionSchedulingScreenState
   }
 }
 
-class TimeWindow {
-  final String id;
-  final String label;
-  final int startTime;
-  final int endTime;
-  final String helperText;
-  final bool isRecommended;
-
-  const TimeWindow({
-    required this.id,
-    required this.label,
-    required this.startTime,
-    required this.endTime,
-    required this.helperText,
-    required this.isRecommended,
-  });
-}
-
-enum Frequency { weekly, biweekly, monthly }
+/// Preferred time window enum for daily subscriptions
+enum PreferredTimeWindow { morning, afternoon, evening }

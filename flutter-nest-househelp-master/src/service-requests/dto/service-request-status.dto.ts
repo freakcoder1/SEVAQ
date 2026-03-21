@@ -1,8 +1,8 @@
 export class ServiceRequestStatusDto {
   requestId: string;
   assignmentStatus: 'REQUESTED' | 'ASSIGNED' | 'FAILED_TO_ASSIGN';
-  assignedWorkerId?: string;
-  assignedSlotId?: string;
+  assignedWorkerId?: number;
+  assignedSlotId?: number;
   assignedAt?: Date;
   failedReason?: string;
   createdAt: Date;

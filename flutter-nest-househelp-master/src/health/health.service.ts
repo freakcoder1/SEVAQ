@@ -36,9 +36,7 @@ export class HealthService {
   }
 
   async checkDatabase() {
-    return this.health.check([
-      () => this.db.pingCheck('database'),
-    ]);
+    return this.health.check([() => this.db.pingCheck('database')]);
   }
 
   async checkMemory() {
@@ -50,14 +48,18 @@ export class HealthService {
 
   async checkDisk() {
     return this.health.check([
-      () => this.disk.checkStorage('storage', { path: 'C:\\', thresholdPercent: 0.9 }),
+      () =>
+        this.disk.checkStorage('storage', {
+          path: 'C:\\',
+          thresholdPercent: 0.9,
+        }),
     ]);
   }
 
   private async checkWorkers(): Promise<HealthIndicatorResult> {
     try {
       const count = await this.workerRepository.count({
-        where: { isActive: true }
+        where: { isActive: true },
       });
 
       const isHealthy = count > 0;

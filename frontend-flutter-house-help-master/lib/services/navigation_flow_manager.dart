@@ -297,8 +297,9 @@ class AssignmentFlowValidator {
   }
 
   /// Get next valid navigation step
+  /// SEVAQ DOCTRINE: Users never choose workers - assignment is automatic
   static String getNextNavigationStep(AssignmentState state) {
-    if (!state.hasWorker) return 'select-worker';
+    // Worker assignment is system-managed, never user-driven
     if (!state.hasService) return 'select-service';
     if (!state.hasTime) return 'schedule-time';
     if (!state.hasAmount) return 'calculate-amount';

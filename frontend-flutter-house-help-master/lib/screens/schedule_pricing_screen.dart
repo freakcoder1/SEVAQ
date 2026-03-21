@@ -15,9 +15,15 @@ import 'service_request_in_progress_screen.dart';
 class SchedulePricingScreen extends StatefulWidget {
   final Worker? worker;
   final Service? service;
+  final String?
+  source; // 'ONE_TIME' for one-time visits, null/empty for subscription
 
-  const SchedulePricingScreen({Key? key, this.worker, this.service})
-    : super(key: key);
+  const SchedulePricingScreen({
+    Key? key,
+    this.worker,
+    this.service,
+    this.source,
+  }) : super(key: key);
 
   @override
   State<SchedulePricingScreen> createState() => _SchedulePricingScreenState();
@@ -25,8 +31,8 @@ class SchedulePricingScreen extends StatefulWidget {
 
 class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
   late ApiService _apiService;
-  late AuthProvider _authProvider;
-  late LocationProvider _locationProvider;
+  AuthProvider? _authProvider;
+  LocationProvider? _locationProvider;
 
   // State variables
   DateTime? _selectedDate;
@@ -42,11 +48,35 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
-    _locationProvider = Provider.of<LocationProvider>(context, listen: false);
-
-    // Auto-select earliest viable date
     _selectedDate = _getEarliestViableDate();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Try to get providers, but handle if they're not available
+    debugPrint('SchedulePricingScreen: didChangeDependencies called');
+    try {
+      _authProvider = Provider.of<AuthProvider>(context, listen: false);
+      debugPrint(
+        'SchedulePricingScreen: AuthProvider obtained: ${_authProvider != null}',
+      );
+      debugPrint(
+        'SchedulePricingScreen: AuthProvider user: ${_authProvider?.user?.email ?? "null"}',
+      );
+    } catch (e) {
+      debugPrint('SchedulePricingScreen: AuthProvider not available: $e');
+      _authProvider = null;
+    }
+    try {
+      _locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      debugPrint(
+        'SchedulePricingScreen: LocationProvider obtained: ${_locationProvider != null}',
+      );
+    } catch (e) {
+      debugPrint('SchedulePricingScreen: LocationProvider not available: $e');
+      _locationProvider = null;
+    }
   }
 
   DateTime _getEarliestViableDate() {
@@ -127,22 +157,26 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final user = _authProvider.user;
+      if (_authProvider == null) {
+        throw Exception('Authentication not available. Please log in again.');
+      }
+      final user = _authProvider!.user;
       print('🔍 DEBUG: AuthProvider user: ${user?.email ?? "null"}');
       print(
-        '🔍 DEBUG: AuthProvider isAuthenticated: ${_authProvider.isAuthenticated}',
+        '🔍 DEBUG: AuthProvider isAuthenticated: ${_authProvider!.isAuthenticated}',
       );
       if (user == null) {
         throw Exception('User not logged in');
       }
 
       // Validate location before proceeding
-      if (_locationProvider.currentLocationData == null) {
+      if (_locationProvider == null ||
+          _locationProvider!.currentLocationData == null) {
         throw Exception('Location not set. Please set your location first.');
       }
 
       // Check service availability for the selected location
-      final location = _locationProvider.currentLocationData!;
+      final location = _locationProvider!.currentLocationData!;
       final availabilityResponse = await _apiService.checkServiceAvailability(
         location.latitude ?? 0.0,
         location.longitude ?? 0.0,
@@ -180,6 +214,9 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
           'address': location.address,
         },
         'priceSnapshot': _calculatedPrice,
+        // Explicit source field for one-time visits
+        if (widget.source != null && widget.source!.isNotEmpty)
+          'source': widget.source,
       };
 
       print(
@@ -409,7 +446,9 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2E7D32).withOpacity(0.2),
+                            color: const Color(
+                              0xFF2E7D32,
+                            ).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -516,7 +555,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -568,7 +607,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
@@ -612,7 +651,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -688,7 +727,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

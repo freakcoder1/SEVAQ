@@ -77,7 +77,7 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     }
 
     // Handle loading state - wait for providers to initialize
-    if (auth.isLoading || !locationProvider.ready) {
+    if (auth.isLoading || !locationProvider.isInitialized) {
       debugPrint('AuthWrapper: Still initializing, showing loading screen');
       return _buildLoadingScreen();
     }

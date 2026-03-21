@@ -1,13 +1,13 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
 import { AssignmentState } from '../../bookings/entities/booking.entity';
 
 export class CreateAssignmentDto {
-  @IsString()
-  bookingId: string;
+  @IsNumber()
+  bookingId: number;
 
   @IsOptional()
-  @IsString()
-  preferredWorkerId?: string;
+  @IsNumber()
+  preferredWorkerId?: number;
 
   @IsOptional()
   @IsEnum(AssignmentState)

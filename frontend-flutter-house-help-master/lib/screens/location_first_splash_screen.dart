@@ -95,10 +95,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
       locationProvider.markLocationSetupComplete();
 
       // Check service availability in background (doesn't block UI)
-      await locationProvider.checkServiceAvailability(
-        locationProvider.currentLocationData!.latitude ?? 0.0,
-        locationProvider.currentLocationData!.longitude ?? 0.0,
-      );
+      await locationProvider.checkServiceAvailability();
       debugPrint(
         'LocationFirstSplashScreen: Availability check complete, AuthWrapper will transition',
       );
@@ -136,7 +133,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
     // This ensures we check location again when returning from LocationSetupScreen
     final locationProvider = context.watch<LocationProvider>();
     final currentLocation = locationProvider.currentLocationData;
-    final hasCompletedSetup = locationProvider.hasCompletedLocationSetup;
+    final hasCompletedSetup = !locationProvider.needsLocationSetup();
 
     debugPrint(
       'LocationFirstSplashScreen.build: START, location=$currentLocation, completed=$hasCompletedSetup',
@@ -206,7 +203,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
                           gradient: LinearGradient(
                             colors: [
                               theme.primaryColor,
-                              theme.primaryColor.withOpacity(0.8),
+                              theme.primaryColor.withValues(alpha:0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,

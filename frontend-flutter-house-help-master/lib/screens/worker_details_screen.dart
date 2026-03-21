@@ -121,7 +121,7 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                   color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.primaryColor.withOpacity(0.2),
+                    color: theme.primaryColor.withValues(alpha:0.2),
                   ),
                 ),
                 child: Column(
@@ -250,7 +250,7 @@ class _WorkerDetailsScreenState extends State<WorkerDetailsScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha:0.05),
                     blurRadius: 4,
                     offset: Offset(0, 2),
                   ),

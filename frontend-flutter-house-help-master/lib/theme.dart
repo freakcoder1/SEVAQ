@@ -285,7 +285,7 @@ class AppTheme {
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         // Focus ring for accessibility
-        focusColor: primaryColor.withOpacity(0.25),
+        focusColor: primaryColor.withValues(alpha: 0.25),
       ),
       cardTheme: CardThemeData(
         color: surfaceColor,
@@ -479,7 +479,7 @@ class AppTheme {
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         // Focus ring for accessibility
-        focusColor: Color(0xFF9ECAFF).withOpacity(0.25),
+        focusColor: Color(0xFF9ECAFF).withValues(alpha: 0.25),
       ),
     );
   }

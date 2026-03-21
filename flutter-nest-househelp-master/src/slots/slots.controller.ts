@@ -3,15 +3,15 @@ import { SlotsService } from './slots.service';
 
 @Controller('slots')
 export class SlotsController {
-    constructor(private readonly slotsService: SlotsService) { }
+  constructor(private readonly slotsService: SlotsService) {}
 
-    @Get()
-    findAll() {
-        return this.slotsService.findAll();
-    }
+  @Get()
+  findAll() {
+    return this.slotsService.findAll();
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: number) {
-        return this.slotsService.findOne(id);
-    }
+  @Get(':id')
+  findOne(@Param('id') id: number) {
+    return this.slotsService.findOne(id);
+  }
 }

@@ -12,6 +12,8 @@ enum BookingStatus {
   cancelled,
 }
 
+enum BookingType { onDemand, scheduled, subscription }
+
 class Booking {
   final int id; // Internal ID
   final String publicId; // Public API ID
@@ -24,6 +26,7 @@ class Booking {
   final BookingStatus status;
   final bool isPaid;
   final double? amount;
+  final BookingType? bookingType;
 
   Booking({
     required this.id,
@@ -37,7 +40,27 @@ class Booking {
     required this.status,
     required this.isPaid,
     this.amount,
+    this.bookingType,
   });
+
+  // Helper methods to check booking type
+  bool get isSubscription => bookingType == BookingType.subscription;
+  bool get isOneTime => bookingType == BookingType.onDemand;
+  bool get isScheduled => bookingType == BookingType.scheduled;
+
+  // Get human-readable booking type label
+  String get bookingTypeLabel {
+    switch (bookingType) {
+      case BookingType.subscription:
+        return 'Monthly Subscription';
+      case BookingType.onDemand:
+        return 'One-Time Service';
+      case BookingType.scheduled:
+        return 'Scheduled Service';
+      default:
+        return 'Service';
+    }
+  }
 
   static BookingStatus _mapStatus(String statusStr) {
     final normalized = statusStr.toLowerCase().trim();
@@ -54,6 +77,32 @@ class Booking {
       );
     } catch (e) {
       return BookingStatus.assignmentInProgress;
+    }
+  }
+
+  static BookingType? _mapType(String? typeStr) {
+    if (typeStr == null) return null;
+    // Normalize: lowercase and replace underscores with nothing
+    final normalized = typeStr.toLowerCase().replaceAll('_', '').trim();
+
+    // Handle special cases
+    if (normalized == 'on_demand' || normalized == 'ondemand') {
+      return BookingType.onDemand;
+    }
+    if (normalized == 'scheduled') {
+      return BookingType.scheduled;
+    }
+    if (normalized == 'subscription' || normalized == 'monthly') {
+      return BookingType.subscription;
+    }
+
+    try {
+      return BookingType.values.firstWhere(
+        (e) => e.toString().split('.').last == normalized,
+        orElse: () => BookingType.onDemand,
+      );
+    } catch (e) {
+      return BookingType.onDemand;
     }
   }
 
@@ -141,6 +190,7 @@ class Booking {
         status: BookingStatus.assignmentInProgress,
         isPaid: false,
         amount: null,
+        bookingType: null,
       );
     }
 
@@ -204,6 +254,7 @@ class Booking {
                       ? double.tryParse(json['totalAmount'])
                       : json['totalAmount']?.toDouble())
                 : 0.0),
+      bookingType: _mapType(json['type']),
     );
   }
 }

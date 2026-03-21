@@ -19,11 +19,11 @@ import { User } from '../users/entities/user.entity';
       SystemPerformanceMetric,
       Booking,
       Worker,
-      User
-    ])
+      User,
+    ]),
   ],
   providers: [MetricsService],
   controllers: [MetricsController],
-  exports: [MetricsService]
+  exports: [MetricsService],
 })
 export class MetricsModule {}

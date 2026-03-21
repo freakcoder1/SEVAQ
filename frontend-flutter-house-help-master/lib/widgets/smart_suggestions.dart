@@ -57,7 +57,9 @@ class SmartSuggestions extends StatelessWidget {
       decoration: BoxDecoration(
         color: suggestion.backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: suggestion.backgroundColor.withOpacity(0.3)),
+        border: Border.all(
+          color: suggestion.backgroundColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +70,7 @@ class SmartSuggestions extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: suggestion.iconColor.withOpacity(0.2),
+                  color: suggestion.iconColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

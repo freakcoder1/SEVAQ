@@ -20,6 +20,8 @@ import 'screens/home_screen.dart';
 import 'screens/category_screen.dart';
 import 'screens/service_details_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/location_first_splash_screen.dart';
 import 'services/firebase_messaging_service.dart';
 
 void main() async {
@@ -47,7 +49,7 @@ class SevaqApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => LocationProvider(prefs: prefs)),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
@@ -77,6 +79,13 @@ class SevaqAppMaterial extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       home: const AuthWrapper(),
+      routes: {
+        '/auth': (_) => const AuthWrapper(),
+        '/home': (_) => const MainNavigation(),
+        '/splash': (_) => const SplashScreen(),
+        '/login': (_) => LoginScreen(),
+        '/location-setup': (_) => LocationFirstSplashScreen(),
+      },
     );
   }
 }

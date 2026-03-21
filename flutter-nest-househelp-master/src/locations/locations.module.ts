@@ -10,18 +10,12 @@ import { User } from '../users/entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            MicroZone,
-            ServiceArea,
-            Waitlist,
-            Worker,
-            User,
-        ]),
-        AuthModule,
-    ],
-    controllers: [LocationsController],
-    providers: [LocationService],
-    exports: [LocationService],
+  imports: [
+    TypeOrmModule.forFeature([MicroZone, ServiceArea, Waitlist, Worker, User]),
+    AuthModule,
+  ],
+  controllers: [LocationsController],
+  providers: [LocationService],
+  exports: [LocationService],
 })
-export class LocationsModule { }
+export class LocationsModule {}

@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Booking } from '../../bookings/entities/booking.entity';
 import { User } from '../../users/entities/user.entity';
 import { Service } from '../../services/entities/service.entity';
@@ -15,7 +25,7 @@ export enum ServiceRequestSource {
 export class ServiceRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string; // Internal ID (UUID)
-  
+
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
 
@@ -75,9 +85,7 @@ export class ServiceRequest {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relationships
-  @OneToMany(() => Booking, (booking) => booking.serviceRequest)
-  bookings: Booking[];
+  // NOTE: Booking relationship removed - Booking is legacy table
 
   @ManyToOne(() => User, (user) => user.serviceRequests)
   @JoinColumn({ name: 'userId' })
@@ -93,12 +101,13 @@ export class ServiceRequest {
 
   // Business logic methods
   canRetry(): boolean {
-    return this.assignmentStatus === 'FAILED_TO_ASSIGN' && 
-           (this.metadata?.retryCount || 0) < 3;
+    return (
+      this.assignmentStatus === 'FAILED_TO_ASSIGN' &&
+      (this.metadata?.retryCount || 0) < 3
+    );
   }
 
   shouldAutoRetry(): boolean {
-    return this.canRetry() && 
-           this.failureReason !== 'NO_WORKERS_AVAILABLE';
+    return this.canRetry() && this.failureReason !== 'NO_WORKERS_AVAILABLE';
   }
 }

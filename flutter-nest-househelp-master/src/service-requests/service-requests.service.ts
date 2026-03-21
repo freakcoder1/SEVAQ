@@ -21,15 +21,18 @@ export class ServiceRequestsService {
     private workersRepository: Repository<Worker>,
   ) {}
 
-  async create(userId: number, createDto: {
-    serviceId?: number;
-    serviceProfileId?: number;
-    date: string;
-    timeWindow: string;
-    priceSnapshot: number;
-    location?: { lat: number; lng: number; address?: string };
-    source?: string;
-  }): Promise<ServiceRequest> {
+  async create(
+    userId: number,
+    createDto: {
+      serviceId?: number;
+      serviceProfileId?: number;
+      date: string;
+      timeWindow: string;
+      priceSnapshot: number;
+      location?: { lat: number; lng: number; address?: string };
+      source?: string;
+    },
+  ): Promise<ServiceRequest> {
     const serviceRequestData: any = {
       publicId: uuidv4(),
       userId: userId,
@@ -43,18 +46,28 @@ export class ServiceRequestsService {
       assignedWorkerId: null,
       assignedSlotId: null,
       source: createDto.source,
-      metadata: createDto.location ? { location: createDto.location } : undefined,
+      metadata: createDto.location
+        ? { location: createDto.location }
+        : undefined,
     };
-    const serviceRequest = this.serviceRequestsRepository.create(serviceRequestData as any);
-    const savedRequest = await this.serviceRequestsRepository.save(serviceRequest);
-    const singleRequest = Array.isArray(savedRequest) ? savedRequest[0] : savedRequest;
+    const serviceRequest =
+      this.serviceRequestsRepository.create(serviceRequestData);
+    const savedRequest =
+      await this.serviceRequestsRepository.save(serviceRequest);
+    const singleRequest = Array.isArray(savedRequest)
+      ? savedRequest[0]
+      : savedRequest;
 
     // Trigger assignment processing synchronously
     try {
       await this.assignmentWorker.processAssignment(singleRequest.id);
-      this.logger.log(`Assignment processing completed for service request ${singleRequest.publicId}`);
+      this.logger.log(
+        `Assignment processing completed for service request ${singleRequest.publicId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to process assignment for service request ${singleRequest.publicId}: ${error.message}`);
+      this.logger.error(
+        `Failed to process assignment for service request ${singleRequest.publicId}: ${error.message}`,
+      );
     }
 
     return singleRequest;
@@ -63,11 +76,16 @@ export class ServiceRequestsService {
   async findById(id: string): Promise<ServiceRequest | null> {
     this.logger.log(`Finding service request with id: ${id}`);
     try {
-      const result = await this.serviceRequestsRepository.findOne({ where: { id } });
+      const result = await this.serviceRequestsRepository.findOne({
+        where: { id },
+      });
       this.logger.log(`Found service request: ${result ? 'yes' : 'no'}`);
       return result;
     } catch (error) {
-      this.logger.error(`Error finding service request ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error finding service request ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -99,7 +117,9 @@ export class ServiceRequestsService {
     assignedWorker?: any;
     failureReason?: string | null;
   }> {
-    const request = await this.serviceRequestsRepository.findOne({ where: { publicId } });
+    const request = await this.serviceRequestsRepository.findOne({
+      where: { publicId },
+    });
     if (!request) {
       throw new Error('Service request not found');
     }

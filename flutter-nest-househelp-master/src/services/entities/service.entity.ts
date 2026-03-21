@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToMany,
+  JoinTable,
+  OneToMany,
+} from 'typeorm';
 import { Worker } from '../../workers/entities/worker.entity';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 
@@ -6,7 +15,7 @@ import { ServiceRequest } from '../../service-requests/entities/service-request.
 export class Service {
   @PrimaryGeneratedColumn()
   id: number; // Internal ID
-  
+
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
 
@@ -52,7 +61,7 @@ export class Service {
   @Column({ type: 'text', nullable: true })
   imageUrl: string;
 
-  @ManyToMany(() => Worker, worker => worker.services)
+  @ManyToMany(() => Worker, (worker) => worker.services)
   workers: Worker[];
 
   @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.service)

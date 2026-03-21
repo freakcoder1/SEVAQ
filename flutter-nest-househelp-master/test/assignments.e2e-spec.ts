@@ -63,47 +63,41 @@ describe('Assignments E2E Tests', () => {
 
     beforeEach(async () => {
       // Create test user
-      const userResponse = await request(httpServer)
-        .post('/users')
-        .send({
-          name: 'Test User',
-          email: 'test@example.com',
-          phone: '1234567890',
-          location: 'Noida',
-          latitude: 28.5355,
-          longitude: 77.3910,
-        });
+      const userResponse = await request(httpServer).post('/users').send({
+        name: 'Test User',
+        email: 'test@example.com',
+        phone: '1234567890',
+        location: 'Noida',
+        latitude: 28.5355,
+        longitude: 77.391,
+      });
 
       testUser = userResponse.body;
 
       // Create test worker
-      const workerResponse = await request(httpServer)
-        .post('/workers')
-        .send({
-          name: 'Test Worker',
-          email: 'worker@example.com',
-          phone: '0987654321',
-          location: 'Noida',
-          isActive: true,
-          isAvailable: true,
-          rating: 4.5,
-          totalBookings: 10,
-          completedBookings: 9,
-          yearsOfExperience: 5,
-        });
+      const workerResponse = await request(httpServer).post('/workers').send({
+        name: 'Test Worker',
+        email: 'worker@example.com',
+        phone: '0987654321',
+        location: 'Noida',
+        isActive: true,
+        isAvailable: true,
+        rating: 4.5,
+        totalBookings: 10,
+        completedBookings: 9,
+        yearsOfExperience: 5,
+      });
 
       testWorker = workerResponse.body;
 
       // Create test service
-      const serviceResponse = await request(httpServer)
-        .post('/services')
-        .send({
-          name: 'Home Cleaning',
-          description: 'Complete home cleaning service',
-          price: 500.0,
-          duration: 120,
-          isActive: true,
-        });
+      const serviceResponse = await request(httpServer).post('/services').send({
+        name: 'Home Cleaning',
+        description: 'Complete home cleaning service',
+        price: 500.0,
+        duration: 120,
+        isActive: true,
+      });
 
       testService = serviceResponse.body;
 
@@ -148,19 +142,18 @@ describe('Assignments E2E Tests', () => {
 
     it('should get assignment status', async () => {
       // First assign a professional
-      await request(httpServer)
-        .post('/assignments/assign')
-        .send({
-          bookingId: testBooking.id,
-          serviceId: testService.id,
-          userLat: testUser.latitude,
-          userLng: testUser.longitude,
-          startTime: testBooking.startTime,
-          endTime: testBooking.endTime,
-        });
+      await request(httpServer).post('/assignments/assign').send({
+        bookingId: testBooking.id,
+        serviceId: testService.id,
+        userLat: testUser.latitude,
+        userLng: testUser.longitude,
+        startTime: testBooking.startTime,
+        endTime: testBooking.endTime,
+      });
 
-      const response = await request(httpServer)
-        .get(`/assignments/status/${testBooking.id}`);
+      const response = await request(httpServer).get(
+        `/assignments/status/${testBooking.id}`,
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.assignmentState).toBe('ASSIGNED');
@@ -180,15 +173,15 @@ describe('Assignments E2E Tests', () => {
 
     it('should handle assignment timeout', async () => {
       // Try to handle timeout for a non-existent booking
-      const response = await request(httpServer)
-        .post('/assignments/timeout/test-id');
+      const response = await request(httpServer).post(
+        '/assignments/timeout/test-id',
+      );
 
       expect(response.status).toBe(404);
     });
 
     it('should get assignment analytics', async () => {
-      const response = await request(httpServer)
-        .get('/assignments/analytics');
+      const response = await request(httpServer).get('/assignments/analytics');
 
       expect(response.status).toBe(200);
       expect(response.body).toBeDefined();
@@ -200,20 +193,19 @@ describe('Assignments E2E Tests', () => {
 
     it('should reassign a professional', async () => {
       // First assign a professional
-      await request(httpServer)
-        .post('/assignments/assign')
-        .send({
-          bookingId: testBooking.id,
-          serviceId: testService.id,
-          userLat: testUser.latitude,
-          userLng: testUser.longitude,
-          startTime: testBooking.startTime,
-          endTime: testBooking.endTime,
-        });
+      await request(httpServer).post('/assignments/assign').send({
+        bookingId: testBooking.id,
+        serviceId: testService.id,
+        userLat: testUser.latitude,
+        userLng: testUser.longitude,
+        startTime: testBooking.startTime,
+        endTime: testBooking.endTime,
+      });
 
       // Then reassign
-      const response = await request(httpServer)
-        .post(`/assignments/reassign/${testBooking.id}`);
+      const response = await request(httpServer).post(
+        `/assignments/reassign/${testBooking.id}`,
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -221,16 +213,14 @@ describe('Assignments E2E Tests', () => {
 
     it('should not allow duplicate assignment', async () => {
       // First assign a professional
-      await request(httpServer)
-        .post('/assignments/assign')
-        .send({
-          bookingId: testBooking.id,
-          serviceId: testService.id,
-          userLat: testUser.latitude,
-          userLng: testUser.longitude,
-          startTime: testBooking.startTime,
-          endTime: testBooking.endTime,
-        });
+      await request(httpServer).post('/assignments/assign').send({
+        bookingId: testBooking.id,
+        serviceId: testService.id,
+        userLat: testUser.latitude,
+        userLng: testUser.longitude,
+        startTime: testBooking.startTime,
+        endTime: testBooking.endTime,
+      });
 
       // Try to assign again
       const response = await request(httpServer)
@@ -249,11 +239,9 @@ describe('Assignments E2E Tests', () => {
 
     it('should handle invalid booking state for assignment', async () => {
       // Update booking to a non-pending state
-      await request(httpServer)
-        .patch(`/bookings/${testBooking.id}`)
-        .send({
-          assignmentState: 'ASSIGNED',
-        });
+      await request(httpServer).patch(`/bookings/${testBooking.id}`).send({
+        assignmentState: 'ASSIGNED',
+      });
 
       const response = await request(httpServer)
         .post('/assignments/assign')
@@ -273,26 +261,22 @@ describe('Assignments E2E Tests', () => {
   describe('Assignment Edge Cases', () => {
     it('should handle assignment with no available workers', async () => {
       // Create a booking without any workers
-      const userResponse = await request(httpServer)
-        .post('/users')
-        .send({
-          name: 'Test User 2',
-          email: 'test2@example.com',
-          phone: '1234567891',
-          location: 'Noida',
-          latitude: 28.5355,
-          longitude: 77.3910,
-        });
+      const userResponse = await request(httpServer).post('/users').send({
+        name: 'Test User 2',
+        email: 'test2@example.com',
+        phone: '1234567891',
+        location: 'Noida',
+        latitude: 28.5355,
+        longitude: 77.391,
+      });
 
-      const serviceResponse = await request(httpServer)
-        .post('/services')
-        .send({
-          name: 'Deep Cleaning',
-          description: 'Deep cleaning service',
-          price: 800.0,
-          duration: 180,
-          isActive: true,
-        });
+      const serviceResponse = await request(httpServer).post('/services').send({
+        name: 'Deep Cleaning',
+        description: 'Deep cleaning service',
+        price: 800.0,
+        duration: 180,
+        isActive: true,
+      });
 
       const bookingResponse = await request(httpServer)
         .post('/bookings')
@@ -324,41 +308,35 @@ describe('Assignments E2E Tests', () => {
 
     it('should handle assignment with no available slots', async () => {
       // Create a worker and book all their slots
-      const userResponse = await request(httpServer)
-        .post('/users')
-        .send({
-          name: 'Test User 3',
-          email: 'test3@example.com',
-          phone: '1234567892',
-          location: 'Noida',
-          latitude: 28.5355,
-          longitude: 77.3910,
-        });
+      const userResponse = await request(httpServer).post('/users').send({
+        name: 'Test User 3',
+        email: 'test3@example.com',
+        phone: '1234567892',
+        location: 'Noida',
+        latitude: 28.5355,
+        longitude: 77.391,
+      });
 
-      const workerResponse = await request(httpServer)
-        .post('/workers')
-        .send({
-          name: 'Test Worker 2',
-          email: 'worker2@example.com',
-          phone: '0987654322',
-          location: 'Noida',
-          isActive: true,
-          isAvailable: true,
-          rating: 4.0,
-          totalBookings: 5,
-          completedBookings: 5,
-          yearsOfExperience: 3,
-        });
+      const workerResponse = await request(httpServer).post('/workers').send({
+        name: 'Test Worker 2',
+        email: 'worker2@example.com',
+        phone: '0987654322',
+        location: 'Noida',
+        isActive: true,
+        isAvailable: true,
+        rating: 4.0,
+        totalBookings: 5,
+        completedBookings: 5,
+        yearsOfExperience: 3,
+      });
 
-      const serviceResponse = await request(httpServer)
-        .post('/services')
-        .send({
-          name: 'Office Cleaning',
-          description: 'Office cleaning service',
-          price: 600.0,
-          duration: 120,
-          isActive: true,
-        });
+      const serviceResponse = await request(httpServer).post('/services').send({
+        name: 'Office Cleaning',
+        description: 'Office cleaning service',
+        price: 600.0,
+        duration: 120,
+        isActive: true,
+      });
 
       // Create a booking that conflicts with worker availability
       const bookingResponse = await request(httpServer)

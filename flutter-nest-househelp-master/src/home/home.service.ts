@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SystemReadinessService } from '../system-status/system-readiness.service';
 import { LocationService } from '../locations/locations.service';
-import { HomeScreenResponseDto, HomeScreenRequestDto } from './dto/home-screen.dto';
+import {
+  HomeScreenResponseDto,
+  HomeScreenRequestDto,
+} from './dto/home-screen.dto';
 
 @Injectable()
 export class HomeService {
@@ -10,17 +13,21 @@ export class HomeService {
     private readonly locationService: LocationService,
   ) {}
 
-  async getHomeScreenData(requestDto: HomeScreenRequestDto): Promise<HomeScreenResponseDto> {
+  async getHomeScreenData(
+    requestDto: HomeScreenRequestDto,
+  ): Promise<HomeScreenResponseDto> {
     // 1. Check system readiness first
-    const systemReadiness = await this.systemReadinessService.checkSystemReadiness();
-    
+    const systemReadiness =
+      await this.systemReadinessService.checkSystemReadiness();
+
     // 2. If system is ready, get service recommendations
     if (systemReadiness.isReady) {
-      const serviceRecommendations = await this.locationService.getAvailableServices(
-        requestDto.lat, 
-        requestDto.lng, 
-        requestDto.radius || 5.0
-      );
+      const serviceRecommendations =
+        await this.locationService.getAvailableServices(
+          requestDto.lat,
+          requestDto.lng,
+          requestDto.radius || 5.0,
+        );
 
       return {
         systemReadiness,
@@ -28,10 +35,10 @@ export class HomeService {
         locationInfo: {
           lat: requestDto.lat,
           lng: requestDto.lng,
-          radius: requestDto.radius || 5.0
-        }
+          radius: requestDto.radius || 5.0,
+        },
       };
-    } 
+    }
     // 3. If system is not ready, return system state message
     else {
       return {
@@ -40,8 +47,8 @@ export class HomeService {
         locationInfo: {
           lat: requestDto.lat,
           lng: requestDto.lng,
-          radius: requestDto.radius || 5.0
-        }
+          radius: requestDto.radius || 5.0,
+        },
       };
     }
   }
@@ -50,11 +57,11 @@ export class HomeService {
     if (systemReadiness.reasons && systemReadiness.reasons.length > 0) {
       return `System not ready: ${systemReadiness.reasons.join(', ')}`;
     }
-    
+
     if (!systemReadiness.isReady) {
       return 'System is currently not ready to serve requests';
     }
-    
+
     return 'System is ready';
   }
 }

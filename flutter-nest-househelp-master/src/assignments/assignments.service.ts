@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking, AssignmentState } from '../bookings/entities/booking.entity';
@@ -10,6 +10,8 @@ import { AvailabilityService, AvailabilityCheckRequest, AvailabilityCheckResult 
 
 @Injectable()
 export class AssignmentsService {
+  private readonly logger = new Logger(AssignmentsService.name);
+
   constructor(
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
@@ -24,12 +26,12 @@ export class AssignmentsService {
   ) {}
 
   async assignProfessional(assignmentRequest: {
-    bookingId: number;
+    bookingId: string;
     serviceId: number;
     userLat: number;
     userLng: number;
-    startTime: Date;
-    endTime: Date;
+    startTime: string;
+    endTime: string;
   }): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     
     // 1. Validate booking exists and is in PENDING state
@@ -76,7 +78,7 @@ export class AssignmentsService {
     return { success: true, worker: bestWorker.worker };
   }
 
-  async reassignProfessional(bookingId: number): Promise<{ success: boolean; worker?: Worker }> {
+  async reassignProfessional(bookingId: string): Promise<{ success: boolean; worker?: Worker }> {
     // 1. Get current booking
     const booking = await this.bookingsRepository.findOne({
       where: { id: bookingId }
@@ -87,10 +89,25 @@ export class AssignmentsService {
     }
 
     // 2. Release current worker's slot
+    // Parse time strings to Date objects for slot lookup
+    const parseTimeToDate = (time: string): Date => {
+      if (time.includes('T')) {
+        // Full ISO datetime
+        return new Date(time);
+      }
+      // Time string HH:mm:ss - combine with today's date
+      const parts = time.split(':');
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1] || '0', 10);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      return date;
+    };
+    
     const currentSlot = await this.slotsService.findBookedSlot(
       booking.assignedWorkerId, 
-      booking.startTime, 
-      booking.endTime
+      parseTimeToDate(booking.startTime), 
+      parseTimeToDate(booking.endTime)
     );
     
     if (currentSlot) {
@@ -117,7 +134,7 @@ export class AssignmentsService {
     return newAssignment;
   }
 
-  async getAssignmentStatus(bookingId: number): Promise<{
+  async getAssignmentStatus(bookingId: string): Promise<{
     status: AssignmentState;
     assignedWorkerId?: number;
     reassignmentCount: number;
@@ -189,8 +206,8 @@ export class AssignmentsService {
     serviceId: number;
     userLat: number;
     userLng: number;
-    startTime: Date;
-    endTime: Date;
+    startTime: string;
+    endTime: string;
   }): Promise<{ available: boolean; estimatedWaitTime?: number; alternativeSlots?: any[] }> {
     console.log('🔍 Checking availability for assignment request:', assignmentRequest);
 
@@ -232,8 +249,8 @@ export class AssignmentsService {
     serviceId: number;
     userLat: number;
     userLng: number;
-    startTime: Date;
-    endTime: Date;
+    startTime: string;
+    endTime: string;
   }): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     console.log('=== ASSIGNMENT ATTEMPT ===');
     console.log('Request:', assignmentRequest);
@@ -245,10 +262,9 @@ export class AssignmentsService {
     try {
       // 1. Validate booking exists and is in PENDING state
       const booking = await this.bookingsRepository.findOne({
-        where: { id: assignmentRequest.bookingId }
+        where: { id: assignmentRequest.bookingId as any },
+        relations: ['user', 'service'],
       });
-
-      console.log('Booking found:', booking ? 'YES' : 'NO');
       if (!booking) {
         console.log('Booking not found');
         return { success: false, reason: 'Booking not found' };
@@ -353,6 +369,8 @@ export class AssignmentsService {
       .createQueryBuilder('worker')
       .innerJoin('service_worker', 'sw', 'sw.worker_id = worker.id')
       .innerJoin('service', 'service', 'service.id = sw.service_id')
+      .leftJoin('worker.user', 'user')  // Load user relation
+      .addSelect(['user.id', 'user.firstName', 'user.lastName', 'user.email'])  // Select user fields
       .where('service.id = :serviceId')
       .andWhere('worker.isActive = :isActive')
       .andWhere('worker.isAvailable = :isAvailable')
@@ -407,8 +425,8 @@ export class AssignmentsService {
       const distance = this.calculateDistance(userLat, userLng, workerLat, workerLng);
       console.log(`📏 Worker ${worker.id} distance: ${distance.toFixed(2)}km`);
       
-      // Flexible radius check (start with 10km, expand if needed)
-      const maxRadius = 15; // Increased from 10km
+      // Flexible radius check (start with 25km, expand if needed)
+      const maxRadius = 30; // Increased from 15km to cover wider service areas
       if (distance > maxRadius) {
         console.log(`❌ Worker ${worker.id} too far (${distance.toFixed(2)}km > ${maxRadius}km)`);
         return null;
@@ -494,5 +512,110 @@ export class AssignmentsService {
 
   private deg2rad(deg: number): number {
     return deg * (Math.PI / 180);
+  }
+
+  // Methods needed by other services
+  async confirmProvisionalAssignment(bookingId: string): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
+    try {
+      const booking = await this.bookingsRepository.findOne({
+        where: { id: bookingId as any },
+        relations: ['user', 'service'],
+      });
+
+      if (!booking) {
+        return { success: false, reason: 'Booking not found' };
+      }
+
+      if (booking.assignmentState !== AssignmentState.PROVISIONAL_ASSIGNED) {
+        return { success: false, reason: `Invalid booking state: ${booking.assignmentState}` };
+      }
+
+      booking.assignmentState = AssignmentState.ASSIGNED;
+      await this.bookingsRepository.save(booking);
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, reason: error.message };
+    }
+  }
+
+  async createPrimaryAssignment(bookingId: string): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
+    try {
+      const booking = await this.bookingsRepository.findOne({
+        where: { id: bookingId as any },
+        relations: ['user', 'service'],
+      });
+
+      if (!booking) {
+        return { success: false, reason: 'Booking not found' };
+      }
+
+      if (booking.assignmentState !== AssignmentState.PENDING) {
+        return { success: false, reason: `Invalid booking state: ${booking.assignmentState}` };
+      }
+
+      // CRITICAL FIX: Get user location by PUBLIC ID (UUID), not internal ID
+      const userLocation = await this.getUserLocationByPublicId(booking.user.publicId);
+      if (!userLocation) {
+        return { success: false, reason: 'User location not found' };
+      }
+
+      const result = await this.findBestWorker(
+        booking.serviceId,
+        userLocation.lat,
+        userLocation.lng,
+        booking.startTime,
+        booking.endTime,
+      );
+
+      if (!result || !result.worker) {
+        return { success: false, reason: 'No available worker found' };
+      }
+
+      booking.assignmentState = AssignmentState.ASSIGNED;
+      booking.workerId = result.worker.id;
+      await this.bookingsRepository.save(booking);
+
+      return { success: true, worker: result.worker };
+    } catch (error) {
+      return { success: false, reason: error.message };
+    }
+  }
+
+  /**
+   * Get user location by their public ID (UUID)
+   * CRITICAL: Must use publicId (UUID) because that's what relationships are based on
+   */
+  async getUserLocationByPublicId(userPublicId: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      // Query the user by their public ID (UUID)
+      const user = await this.usersRepository.findOne({
+        where: { publicId: userPublicId },
+      });
+      
+      if (!user) {
+        this.logger.warn(`User not found for publicId: ${userPublicId}`);
+        return null;
+      }
+      
+      // Try multiple location fields with fallback
+      // 1. preferredLat/preferredLng (preferred location)
+      // 2. latitude/longitude (regular location)
+      const lat = user.preferredLat || user.latitude;
+      const lng = user.preferredLng || user.longitude;
+      
+      if (lat && lng) {
+        return {
+          lat: parseFloat(lat as unknown as string),
+          lng: parseFloat(lng as unknown as string),
+        };
+      }
+      
+      this.logger.warn(`No location data found for user publicId: ${userPublicId}`);
+      return null;
+    } catch (error) {
+      this.logger.error(`Error fetching user location for publicId ${userPublicId}: ${error.message}`);
+      return null;
+    }
   }
 }

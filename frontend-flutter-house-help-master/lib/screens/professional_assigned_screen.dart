@@ -163,15 +163,15 @@ class _ProfessionalAssignedScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Professional assigned',
+                          'Professional Assigned!',
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: const Color(0xFF2E7D32),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Your service has been scheduled and is ready for confirmation.',
+                          '${widget.worker.user.firstName} has been assigned to your ${widget.service?.name ?? 'service'} and will arrive at your scheduled time.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.black54,
                           ),
@@ -184,30 +184,177 @@ class _ProfessionalAssignedScreenState
 
               const SizedBox(height: 32),
 
-              // Assignment card
+              // Worker Profile Card
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFE8F5E9).withOpacity(0.8),
+                      const Color(0xFFF1F8E9).withOpacity(0.9),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFF2E7D32).withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Assigned professional',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                    // Worker avatar and name
+                    Row(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF2E7D32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              widget.worker.user.firstName.isNotEmpty
+                                  ? widget.worker.user.firstName[0]
+                                        .toUpperCase()
+                                  : 'W',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Name and verified badge
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    '${widget.worker.user.firstName} ${widget.worker.user.lastName}'
+                                            .trim()
+                                            .isNotEmpty
+                                        ? '${widget.worker.user.firstName} ${widget.worker.user.lastName}'
+                                        : 'Professional',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                          fontSize: 18,
+                                        ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2E7D32),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.verified,
+                                          color: Colors.white,
+                                          size: 12,
+                                        ),
+                                        SizedBox(width: 2),
+                                        Text(
+                                          'Verified',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // Rating
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Color(0xFFFFB300),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    widget.worker.rating.toStringAsFixed(1),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '(${widget.worker.reviewCount} reviews)',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'A verified SEVAQ professional has been assigned to your service.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54,
+                    const SizedBox(height: 16),
+                    // Divider
+                    Divider(color: Colors.black.withOpacity(0.1)),
+                    const SizedBox(height: 16),
+                    // Worker bio
+                    if (widget.worker.bio.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline,
+                                color: Color(0xFF2E7D32),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'About',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.worker.bio,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
               ),

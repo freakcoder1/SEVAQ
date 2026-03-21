@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_house_help/theme.dart';
+import 'package:flutter_house_help/models/location.dart';
 import 'package:flutter_house_help/models/service_profile.dart';
 import 'package:flutter_house_help/providers/auth_provider.dart';
+import 'package:flutter_house_help/providers/location_provider.dart';
 import 'package:flutter_house_help/screens/subscription_scheduling_screen.dart';
 import 'package:flutter_house_help/services/api_service.dart';
 
 class SubscriptionProfilesScreen extends StatefulWidget {
   final String serviceType;
   final String serviceName;
+  final dynamic userId; // Accept both int and String (UUID)
+  final Location? initialLocation; // Pass location from parent
 
   const SubscriptionProfilesScreen({
     super.key,
     required this.serviceType,
     required this.serviceName,
+    required this.userId,
+    this.initialLocation,
   });
 
   @override
@@ -208,12 +214,18 @@ class _SubscriptionProfilesScreenState
       print(
         '🔍 DEBUG: Continuing with selected profile: ${_selectedProfile!.profileName}',
       );
-      // Navigate to subscription scheduling screen
+      // Use location passed from parent (ServiceEngagementTypeScreen)
+      final currentLocation = widget.initialLocation;
+
+      // Navigate to subscription scheduling screen with userId and location
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              SubscriptionSchedulingScreen(serviceProfile: _selectedProfile!),
+          builder: (context) => SubscriptionSchedulingScreen(
+            serviceProfile: _selectedProfile!,
+            userId: widget.userId,
+            initialLocation: currentLocation,
+          ),
         ),
       );
     }
@@ -428,7 +440,7 @@ class _SubscriptionProfilesScreenState
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Assignment, monitoring, and replacement are handled by SEVAQ.',
+                  "We'll assign a verified professional 24-48 hours before your service starts.",
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.black54,
                   ),

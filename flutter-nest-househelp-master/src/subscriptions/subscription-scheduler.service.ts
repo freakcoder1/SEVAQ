@@ -18,8 +18,11 @@ export class SubscriptionSchedulerService {
     this.logger.log('Starting daily subscription processing');
 
     try {
-      const activeSubscriptions = await this.subscriptionsService.getActiveSubscriptions();
-      this.logger.log(`Found ${activeSubscriptions.length} active subscriptions`);
+      const activeSubscriptions =
+        await this.subscriptionsService.getActiveSubscriptions();
+      this.logger.log(
+        `Found ${activeSubscriptions.length} active subscriptions`,
+      );
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -51,16 +54,16 @@ export class SubscriptionSchedulerService {
     switch (subscription.frequency) {
       case 'DAILY':
         return true;
-      
+
       case 'WEEKDAYS':
         return todayDayOfWeek >= 1 && todayDayOfWeek <= 5; // Monday to Friday
-      
+
       case 'CUSTOM_DAYS':
         if (subscription.customDays && Array.isArray(subscription.customDays)) {
           return subscription.customDays.includes(todayDayOfWeek);
         }
         return false;
-      
+
       default:
         return false;
     }
@@ -85,7 +88,10 @@ export class SubscriptionSchedulerService {
         0,
       );
 
-      const timeWindow = this.getTimeWindowString(subscription.timeWindowStart, subscription.timeWindowEnd);
+      const timeWindow = this.getTimeWindowString(
+        subscription.timeWindowStart,
+        subscription.timeWindowEnd,
+      );
 
       await this.serviceRequestsService.create(subscription.userId, {
         serviceProfileId: subscription.serviceProfileId,
@@ -93,6 +99,7 @@ export class SubscriptionSchedulerService {
         date: date.toISOString().split('T')[0],
         timeWindow: timeWindow,
         priceSnapshot: subscription.monthlyPriceSnapshot / 30, // Daily price approximation
+        location: subscription.location,
       });
 
       this.logger.log(

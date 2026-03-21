@@ -1,17 +1,48 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Subscription } from './entities/subscription.entity';
+import { Booking } from '../bookings/entities/booking.entity';
+import { User } from '../users/entities/user.entity';
+import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
+import { Service } from '../services/entities/service.entity';
+import { Worker } from '../workers/entities/worker.entity';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
+import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
+import { AvailabilityDetectionService } from './availability-detection.service';
+import { AvailabilityDetectionScheduler } from './availability-detection.scheduler';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
+import { AssignmentsModule } from '../assignments/assignments.module';
+import { BookingsModule } from '../bookings/bookings.module';
+import { AvailabilityModule } from '../availability/availability.module';
+import { UsersModule } from '../users/users.module';
+import { ServicesModule } from '../services/services.module';
+import { WorkersModule } from '../workers/workers.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Subscription]),
+    TypeOrmModule.forFeature([Subscription, Booking, User, ServiceProfile, Service, Worker]),
     ServiceProfilesModule,
+    ServicesModule,
+    WorkersModule,
+    AssignmentsModule,
+    BookingsModule,
+    AvailabilityModule,
+    UsersModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [SubscriptionsController],
-  providers: [SubscriptionsService],
-  exports: [SubscriptionsService],
+  providers: [
+    SubscriptionsService, 
+    SubscriptionAssignmentScheduler,
+    AvailabilityDetectionService,
+    AvailabilityDetectionScheduler,
+  ],
+  exports: [
+    SubscriptionsService, 
+    SubscriptionAssignmentScheduler,
+    AvailabilityDetectionService,
+  ],
 })
 export class SubscriptionsModule {}

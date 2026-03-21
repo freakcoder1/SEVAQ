@@ -13,7 +13,7 @@ async function createTestCustomer() {
 
   // Check if customer already exists
   const existingUser = await userRepository.findOne({
-    where: { email: 'test.customer@example.com' }
+    where: { email: 'test.customer@example.com' },
   });
 
   if (existingUser) {
@@ -32,9 +32,9 @@ async function createTestCustomer() {
     phone: '+919876543215',
     role: UserRole.USER,
     latitude: 28.6139,
-    longitude: 77.2090,
+    longitude: 77.209,
     preferredLat: 28.6139,
-    preferredLng: 77.2090,
+    preferredLng: 77.209,
     hasCompletedLocationSetup: true,
   });
 

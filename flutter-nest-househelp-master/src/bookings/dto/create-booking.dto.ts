@@ -1,4 +1,12 @@
-import { IsNumber, IsUUID, IsDate, IsOptional, IsString, IsEnum, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsUUID,
+  IsDate,
+  IsOptional,
+  IsString,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookingStatus, BookingType } from '../entities/booking.entity';
 import { LocationDto } from './location.dto';

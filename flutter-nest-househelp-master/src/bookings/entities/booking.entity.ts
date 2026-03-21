@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
+} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
 import { Service } from '../../services/entities/service.entity';
 import { Slot } from '../../slots/entities/slot.entity';
-import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 
 export enum BookingStatus {
@@ -27,66 +35,70 @@ export enum AssignmentState {
   ASSIGNED = 'assigned',
   CONFIRMED = 'confirmed',
   REASSIGNING = 'reassigning',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
+  PROVISIONAL_ASSIGNED = 'provisional_assigned',
+  PROVISIONAL_EXPIRED = 'provisional_expired',
 }
 
 @Entity('booking')
 export class Booking {
-  @PrimaryGeneratedColumn()
-  id: number; // Internal ID
-  
-  @Column('uuid', { unique: true, nullable: false })
-  publicId: string; // Public API ID
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ name: 'serviceRequestId', type: 'uuid' })
-  serviceRequestId: string;
-
-  @ManyToOne(() => ServiceRequest, { nullable: false })
-  @JoinColumn({ name: 'serviceRequestId' })
-  serviceRequest: ServiceRequest;
-
-  @Column({ name: 'userId', type: 'int' })
-  userId: number;
+  @Column({ name: 'userId', type: 'uuid' })
+  userId: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'workerId', type: 'int', nullable: true })
   workerId: number;
 
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'workerId' })
   worker: Worker;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'serviceId', type: 'int', nullable: true })
   serviceId: number;
 
   @ManyToOne(() => Service, { nullable: true })
   @JoinColumn({ name: 'serviceId' })
   service: Service;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'slotId', type: 'int', nullable: true })
   slotId: number;
 
   @ManyToOne(() => Slot, { nullable: true })
   @JoinColumn({ name: 'slotId' })
   slot: Slot;
 
-  @Column({ type: 'time' })
-  startTime: Date;
+  @Column({ type: 'date', nullable: true })
+  date: string;
 
   @Column({ type: 'time' })
-  endTime: Date;
+  startTime: string;
 
-  @Column({ type: 'date' })
-  date: Date;
+  @Column({ type: 'time' })
+  endTime: string;
 
-  @Column({ name: 'totalAmount', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: 'amount',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  amount: number;
+
+  @Column({
+    name: 'totalAmount',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
   totalAmount: number;
-
-  @Column({ type: 'boolean', default: false })
-  isPaid: boolean;
 
   @Column({ type: 'text', default: BookingStatus.PENDING })
   status: BookingStatus;
@@ -97,7 +109,6 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  // NEW: Responsibility transfer fields
   @Column({ default: false })
   responsibilityTransferred: boolean;
 
@@ -107,11 +118,10 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   protectionStatus: string;
 
-  // NEW: Assignment-specific fields
   @Column({ type: 'text', default: AssignmentState.PENDING })
   assignmentState: AssignmentState;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'assignedWorkerId', type: 'int', nullable: true })
   assignedWorkerId: number;
 
   @Column({ type: 'text', nullable: true })

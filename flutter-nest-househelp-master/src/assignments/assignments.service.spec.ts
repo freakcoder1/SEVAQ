@@ -8,7 +8,11 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { Slot } from '../slots/entities/slot.entity';
 import { AssignmentState } from '../bookings/entities/booking.entity';
-import { NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { UpdateAssignmentDto } from './dto/update-assignment.dto';
 
@@ -54,8 +58,12 @@ describe('AssignmentService', () => {
     }).compile();
 
     service = module.get<AssignmentService>(AssignmentService);
-    bookingRepository = module.get<Repository<Booking>>(getRepositoryToken(Booking));
-    workerRepository = module.get<Repository<Worker>>(getRepositoryToken(Worker));
+    bookingRepository = module.get<Repository<Booking>>(
+      getRepositoryToken(Booking),
+    );
+    workerRepository = module.get<Repository<Worker>>(
+      getRepositoryToken(Worker),
+    );
     slotRepository = module.get<Repository<Slot>>(getRepositoryToken(Slot));
   });
 
@@ -125,7 +133,9 @@ describe('AssignmentService', () => {
 
       mockBookingRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.assignProfessional(createAssignmentDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.assignProfessional(createAssignmentDto),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException if booking already assigned', async () => {
@@ -151,7 +161,9 @@ describe('AssignmentService', () => {
 
       mockBookingRepository.findOne.mockResolvedValue(mockBooking);
 
-      await expect(service.assignProfessional(createAssignmentDto)).rejects.toThrow(ConflictException);
+      await expect(
+        service.assignProfessional(createAssignmentDto),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -190,7 +202,9 @@ describe('AssignmentService', () => {
 
       mockBookingRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.getAssignmentStatus(bookingId)).rejects.toThrow(NotFoundException);
+      await expect(service.getAssignmentStatus(bookingId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -222,7 +236,10 @@ describe('AssignmentService', () => {
         assignmentState: AssignmentState.ProfessionalAssigned,
       });
 
-      const result = await service.updateAssignmentStatus(bookingId, updateAssignmentDto);
+      const result = await service.updateAssignmentStatus(
+        bookingId,
+        updateAssignmentDto,
+      );
 
       expect(result.assignmentState).toBe(AssignmentState.ProfessionalAssigned);
       expect(mockBookingRepository.save).toHaveBeenCalled();
@@ -236,7 +253,9 @@ describe('AssignmentService', () => {
 
       mockBookingRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.updateAssignmentStatus(bookingId, updateAssignmentDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateAssignmentStatus(bookingId, updateAssignmentDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

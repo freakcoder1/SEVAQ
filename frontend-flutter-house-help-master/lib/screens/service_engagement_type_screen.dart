@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
-import '../models/service_option.dart';
-import '../models/service.dart';
-import 'schedule_pricing_screen.dart';
-import 'subscription_profiles_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_house_help/models/service_option.dart';
+import 'package:flutter_house_help/models/service.dart';
+import 'package:flutter_house_help/models/location.dart';
+import 'package:flutter_house_help/providers/auth_provider.dart';
+import 'package:flutter_house_help/providers/location_provider.dart';
+import 'package:flutter_house_help/screens/schedule_pricing_screen.dart';
+import 'package:flutter_house_help/screens/subscription_profiles_screen.dart';
 
 /// Service Engagement Type Screen
 /// Purpose: Explicitly separate monthly subscription vs one-time service selection
 /// as per SEVAQ compliance requirements
 class ServiceEngagementTypeScreen extends StatefulWidget {
   final ServiceOption selectedServiceOption;
+  final dynamic userId; // Accept both int and String (UUID)
+  final Location? initialLocation; // Pass location from parent
 
   const ServiceEngagementTypeScreen({
     Key? key,
     required this.selectedServiceOption,
+    required this.userId,
+    this.initialLocation,
   }) : super(key: key);
 
   @override
@@ -290,30 +298,102 @@ class _ServiceEngagementTypeScreenState
   }
 
   void _handleContinue() {
+    debugPrint(
+      'DEBUG: _handleContinue called - checking provider availability',
+    );
+
+    // DIAGNOSTIC: Check if AuthProvider is available in current context
+    try {
+      final authProvider = context.read<AuthProvider>();
+      debugPrint(
+        'DEBUG: AuthProvider found in context: ${authProvider != null}',
+      );
+    } catch (e) {
+      debugPrint('DEBUG: AuthProvider NOT found in context - error: $e');
+    }
+
+    // DIAGNOSTIC: Check if LocationProvider is available in current context
+    try {
+      final locationProvider = context.read<LocationProvider>();
+      debugPrint(
+        'DEBUG: LocationProvider found in context: ${locationProvider != null}',
+      );
+    } catch (e) {
+      debugPrint('DEBUG: LocationProvider NOT found in context - error: $e');
+    }
+
+    // Use initialLocation from widget constructor (passed from parent) as primary source
+    // This is more reliable than accessing provider in a pushed route context
+    Location? currentLocation = widget.initialLocation;
+
+    // If initialLocation is null, try to get from provider as fallback
+    // Use context.read() which returns null instead of throwing when provider not found
+    if (currentLocation == null) {
+      try {
+        final locationProvider = context.read<LocationProvider>();
+        if (locationProvider != null) {
+          currentLocation = locationProvider.currentLocationData;
+        } else {
+          debugPrint('LocationProvider not available in route context');
+        }
+      } catch (e) {
+        debugPrint('LocationProvider read error: $e');
+      }
+    }
+
     if (_selectedEngagementType == EngagementType.monthly) {
-      // Navigate to subscription profiles screen
+      debugPrint(
+        'DEBUG: Navigating to SubscriptionProfilesScreen with userId: ${widget.userId}',
+      );
+      // Navigate to subscription profiles screen with location
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => SubscriptionProfilesScreen(
             serviceType: widget.selectedServiceOption.id.toLowerCase(),
             serviceName: widget.selectedServiceOption.name,
+            userId: widget.userId,
+            initialLocation: currentLocation,
           ),
         ),
       );
     } else {
+      debugPrint(
+        'DEBUG: Navigating to SchedulePricingScreen for one-time visit',
+      );
       // Navigate to one-time scheduling screen
+      // FIXED: Use widget.userId directly instead of reading from AuthProvider
+      // The userId is already passed to this screen via constructor
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SchedulePricingScreen(
-            worker: null,
-            service: _convertServiceOptionToService(
-              widget.selectedServiceOption,
+          builder: (ctx) => MultiProvider(
+            providers: [
+              // Use try-catch to safely access providers
+              // If providers are not available, create default values
+              Provider<LocationProvider>.value(value: _getLocationProvider()),
+            ],
+            child: SchedulePricingScreen(
+              worker: null,
+              service: _convertServiceOptionToService(
+                widget.selectedServiceOption,
+              ),
+              source: 'ONE_TIME', // Explicit source for one-time visits
             ),
           ),
         ),
       );
+    }
+  }
+
+  // Helper method to safely get LocationProvider
+  LocationProvider _getLocationProvider() {
+    try {
+      return context.read<LocationProvider>();
+    } catch (e) {
+      debugPrint('ERROR: Could not read LocationProvider: $e');
+      // Return a default instance or handle the error appropriately
+      return LocationProvider();
     }
   }
 

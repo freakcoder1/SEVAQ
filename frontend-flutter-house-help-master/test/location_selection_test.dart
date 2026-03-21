@@ -20,7 +20,7 @@ void main() {
 
     setUp(() async {
       final prefs = await SharedPreferences.getInstance();
-      locationProvider = LocationProvider(prefs: prefs);
+      locationProvider = LocationProvider();
       testWidget = MaterialApp(
         home: ChangeNotifierProvider.value(
           value: locationProvider,
@@ -52,7 +52,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final prefs = await SharedPreferences.getInstance();
-      final locationProvider = LocationProvider(prefs: prefs);
+      final locationProvider = LocationProvider();
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider.value(
@@ -122,8 +122,8 @@ void main() {
     });
 
     test('initializes with default values', () {
-      expect(locationProvider.currentLocation, isNull);
-      expect(locationProvider.isLoading, false);
+      expect(locationProvider.currentLocation, 'Fetching location...');
+      expect(locationProvider.isLoading, true);
       expect(locationProvider.recentLocations, []);
       expect(locationProvider.currentLocationData, isNull);
     });

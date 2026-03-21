@@ -1,9 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToOne,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { ServiceProfile } from '../../service-profiles/entities/service-profile.entity';
+import { User } from '../../users/entities/user.entity';
+import { Worker } from '../../workers/entities/worker.entity';
 
-export enum Frequency {
-  DAILY = 'DAILY',
-  WEEKDAYS = 'WEEKDAYS',
-  CUSTOM_DAYS = 'CUSTOM_DAYS',
+export enum PreferredTimeWindow {
+  MORNING = 'MORNING',
+  AFTERNOON = 'AFTERNOON',
+  EVENING = 'EVENING',
 }
 
 export enum SubscriptionStatus {
@@ -24,24 +36,31 @@ export class Subscription {
   @Column('uuid', { unique: true, nullable: false })
   publicId: string;
 
-  @Column('int')
-  userId: number;
+  @Column('uuid')
+  userId: string;
+
+  @ManyToOne(() => User, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'publicId' })
+  user: User;
 
   @Column('int')
   serviceProfileId: number;
 
+  @OneToOne(() => ServiceProfile)
+  @JoinColumn()
+  serviceProfile: ServiceProfile;
+
+  @Column({ type: 'json', nullable: true })
+  location?: { lat: number; lng: number; address?: string };
+
   @Column({
     type: 'varchar',
-    enum: Frequency,
-    default: Frequency.DAILY,
+    enum: PreferredTimeWindow,
+    name: 'preferredtimewindow',
   })
-  frequency: Frequency;
-
-  @Column('time')
-  timeWindowStart: Date;
-
-  @Column('time')
-  timeWindowEnd: Date;
+  preferredTimeWindow: PreferredTimeWindow;
 
   @Column('date')
   startDate: Date;
@@ -66,12 +85,22 @@ export class Subscription {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   monthlyPriceSnapshot: number;
 
-  @Column({ type: 'json', nullable: true })
-  customDays?: number[];
-
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column('int', { nullable: true })
+  assignedWorkerId: number | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  availabilityDetectedAt: Date | null;
+
+  @Column({ type: 'boolean', default: false, name: 'worker_assignment_failed' })
+  workerAssignmentFailed: boolean;
+
+  @ManyToOne(() => Worker, { nullable: true })
+  @JoinColumn({ name: 'assignedWorkerId' })
+  assignedWorker: Worker | null;
 }

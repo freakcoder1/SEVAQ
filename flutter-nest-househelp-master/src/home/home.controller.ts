@@ -17,7 +17,7 @@ export class HomeController {
       lng,
       radius,
     };
-    
+
     return this.homeService.getHomeScreenData(requestDto);
   }
 }

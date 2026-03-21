@@ -14,19 +14,37 @@ export class UpdateWorkerLocations {
     // Update all workers to be near the user location
     // Spread them slightly around the user's location (within 500m)
     const workerUpdates = [
-      { id: '367d6c4f-bbd1-4c4a-9afa-fa58b3951cf2', lat: 28.5800, lng: 77.4390 }, // Amit Kumar
-      { id: '26eac4de-83de-445a-8e72-3db172af16fa', lat: 28.5808, lng: 77.4395 }, // Priya Sharma
-      { id: 'b954e849-c910-44e7-b111-0dee81b58b5e', lat: 28.5802, lng: 77.4388 }, // Rajesh Verma
-      { id: '24435c2a-92db-4a2a-89ad-17829cd1d1ec', lat: 28.5806, lng: 77.4396 }, // Sunita Devi
-      { id: '501316ba-8159-404f-a2c2-b596932ad046', lat: 28.5804, lng: 77.4393 }, // Vikram Singh
+      { id: '367d6c4f-bbd1-4c4a-9afa-fa58b3951cf2', lat: 28.58, lng: 77.439 }, // Amit Kumar
+      {
+        id: '26eac4de-83de-445a-8e72-3db172af16fa',
+        lat: 28.5808,
+        lng: 77.4395,
+      }, // Priya Sharma
+      {
+        id: 'b954e849-c910-44e7-b111-0dee81b58b5e',
+        lat: 28.5802,
+        lng: 77.4388,
+      }, // Rajesh Verma
+      {
+        id: '24435c2a-92db-4a2a-89ad-17829cd1d1ec',
+        lat: 28.5806,
+        lng: 77.4396,
+      }, // Sunita Devi
+      {
+        id: '501316ba-8159-404f-a2c2-b596932ad046',
+        lat: 28.5804,
+        lng: 77.4393,
+      }, // Vikram Singh
     ];
 
     for (const update of workerUpdates) {
       await dataSource.query(
         `UPDATE worker SET "currentLat" = $1, "currentLng" = $2, "lastLocationUpdate" = NOW() WHERE id = $3`,
-        [update.lat, update.lng, update.id]
+        [update.lat, update.lng, update.id],
       );
-      this.logger.log(`Updated worker ${update.id} to (${update.lat}, ${update.lng})`);
+      this.logger.log(
+        `Updated worker ${update.id} to (${update.lat}, ${update.lng})`,
+      );
     }
 
     this.logger.log('Worker locations updated successfully');
@@ -35,8 +53,14 @@ export class UpdateWorkerLocations {
     await this.updateServiceArea(dataSource, userLat, userLng);
   }
 
-  private async updateServiceArea(dataSource: DataSource, userLat: number, userLng: number): Promise<void> {
-    this.logger.log(`Updating service area to cover user location (${userLat}, ${userLng})...`);
+  private async updateServiceArea(
+    dataSource: DataSource,
+    userLat: number,
+    userLng: number,
+  ): Promise<void> {
+    this.logger.log(
+      `Updating service area to cover user location (${userLat}, ${userLng})...`,
+    );
 
     // Calculate bounds around user location (about 5km radius)
     const latOffset = 0.045; // ~5km
@@ -51,17 +75,19 @@ export class UpdateWorkerLocations {
         userLng + lngOffset,
         JSON.stringify({
           type: 'MultiPolygon',
-          coordinates: [[
+          coordinates: [
             [
-              [userLng - lngOffset, userLat - latOffset],
-              [userLng + lngOffset, userLat - latOffset],
-              [userLng + lngOffset, userLat + latOffset],
-              [userLng - lngOffset, userLat + latOffset],
-              [userLng - lngOffset, userLat - latOffset]
-            ]
-          ]]
-        })
-      ]
+              [
+                [userLng - lngOffset, userLat - latOffset],
+                [userLng + lngOffset, userLat - latOffset],
+                [userLng + lngOffset, userLat + latOffset],
+                [userLng - lngOffset, userLat + latOffset],
+                [userLng - lngOffset, userLat - latOffset],
+              ],
+            ],
+          ],
+        }),
+      ],
     );
 
     // Update micro-zones around user location
@@ -79,18 +105,22 @@ export class UpdateWorkerLocations {
           zone.lng,
           JSON.stringify({
             type: 'Polygon',
-            coordinates: [[
-              [zone.lng - 0.005, zone.lat - 0.005],
-              [zone.lng + 0.005, zone.lat - 0.005],
-              [zone.lng + 0.005, zone.lat + 0.005],
-              [zone.lng - 0.005, zone.lat + 0.005],
-              [zone.lng - 0.005, zone.lat - 0.005]
-            ]]
+            coordinates: [
+              [
+                [zone.lng - 0.005, zone.lat - 0.005],
+                [zone.lng + 0.005, zone.lat - 0.005],
+                [zone.lng + 0.005, zone.lat + 0.005],
+                [zone.lng - 0.005, zone.lat + 0.005],
+                [zone.lng - 0.005, zone.lat - 0.005],
+              ],
+            ],
           }),
-          zone.name
-        ]
+          zone.name,
+        ],
       );
-      this.logger.log(`Updated zone ${zone.name} to (${zone.lat}, ${zone.lng})`);
+      this.logger.log(
+        `Updated zone ${zone.name} to (${zone.lat}, ${zone.lng})`,
+      );
     }
 
     this.logger.log('Service area and zones updated successfully');

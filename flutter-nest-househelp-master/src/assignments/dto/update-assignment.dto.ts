@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsString } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsNumber } from 'class-validator';
 import { AssignmentState } from '../../bookings/entities/booking.entity';
 
 export class UpdateAssignmentDto {
@@ -7,8 +7,8 @@ export class UpdateAssignmentDto {
   assignmentState?: AssignmentState;
 
   @IsOptional()
-  @IsString()
-  assignedWorkerId?: string;
+  @IsNumber()
+  assignedWorkerId?: number;
 
   @IsOptional()
   @IsString()

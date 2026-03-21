@@ -30,7 +30,7 @@ export interface WorkerMetrics {
 }
 
 export interface SystemMetrics {
-  assignmentSuccessRate: number;
+  assignmentSuccessRate: number | null;
   averageAssignmentTime: number;
   systemHealth: string;
   activeUsers: number;
@@ -51,6 +51,12 @@ export class MetricsService {
     private userBehaviorMetricsRepository: Repository<UserBehaviorMetric>,
     @InjectRepository(SystemPerformanceMetric)
     private systemPerformanceMetricsRepository: Repository<SystemPerformanceMetric>,
+    @InjectRepository(Booking)
+    private bookingsRepository: Repository<Booking>,
+    @InjectRepository(Worker)
+    private workersRepository: Repository<Worker>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async recordAssignmentMetric(
@@ -58,13 +64,13 @@ export class MetricsService {
     booking: Booking,
     worker: Worker,
     status: 'success' | 'failure' | 'timeout' | 'cancelled',
-    metadata?: any
+    metadata?: any,
   ): Promise<void> {
     try {
       const metric = new AssignmentMetric();
       metric.assignmentId = assignment.id;
       metric.bookingId = booking.id;
-      metric.userId = booking.userId;
+      metric.userId = booking.user?.id ?? '';
       metric.workerId = worker.id;
       metric.serviceType = booking.service?.name || 'unknown';
       metric.location = 'unknown'; // Booking entity doesn't have location field
@@ -74,11 +80,13 @@ export class MetricsService {
       metric.workerRating = worker.rating || 0;
       metric.userSatisfaction = 0; // Booking entity doesn't have userSatisfaction field
       metric.distance = 0; // Worker entity doesn't have location field
-      metric.price = booking.totalAmount;
+      metric.price = booking.amount || 0;
       metric.metadata = metadata;
 
       await this.assignmentMetricsRepository.save(metric);
-      this.logger.log(`Recorded assignment metric: ${assignment.id} - ${status}`);
+      this.logger.log(
+        `Recorded assignment metric: ${assignment.id} - ${status}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to record assignment metric: ${error.message}`);
     }
@@ -92,21 +100,39 @@ export class MetricsService {
       const assignments = await this.assignmentMetricsRepository.find({
         where: {
           workerId,
-          timestamp: Between(today, new Date(today.getTime() + 24 * 60 * 60 * 1000))
-        }
+          timestamp: Between(
+            today,
+            new Date(today.getTime() + 24 * 60 * 60 * 1000),
+          ),
+        },
       });
 
       if (assignments.length === 0) return;
 
       const totalAssignments = assignments.length;
-      const successfulAssignments = assignments.filter(a => a.status === 'success').length;
-      const failedAssignments = assignments.filter(a => a.status === 'failure').length;
-      const cancelledAssignments = assignments.filter(a => a.status === 'cancelled').length;
+      const successfulAssignments = assignments.filter(
+        (a) => a.status === 'success',
+      ).length;
+      const failedAssignments = assignments.filter(
+        (a) => a.status === 'failure',
+      ).length;
+      const cancelledAssignments = assignments.filter(
+        (a) => a.status === 'cancelled',
+      ).length;
 
-      const successRate = totalAssignments > 0 ? (successfulAssignments / totalAssignments) * 100 : 0;
-      const averageAssignmentTime = assignments.reduce((sum, a) => sum + a.assignmentTime, 0) / totalAssignments;
-      const averageRating = assignments.reduce((sum, a) => sum + a.workerRating, 0) / totalAssignments;
-      const averageUserSatisfaction = assignments.reduce((sum, a) => sum + a.userSatisfaction, 0) / totalAssignments;
+      const successRate =
+        totalAssignments > 0
+          ? (successfulAssignments / totalAssignments) * 100
+          : 0;
+      const averageAssignmentTime =
+        assignments.reduce((sum, a) => sum + a.assignmentTime, 0) /
+        totalAssignments;
+      const averageRating =
+        assignments.reduce((sum, a) => sum + a.workerRating, 0) /
+        totalAssignments;
+      const averageUserSatisfaction =
+        assignments.reduce((sum, a) => sum + a.userSatisfaction, 0) /
+        totalAssignments;
       const totalEarnings = assignments.reduce((sum, a) => sum + a.price, 0);
       const utilizationRate = this.calculateUtilizationRate(workerId, today);
 
@@ -126,29 +152,40 @@ export class MetricsService {
 
       await this.workerPerformanceMetricsRepository.save(performanceMetric);
     } catch (error) {
-      this.logger.error(`Failed to record worker performance metric: ${error.message}`);
+      this.logger.error(
+        `Failed to record worker performance metric: ${error.message}`,
+      );
     }
   }
 
-  async recordUserBehaviorMetric(userId: number): Promise<void> {
+  async recordUserBehaviorMetric(userId: string): Promise<void> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const bookings = await this.assignmentMetricsRepository.find({
         where: { userId },
-        relations: ['booking']
+        relations: ['booking'],
       });
 
       if (bookings.length === 0) return;
 
       const totalBookings = bookings.length;
-      const successfulBookings = bookings.filter(b => b.status === 'success').length;
-      const failedBookings = bookings.filter(b => b.status === 'failure').length;
-      const cancelledBookings = bookings.filter(b => b.status === 'cancelled').length;
+      const successfulBookings = bookings.filter(
+        (b) => b.status === 'success',
+      ).length;
+      const failedBookings = bookings.filter(
+        (b) => b.status === 'failure',
+      ).length;
+      const cancelledBookings = bookings.filter(
+        (b) => b.status === 'cancelled',
+      ).length;
 
-      const conversionRate = totalBookings > 0 ? (successfulBookings / totalBookings) * 100 : 0;
-      const averageSatisfaction = bookings.reduce((sum, b) => sum + b.userSatisfaction, 0) / totalBookings;
+      const conversionRate =
+        totalBookings > 0 ? (successfulBookings / totalBookings) * 100 : 0;
+      const averageSatisfaction =
+        bookings.reduce((sum, b) => sum + b.userSatisfaction, 0) /
+        totalBookings;
       const totalSpent = bookings.reduce((sum, b) => sum + b.price, 0);
       const repeatBookingRate = this.calculateRepeatBookingRate(userId);
 
@@ -166,32 +203,48 @@ export class MetricsService {
 
       await this.userBehaviorMetricsRepository.save(behaviorMetric);
     } catch (error) {
-      this.logger.error(`Failed to record user behavior metric: ${error.message}`);
+      this.logger.error(
+        `Failed to record user behavior metric: ${error.message}`,
+      );
     }
   }
 
   async getAssignmentMetrics(
-    timeRange: 'hour' | 'day' | 'week' | 'month' = 'day'
+    timeRange: 'hour' | 'day' | 'week' | 'month' = 'day',
   ): Promise<AssignmentMetrics> {
     const timeFilter = this.getTimeFilter(timeRange);
-    
+
     const metrics = await this.assignmentMetricsRepository.find({
-      where: { timestamp: MoreThan(timeFilter) }
+      where: { timestamp: MoreThan(timeFilter) },
     });
 
     const totalAssignments = metrics.length;
-    const successfulAssignments = metrics.filter(m => m.status === 'success').length;
-    const failedAssignments = metrics.filter(m => m.status === 'failure').length;
-    const timeoutAssignments = metrics.filter(m => m.status === 'timeout').length;
-    const cancelledAssignments = metrics.filter(m => m.status === 'cancelled').length;
+    const successfulAssignments = metrics.filter(
+      (m) => m.status === 'success',
+    ).length;
+    const failedAssignments = metrics.filter(
+      (m) => m.status === 'failure',
+    ).length;
+    const timeoutAssignments = metrics.filter(
+      (m) => m.status === 'timeout',
+    ).length;
+    const cancelledAssignments = metrics.filter(
+      (m) => m.status === 'cancelled',
+    ).length;
 
-    const successRate = totalAssignments > 0 ? (successfulAssignments / totalAssignments) * 100 : 0;
-    const averageAssignmentTime = totalAssignments > 0 
-      ? metrics.reduce((sum, m) => sum + m.assignmentTime, 0) / totalAssignments 
-      : 0;
-    const averageRating = totalAssignments > 0 
-      ? metrics.reduce((sum, m) => sum + m.workerRating, 0) / totalAssignments 
-      : 0;
+    const successRate =
+      totalAssignments > 0
+        ? (successfulAssignments / totalAssignments) * 100
+        : 0;
+    const averageAssignmentTime =
+      totalAssignments > 0
+        ? metrics.reduce((sum, m) => sum + m.assignmentTime, 0) /
+          totalAssignments
+        : 0;
+    const averageRating =
+      totalAssignments > 0
+        ? metrics.reduce((sum, m) => sum + m.workerRating, 0) / totalAssignments
+        : 0;
 
     return {
       successRate,
@@ -200,7 +253,7 @@ export class MetricsService {
       totalAssignments,
       failedAssignments,
       timeoutAssignments,
-      cancelledAssignments
+      cancelledAssignments,
     };
   }
 
@@ -208,7 +261,7 @@ export class MetricsService {
     const metrics = await this.workerPerformanceMetricsRepository.find({
       where: { workerId },
       order: { date: 'DESC' },
-      take: 30 // Last 30 days
+      take: 30, // Last 30 days
     });
 
     if (metrics.length === 0) {
@@ -219,16 +272,27 @@ export class MetricsService {
         averageRating: 0,
         averageAssignmentTime: 0,
         utilizationRate: 0,
-        totalEarnings: 0
+        totalEarnings: 0,
       };
     }
 
-    const totalAssignments = metrics.reduce((sum, m) => sum + m.totalAssignments, 0);
-    const totalSuccessful = metrics.reduce((sum, m) => sum + m.successfulAssignments, 0);
-    const successRate = totalAssignments > 0 ? (totalSuccessful / totalAssignments) * 100 : 0;
-    const averageRating = metrics.reduce((sum, m) => sum + m.averageRating, 0) / metrics.length;
-    const averageAssignmentTime = metrics.reduce((sum, m) => sum + m.averageAssignmentTime, 0) / metrics.length;
-    const utilizationRate = metrics.reduce((sum, m) => sum + m.utilizationRate, 0) / metrics.length;
+    const totalAssignments = metrics.reduce(
+      (sum, m) => sum + m.totalAssignments,
+      0,
+    );
+    const totalSuccessful = metrics.reduce(
+      (sum, m) => sum + m.successfulAssignments,
+      0,
+    );
+    const successRate =
+      totalAssignments > 0 ? (totalSuccessful / totalAssignments) * 100 : 0;
+    const averageRating =
+      metrics.reduce((sum, m) => sum + m.averageRating, 0) / metrics.length;
+    const averageAssignmentTime =
+      metrics.reduce((sum, m) => sum + m.averageAssignmentTime, 0) /
+      metrics.length;
+    const utilizationRate =
+      metrics.reduce((sum, m) => sum + m.utilizationRate, 0) / metrics.length;
     const totalEarnings = metrics.reduce((sum, m) => sum + m.totalEarnings, 0);
 
     return {
@@ -238,7 +302,7 @@ export class MetricsService {
       averageRating,
       averageAssignmentTime,
       utilizationRate,
-      totalEarnings
+      totalEarnings,
     };
   }
 
@@ -247,20 +311,38 @@ export class MetricsService {
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
     const recentMetrics = await this.assignmentMetricsRepository.find({
-      where: { timestamp: MoreThan(oneHourAgo) }
+      where: { timestamp: MoreThan(oneHourAgo) },
     });
 
     const totalAssignments = recentMetrics.length;
-    const successfulAssignments = recentMetrics.filter(m => m.status === 'success').length;
-    const assignmentSuccessRate = totalAssignments > 0 ? (successfulAssignments / totalAssignments) * 100 : 0;
-    const averageAssignmentTime = totalAssignments > 0 
-      ? recentMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) / totalAssignments 
-      : 0;
+    const successfulAssignments = recentMetrics.filter(
+      (m) => m.status === 'success',
+    ).length;
+
+    // Minimum sample size to prevent false alerts when no data
+    const MIN_SAMPLE_SIZE = 5;
+    const assignmentSuccessRate =
+      totalAssignments >= MIN_SAMPLE_SIZE
+        ? (successfulAssignments / totalAssignments) * 100
+        : null; // Return null when insufficient data to prevent false alerts
+
+    const averageAssignmentTime =
+      totalAssignments > 0
+        ? recentMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) /
+          totalAssignments
+        : 0;
 
     // Calculate system health based on various factors
-    const systemHealth = this.calculateSystemHealth(assignmentSuccessRate, averageAssignmentTime);
+    // Use 100 (excellent) as default when no data to prevent false "poor health" alerts
+    const systemHealth =
+      totalAssignments >= MIN_SAMPLE_SIZE
+        ? this.calculateSystemHealth(
+            assignmentSuccessRate ?? 100,
+            averageAssignmentTime,
+          )
+        : 'excellent';
 
-    // Get active users and workers (simplified for now)
+    // Get active users and workers
     const activeUsers = await this.getActiveUsersCount();
     const activeWorkers = await this.getActiveWorkersCount();
     const queueLength = await this.getQueueLength();
@@ -271,55 +353,77 @@ export class MetricsService {
       systemHealth,
       activeUsers,
       activeWorkers,
-      queueLength
+      queueLength,
     };
   }
 
-  async getMetricsByServiceType(timeRange: 'hour' | 'day' | 'week' | 'month' = 'day') {
+  async getMetricsByServiceType(
+    timeRange: 'hour' | 'day' | 'week' | 'month' = 'day',
+  ) {
     const timeFilter = this.getTimeFilter(timeRange);
-    
+
     const metrics = await this.assignmentMetricsRepository.find({
-      where: { timestamp: MoreThan(timeFilter) }
+      where: { timestamp: MoreThan(timeFilter) },
     });
 
-    const serviceTypes = [...new Set(metrics.map(m => m.serviceType))];
-    
-    return serviceTypes.map(serviceType => {
-      const serviceMetrics = metrics.filter(m => m.serviceType === serviceType);
+    const serviceTypes = [...new Set(metrics.map((m) => m.serviceType))];
+
+    return serviceTypes.map((serviceType) => {
+      const serviceMetrics = metrics.filter(
+        (m) => m.serviceType === serviceType,
+      );
       return {
         serviceType,
         totalAssignments: serviceMetrics.length,
-        successRate: serviceMetrics.filter(m => m.status === 'success').length / serviceMetrics.length * 100,
-        averageAssignmentTime: serviceMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) / serviceMetrics.length,
-        averageRating: serviceMetrics.reduce((sum, m) => sum + m.workerRating, 0) / serviceMetrics.length
+        successRate:
+          (serviceMetrics.filter((m) => m.status === 'success').length /
+            serviceMetrics.length) *
+          100,
+        averageAssignmentTime:
+          serviceMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) /
+          serviceMetrics.length,
+        averageRating:
+          serviceMetrics.reduce((sum, m) => sum + m.workerRating, 0) /
+          serviceMetrics.length,
       };
     });
   }
 
-  async getMetricsByLocation(timeRange: 'hour' | 'day' | 'week' | 'month' = 'day') {
+  async getMetricsByLocation(
+    timeRange: 'hour' | 'day' | 'week' | 'month' = 'day',
+  ) {
     const timeFilter = this.getTimeFilter(timeRange);
-    
+
     const metrics = await this.assignmentMetricsRepository.find({
-      where: { timestamp: MoreThan(timeFilter) }
+      where: { timestamp: MoreThan(timeFilter) },
     });
 
-    const locations = [...new Set(metrics.map(m => m.location))];
-    
-    return locations.map(location => {
-      const locationMetrics = metrics.filter(m => m.location === location);
+    const locations = [...new Set(metrics.map((m) => m.location))];
+
+    return locations.map((location) => {
+      const locationMetrics = metrics.filter((m) => m.location === location);
       return {
         location,
         totalAssignments: locationMetrics.length,
-        successRate: locationMetrics.filter(m => m.status === 'success').length / locationMetrics.length * 100,
-        averageAssignmentTime: locationMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) / locationMetrics.length,
-        averageRating: locationMetrics.reduce((sum, m) => sum + m.workerRating, 0) / locationMetrics.length
+        successRate:
+          (locationMetrics.filter((m) => m.status === 'success').length /
+            locationMetrics.length) *
+          100,
+        averageAssignmentTime:
+          locationMetrics.reduce((sum, m) => sum + m.assignmentTime, 0) /
+          locationMetrics.length,
+        averageRating:
+          locationMetrics.reduce((sum, m) => sum + m.workerRating, 0) /
+          locationMetrics.length,
       };
     });
   }
 
   private calculateAssignmentTime(assignment: any): number {
     if (!assignment.assignedAt || !assignment.createdAt) return 0;
-    return (assignment.assignedAt.getTime() - assignment.createdAt.getTime()) / 1000; // seconds
+    return (
+      (assignment.assignedAt.getTime() - assignment.createdAt.getTime()) / 1000
+    ); // seconds
   }
 
   private calculateDistance(location1: string, location2: string): number {
@@ -334,7 +438,7 @@ export class MetricsService {
     return Math.random() * 100;
   }
 
-  private calculateRepeatBookingRate(userId: number): number {
+  private calculateRepeatBookingRate(userId: string): number {
     // Simplified repeat booking calculation
     // In a real implementation, you would analyze booking history
     return Math.random() * 100;
@@ -364,17 +468,41 @@ export class MetricsService {
   }
 
   private async getActiveUsersCount(): Promise<number> {
-    // Simplified implementation
-    return Math.floor(Math.random() * 1000);
+    try {
+      // Count users with bookings in the last 30 minutes as "active"
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const count = await this.bookingsRepository
+        .createQueryBuilder('booking')
+        .select('COUNT(DISTINCT booking.userId)', 'count')
+        .where('booking.createdAt > :timestamp', {
+          timestamp: thirtyMinutesAgo,
+        })
+        .getRawOne();
+      return parseInt(count?.count || '0', 10);
+    } catch (error) {
+      this.logger.error(`Failed to get active users count: ${error.message}`);
+      return 0;
+    }
   }
 
   private async getActiveWorkersCount(): Promise<number> {
-    // Simplified implementation
-    return Math.floor(Math.random() * 500);
+    try {
+      // Count workers with isAvailable = true
+      const count = await this.workersRepository
+        .createQueryBuilder('worker')
+        .select('COUNT(worker.id)', 'count')
+        .where('worker.isAvailable = :isAvailable', { isAvailable: true })
+        .getRawOne();
+      return parseInt(count?.count || '0', 10);
+    } catch (error) {
+      this.logger.error(`Failed to get active workers count: ${error.message}`);
+      return 0;
+    }
   }
 
   private async getQueueLength(): Promise<number> {
-    // Simplified implementation
-    return Math.floor(Math.random() * 100);
+    // Return 0 as we don't have a real queue system implemented yet
+    // This prevents false "Queue Length High" alerts
+    return 0;
   }
 }

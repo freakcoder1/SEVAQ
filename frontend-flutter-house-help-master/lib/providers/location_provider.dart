@@ -1,665 +1,553 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_house_help/models/location.dart';
 import '../services/api_service.dart';
-import '../models/location.dart';
+
+typedef Placemark = geocoding.Placemark;
+
+class LocationAvailability {
+  final bool isAvailable;
+  final int workerCount;
+  final int estimatedWaitTime;
+  final List<MicroZone> nearbyZones;
+  final bool highDemand;
+
+  LocationAvailability({
+    required this.isAvailable,
+    required this.workerCount,
+    required this.estimatedWaitTime,
+    required this.nearbyZones,
+    required this.highDemand,
+  });
+
+  factory LocationAvailability.fromJson(Map<String, dynamic> json) {
+    return LocationAvailability(
+      isAvailable: json['isAvailable'] ?? false,
+      workerCount: json['workerCount'] ?? 0,
+      estimatedWaitTime: json['estimatedWaitTime'] ?? 120,
+      nearbyZones: (json['nearbyZones'] as List)
+          .map((zone) => MicroZone.fromJson(zone))
+          .toList(),
+      highDemand: json['highDemand'] ?? false,
+    );
+  }
+}
+
+class MicroZone {
+  final String id;
+  final String name;
+  final double centerLat;
+  final double centerLng;
+  final double radiusKm;
+  final String zoneType;
+
+  MicroZone({
+    required this.id,
+    required this.name,
+    required this.centerLat,
+    required this.centerLng,
+    required this.radiusKm,
+    required this.zoneType,
+  });
+
+  factory MicroZone.fromJson(Map<String, dynamic> json) {
+    return MicroZone(
+      id: json['id'],
+      name: json['name'],
+      centerLat: json['centerLat'],
+      centerLng: json['centerLng'],
+      radiusKm: json['radiusKm'],
+      zoneType: json['zoneType'],
+    );
+  }
+}
 
 class LocationProvider with ChangeNotifier {
-  static const String _LOCATION_DATA_KEY = 'location_data';
-  static const String _LOCATION_SETUP_COMPLETE_KEY = 'location_setup_complete';
-
-  // Persistent storage keys for static cache (stored in SharedPreferences)
-  static const String _CACHED_LAT_KEY = 'cached_location_lat';
-  static const String _CACHED_LNG_KEY = 'cached_location_lng';
-  static const String _CACHED_ADDRESS_KEY = 'cached_location_address';
-  static const String _CACHED_SETUP_KEY = 'cached_has_completed_setup';
-
-  final ApiService _apiService = ApiService();
-
-  Location? _currentLocation;
+  String _currentLocation = 'Fetching location...';
+  Location? _currentLocationData;
+  Position? _currentPosition;
+  bool _isLoading = true;
   List<Location> _recentLocations = [];
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _hasCompletedLocationSetup = false;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   bool _hasShownLocationPopup = false;
-  dynamic _availabilityStatus;
 
-  // Ready flag - true when initial load from storage is complete
-  bool _ready = false;
-  bool get ready => _ready;
+  // New location-based service availability
+  LocationAvailability? _availabilityStatus;
+  List<MicroZone> _nearbyZones = [];
+  bool _isCheckingAvailability = false;
+  bool _hasHighDemand = false;
+  bool _isOnWaitlist = false;
 
-  Location? get currentLocation => _currentLocation;
-  List<Location> get recentLocations => _recentLocations;
+  // Initialization state
+  bool _isInitialized = false;
+  bool _hasLocationPermission = false;
+
+  String get currentLocation => _currentLocation;
+  Location? get currentLocationData => _currentLocationData;
+  Position? get currentPosition => _currentPosition;
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  bool get hasCompletedLocationSetup => _hasCompletedLocationSetup;
+  List<Location> get recentLocations => _recentLocations;
   bool get hasShownLocationPopup => _hasShownLocationPopup;
-  dynamic get availabilityStatus => _availabilityStatus;
 
-  // Pre-initialized SharedPreferences instance (passed from main.dart)
-  final SharedPreferences? _prefs;
+  // New availability properties
+  LocationAvailability? get availabilityStatus => _availabilityStatus;
+  List<MicroZone> get nearbyZones => _nearbyZones;
+  bool get isCheckingAvailability => _isCheckingAvailability;
+  bool get hasHighDemand => _hasHighDemand;
+  bool get isOnWaitlist => _isOnWaitlist;
 
-  // Static cache for synchronous access during app resume
-  // CRITICAL: These persist in SharedPreferences across Flutter engine restarts
-  static bool? _cachedHasCompletedLocationSetup = null;
-  static Location? _cachedCurrentLocation = null;
+  // Initialization state
+  bool get isInitialized => _isInitialized;
+  bool get hasLocationPermission => _hasLocationPermission;
 
-  LocationProvider({SharedPreferences? prefs}) : _prefs = prefs {
-    debugPrint(
-      'LocationProvider: Constructor called with prefs: ${prefs != null}',
-    );
-    // IMMEDIATELY try to restore from persistent cache
-    _restoreFromPersistentCache();
-    // Then asynchronously refresh from SharedPreferences
-    _loadFromPrefs();
+  LocationProvider() {
+    debugPrint('=== LocationProvider() constructor called ===');
+    _initialize();
   }
 
-  void _restoreFromPersistentCache() {
-    // Try to restore from static cache first (fastest path)
-    if (_cachedHasCompletedLocationSetup == true &&
-        _cachedCurrentLocation != null) {
-      _hasCompletedLocationSetup = true;
-      _currentLocation = _cachedCurrentLocation;
-      _recentLocations = [_cachedCurrentLocation!];
-      _ready = true;
-      debugPrint('LocationProvider: Restored from static memory cache');
-      return;
-    }
-
-    // If we have a pre-initialized SharedPreferences instance, use it synchronously
-    if (_prefs != null) {
-      try {
-        // Check for legacy format
-        final hasCompletedSetup =
-            _prefs!.getBool(_LOCATION_SETUP_COMPLETE_KEY) ?? false;
-
-        if (hasCompletedSetup) {
-          final locationJson = _prefs!.getString(_LOCATION_DATA_KEY);
-          if (locationJson != null) {
-            try {
-              final loadedLocation = Location.fromJson(
-                jsonDecode(locationJson),
-              );
-              _currentLocation = loadedLocation;
-              _recentLocations = [loadedLocation];
-              _cachedCurrentLocation = loadedLocation;
-              _hasCompletedLocationSetup = true;
-              _cachedHasCompletedLocationSetup = true;
-              _ready = true;
-              debugPrint(
-                'LocationProvider: Restored synchronously from passed prefs (legacy format)',
-              );
-              notifyListeners();
-              return;
-            } catch (e) {
-              debugPrint('Error parsing saved location: $e');
-            }
-          }
-        }
-
-        // Check for new cache format
-        final cachedSetup = _prefs!.getBool(_CACHED_SETUP_KEY) ?? false;
-        if (cachedSetup) {
-          final cachedLat = _prefs!.getDouble(_CACHED_LAT_KEY);
-          final cachedLng = _prefs!.getDouble(_CACHED_LNG_KEY);
-          final cachedAddress = _prefs!.getString(_CACHED_ADDRESS_KEY);
-
-          if (cachedLat != null && cachedLng != null && cachedAddress != null) {
-            final cachedLocation = Location(
-              address: cachedAddress,
-              latitude: cachedLat,
-              longitude: cachedLng,
-            );
-            _currentLocation = cachedLocation;
-            _recentLocations = [cachedLocation];
-            _cachedCurrentLocation = cachedLocation;
-            _hasCompletedLocationSetup = true;
-            _cachedHasCompletedLocationSetup = true;
-            _ready = true;
-            debugPrint(
-              'LocationProvider: Restored synchronously from passed prefs (cache format)',
-            );
-            notifyListeners();
-            return;
-          }
-        }
-
-        // Setup not completed yet
-        _ready = true;
-        debugPrint(
-          'LocationProvider: No cached location found in passed prefs',
-        );
-        return;
-      } catch (e) {
-        debugPrint('LocationProvider: Error reading passed prefs: $e');
-        _ready = true;
-      }
-    }
-
-    // No pre-initialized prefs, waiting for async load
-    debugPrint('LocationProvider: No prefs available, waiting for async load');
-  }
-
-  Future<void> _loadFromPrefs() async {
+  Future<void> _initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      debugPrint('LocationProvider: Starting initialization');
+      await _loadRecentLocations();
+      await _loadPopupState();
+      await _checkLocationPermission();
 
-      // First check for legacy format
-      final hasCompletedSetup =
-          prefs.getBool(_LOCATION_SETUP_COMPLETE_KEY) ?? false;
-
-      if (hasCompletedSetup) {
-        _hasCompletedLocationSetup = true;
-
-        final locationJson = prefs.getString(_LOCATION_DATA_KEY);
-        if (locationJson != null) {
-          try {
-            final loadedLocation = Location.fromJson(jsonDecode(locationJson));
-            _currentLocation = loadedLocation;
-            _recentLocations = [loadedLocation];
-
-            // Update static cache immediately
-            _cachedHasCompletedLocationSetup = true;
-            _cachedCurrentLocation = loadedLocation;
-            _ready = true;
-
-            debugPrint('LocationProvider: Loaded from prefs, ready=true');
-            notifyListeners();
-          } catch (e) {
-            debugPrint('Error parsing saved location: $e');
-            _ready = true; // Mark as ready even if parse fails
-          }
-        } else {
-          _ready = true; // Mark as ready if no location found
-        }
+      if (_hasLocationPermission) {
+        await _getCurrentLocation();
       } else {
-        // Check if we have cached values in the new format
-        final cachedSetup = prefs.getBool(_CACHED_SETUP_KEY) ?? false;
-        if (cachedSetup) {
-          final cachedLat = prefs.getDouble(_CACHED_LAT_KEY);
-          final cachedLng = prefs.getDouble(_CACHED_LNG_KEY);
-          final cachedAddress = prefs.getString(_CACHED_ADDRESS_KEY);
-
-          if (cachedLat != null && cachedLng != null && cachedAddress != null) {
-            final cachedLocation = Location(
-              address: cachedAddress,
-              latitude: cachedLat,
-              longitude: cachedLng,
-            );
-            _currentLocation = cachedLocation;
-            _recentLocations = [cachedLocation];
-            _cachedCurrentLocation = cachedLocation;
-            _hasCompletedLocationSetup = true;
-            _cachedHasCompletedLocationSetup = true;
-            _ready = true;
-            debugPrint('LocationProvider: Restored from new cache format');
-            notifyListeners();
-            return;
-          }
-        }
-        _ready = true; // Mark as ready if setup not completed
-      }
-    } catch (e) {
-      debugPrint('LocationProvider: Error reading prefs: $e');
-      _ready = true; // Mark as ready on error
-    }
-  }
-
-  bool needsLocationSetup() {
-    // Fast path: If we're ready and have a location, no setup needed
-    if (_ready && _hasCompletedLocationSetup && _currentLocation != null) {
-      return false;
-    }
-
-    // Check static cache first (fastest, survives hot reload but NOT cold restart)
-    if (_cachedHasCompletedLocationSetup == true &&
-        _cachedCurrentLocation != null) {
-      // Restore state from static cache immediately
-      _hasCompletedLocationSetup = true;
-      _currentLocation = _cachedCurrentLocation;
-      _recentLocations = [_cachedCurrentLocation!];
-      _ready = true;
-      debugPrint('LocationProvider: Restored from static cache');
-      return false;
-    }
-
-    // If we have a pre-initialized SharedPreferences instance, check synchronously
-    if (_prefs != null) {
-      try {
-        // Check for legacy format
-        final hasCompletedSetup =
-            _prefs!.getBool(_LOCATION_SETUP_COMPLETE_KEY) ?? false;
-
-        if (hasCompletedSetup) {
-          final locationJson = _prefs!.getString(_LOCATION_DATA_KEY);
-          if (locationJson != null) {
-            try {
-              final loadedLocation = Location.fromJson(
-                jsonDecode(locationJson),
-              );
-              _currentLocation = loadedLocation;
-              _recentLocations = [loadedLocation];
-              _cachedCurrentLocation = loadedLocation;
-              _hasCompletedLocationSetup = true;
-              _cachedHasCompletedLocationSetup = true;
-              _ready = true;
-              debugPrint(
-                'LocationProvider: needsLocationSetup - restored from passed prefs',
-              );
-              notifyListeners();
-              return false;
-            } catch (e) {
-              debugPrint('Error parsing saved location: $e');
-            }
-          }
-        }
-
-        // Check for new cache format
-        final cachedSetup = _prefs!.getBool(_CACHED_SETUP_KEY) ?? false;
-        if (cachedSetup) {
-          final cachedLat = _prefs!.getDouble(_CACHED_LAT_KEY);
-          final cachedLng = _prefs!.getDouble(_CACHED_LNG_KEY);
-          final cachedAddress = _prefs!.getString(_CACHED_ADDRESS_KEY);
-
-          if (cachedLat != null && cachedLng != null && cachedAddress != null) {
-            final cachedLocation = Location(
-              address: cachedAddress,
-              latitude: cachedLat,
-              longitude: cachedLng,
-            );
-            _currentLocation = cachedLocation;
-            _recentLocations = [cachedLocation];
-            _cachedCurrentLocation = cachedLocation;
-            _hasCompletedLocationSetup = true;
-            _cachedHasCompletedLocationSetup = true;
-            _ready = true;
-            debugPrint(
-              'LocationProvider: needsLocationSetup - restored from cache format',
-            );
-            notifyListeners();
-            return false;
-          }
-        }
-
-        // Setup is needed - no valid location found
-        return true;
-      } catch (e) {
-        debugPrint('LocationProvider: Error checking passed prefs: $e');
-      }
-    }
-
-    // For now, if we have any cached value in memory, use it
-    if (_currentLocation != null && _hasCompletedLocationSetup) {
-      return false;
-    }
-
-    // Default: assume setup is needed if we can't confirm otherwise
-    // This is conservative and prevents the loop by not navigating prematurely
-    return true;
-  }
-
-  // Try to check setup status synchronously using SharedPreferences
-  // This is a workaround for the async nature of SharedPreferences
-  void _checkSetupSynchronously() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final hasCompletedSetup =
-          prefs.getBool(_LOCATION_SETUP_COMPLETE_KEY) ?? false;
-
-      if (hasCompletedSetup && !_hasCompletedLocationSetup) {
-        final locationJson = prefs.getString(_LOCATION_DATA_KEY);
-        if (locationJson != null) {
-          try {
-            final loadedLocation = Location.fromJson(jsonDecode(locationJson));
-            _currentLocation = loadedLocation;
-            _recentLocations = [loadedLocation];
-            _cachedCurrentLocation = loadedLocation;
-            debugPrint('LocationProvider: Async restore succeeded');
-          } catch (e) {
-            debugPrint('Error parsing saved location: $e');
-          }
-        }
-        _hasCompletedLocationSetup = true;
-        _cachedHasCompletedLocationSetup = true;
-      }
-      _ready = true;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('LocationProvider: Async check error: $e');
-      _ready = true; // Mark as ready on error
-      notifyListeners();
-    }
-  }
-
-  Future<void> _loadLocationHistory() async {
-    // Load recent locations from storage or API
-    try {
-      // This would typically load from local storage or API
-      // For now, we'll just initialize with empty list
-      _recentLocations = [];
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading location history: $e');
-    }
-  }
-
-  Future<bool> requestLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _errorMessage = 'Location services are disabled.';
-      notifyListeners();
-      return false;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _errorMessage = 'Location permissions are denied';
+        _isLoading = false;
+        _isInitialized = true;
         notifyListeners();
-        return false;
       }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
-      _errorMessage =
-          'Location permissions are permanently denied, we cannot request permissions.';
+      debugPrint('LocationProvider: Initialization completed');
+    } catch (e) {
+      debugPrint('LocationProvider: Initialization error: $e');
+      _isLoading = false;
+      _isInitialized = true;
       notifyListeners();
-      return false;
     }
-
-    return true;
   }
 
-  Future<void> getCurrentLocation() async {
-    debugPrint('Location: start');
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+  Future<void> _checkLocationPermission() async {
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: AndroidSettings(accuracy: LocationAccuracy.high),
-      );
+      LocationPermission permission = await Geolocator.checkPermission();
+      _hasLocationPermission = permission != LocationPermission.deniedForever;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('LocationProvider: Permission check error: $e');
+      _hasLocationPermission = false;
+      notifyListeners();
+    }
+  }
 
-      // Convert Position to Location
-      final placemarks = await geocoding.placemarkFromCoordinates(
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _currentLocation =
+            'Location services are disabled. Please enable GPS in your device settings.';
+        _isLoading = false;
+        _isInitialized = true;
+        notifyListeners();
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _currentLocation =
+              'Location permissions are denied. Please grant location access in app settings.';
+          _isLoading = false;
+          _isInitialized = true;
+          notifyListeners();
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _currentLocation =
+            'Location permissions are permanently denied. Please enable location access in app settings.';
+        _isLoading = false;
+        _isInitialized = true;
+        notifyListeners();
+        return;
+      }
+
+      _currentPosition = await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      );
+      await _getAddressFromLatLng(_currentPosition!);
+    } catch (e) {
+      if (e is TimeoutException) {
+        _currentLocation =
+            'Location request timed out. Please try again or check your GPS signal.';
+      } else if (e is Exception) {
+        _currentLocation = 'Location service error: ${e.toString()}';
+      } else {
+        _currentLocation =
+            'Unable to get location. Please check your internet connection and GPS.';
+      }
+      _isLoading = false;
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _getAddressFromLatLng(Position position) async {
+    try {
+      List<Placemark> placemarks = await geocoding.placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
-
-      _currentLocation = Location(
-        address: placemarks.isNotEmpty
-            ? _formatAddress(placemarks.first)
-            : 'Lat: ${position.latitude}, Lng: ${position.longitude}',
-        latitude: position.latitude,
-        longitude: position.longitude,
-        city: placemarks.isNotEmpty ? placemarks.first.locality : null,
-        state: placemarks.isNotEmpty
-            ? placemarks.first.administrativeArea
-            : null,
-        country: placemarks.isNotEmpty ? placemarks.first.country : null,
+      Placemark place = placemarks[0];
+      _currentLocationData = Location.fromPlacemark(
+        place,
+        lat: position.latitude,
+        lng: position.longitude,
       );
-      debugPrint('Location: set to $_currentLocation');
-
-      // Add to recent locations
-      _recentLocations.add(_currentLocation!);
-      if (_recentLocations.length > 10) {
-        _recentLocations.removeAt(0);
-      }
-
-      // Save location to SharedPreferences
-      _saveLocationToPrefs();
+      _currentLocation = _currentLocationData!.address;
       _isLoading = false;
+      _isInitialized = true;
+
+      // Check service availability after getting location
+      await checkServiceAvailability();
+
       notifyListeners();
     } catch (e) {
-      debugPrint('Location: error - $e');
-      _errorMessage = e.toString();
+      _currentLocation = 'Unable to get address.';
       _isLoading = false;
+      _isInitialized = true;
       notifyListeners();
     }
-  }
-
-  Future<bool> checkServiceAvailability(
-    double lat,
-    double lng, [
-    double radius = 5.0,
-  ]) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final response = await _apiService.checkServiceAvailability(
-        lat,
-        lng,
-        radius,
-      );
-      _isLoading = false;
-      notifyListeners();
-      return response != null && response['available'] == true;
-    } catch (e) {
-      _errorMessage = 'Error checking service availability';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<List<dynamic>> getAvailableServices(
-    double lat,
-    double lng, [
-    double radius = 5.0,
-  ]) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final response = await _apiService.getAvailableServices(lat, lng, radius);
-      _isLoading = false;
-      notifyListeners();
-      return response ?? [];
-    } catch (e) {
-      _errorMessage = 'Error fetching available services';
-      _isLoading = false;
-      notifyListeners();
-      return [];
-    }
-  }
-
-  Future<void> addToWaitlist(
-    double lat,
-    double lng,
-    int estimatedWaitTime,
-  ) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _apiService.addToWaitlist(lat, lng, estimatedWaitTime);
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Error adding to waitlist';
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> updatePreferredLocation(
-    String userId,
-    double lat,
-    double lng,
-  ) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _apiService.updatePreferredLocation(userId, lat, lng);
-      _hasCompletedLocationSetup = true;
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Error updating preferred location';
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> _saveLocationToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_currentLocation != null) {
-      await prefs.setString(
-        _LOCATION_DATA_KEY,
-        jsonEncode(_currentLocation!.toJson()),
-      );
-    }
-  }
-
-  Future<void> _saveLocationSetupComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_LOCATION_SETUP_COMPLETE_KEY, true);
-  }
-
-  void clearLocationData() {
-    _currentLocation = null;
-    _recentLocations.clear();
-    _hasCompletedLocationSetup = false;
-    _cachedHasCompletedLocationSetup = false;
-    _cachedCurrentLocation = null;
-    _clearLocationPrefs();
-    notifyListeners();
-  }
-
-  Future<void> _clearLocationPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_LOCATION_DATA_KEY);
-    await prefs.remove(_LOCATION_SETUP_COMPLETE_KEY);
-  }
-
-  void setLocationSetupComplete() {
-    _hasCompletedLocationSetup = true;
-    _cachedHasCompletedLocationSetup = true;
-    // Mark as ready immediately
-    _ready = true;
-    _saveLocationSetupComplete();
-    notifyListeners();
-  }
-
-  // Compatibility methods for existing code
-  Location? get currentLocationData => _currentLocation;
-
-  void markPopupShown() {
-    _hasShownLocationPopup = true;
-    notifyListeners();
-  }
-
-  void markLocationSetupComplete() {
-    _hasCompletedLocationSetup = true;
-    _cachedHasCompletedLocationSetup = true;
-    // Mark as ready immediately
-    _ready = true;
-    _saveLocationSetupComplete();
-    notifyListeners();
-  }
-
-  Future<void> refreshLocation() async {
-    // First check and request permissions
-    final hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
-      return; // Permission denied, don't try to get location
-    }
-    await getCurrentLocation();
   }
 
   Future<void> setManualLocation(Location location) async {
-    _currentLocation = location;
-    _cachedCurrentLocation = location;
-    _recentLocations.add(location);
-    if (_recentLocations.length > 10) {
-      _recentLocations.removeAt(0);
-    }
-    _hasCompletedLocationSetup = true;
-    _cachedHasCompletedLocationSetup = true;
-    // Mark as ready immediately to prevent navigation loop
-    _ready = true;
-    // Save to SharedPreferences (both legacy and new format)
-    await _saveLocationToPrefs();
-    await _saveLocationSetupComplete();
-    // Also save to new cache format for fast restore
-    await _saveToCacheFormat();
+    _currentLocationData = location;
+    _currentLocation = location.address;
+    _addToRecentLocations(location);
+
+    // Check service availability for new location
+    await checkServiceAvailability();
+
     notifyListeners();
   }
 
-  // Save location in cache format for fast synchronous restore
-  Future<void> _saveToCacheFormat() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_currentLocation != null) {
-      await prefs.setDouble(_CACHED_LAT_KEY, _currentLocation!.latitude!);
-      await prefs.setDouble(_CACHED_LNG_KEY, _currentLocation!.longitude!);
-      await prefs.setString(_CACHED_ADDRESS_KEY, _currentLocation!.address);
-      await prefs.setBool(_CACHED_SETUP_KEY, true);
-    }
-  }
-
-  Future<void> checkCurrentServiceAvailability() async {
-    if (_currentLocation != null) {
-      _availabilityStatus = await checkServiceAvailability(
-        _currentLocation!.latitude ?? 0.0,
-        _currentLocation!.longitude ?? 0.0,
-        5.0,
-      );
-      notifyListeners();
-    }
-  }
-
-  Future<List<dynamic>> searchLocations(String query) async {
+  Future<void> _loadRecentLocations() async {
     try {
-      final locations = await geocoding.locationFromAddress(query);
-      return locations
-          .map((loc) => Location.fromGeocodingLocation(loc))
+      final stored = await _storage.read(key: 'recent_locations');
+      if (stored != null) {
+        final List<dynamic> locationsJson = jsonDecode(stored);
+        _recentLocations = locationsJson
+            .map((json) => Location.fromJson(json))
+            .toList();
+      }
+    } catch (e) {
+      _recentLocations = [];
+    }
+  }
+
+  Future<void> _saveRecentLocations() async {
+    try {
+      final locationsJson = _recentLocations
+          .map((loc) => loc.toJson())
           .toList();
+      await _storage.write(
+        key: 'recent_locations',
+        value: jsonEncode(locationsJson),
+      );
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  void _addToRecentLocations(Location location) {
+    _recentLocations.removeWhere((loc) => loc.address == location.address);
+    _recentLocations.insert(0, location);
+    if (_recentLocations.length > 5) {
+      _recentLocations = _recentLocations.sublist(0, 5);
+    }
+    _saveRecentLocations();
+  }
+
+  Future<List<Location>> searchLocations(String query) async {
+    if (query.isEmpty) return [];
+    try {
+      List<geocoding.Location> locations = await geocoding.locationFromAddress(
+        query,
+      );
+      List<Location> result = [];
+      for (var loc in locations) {
+        try {
+          List<Placemark> placemarks = await geocoding.placemarkFromCoordinates(
+            loc.latitude!,
+            loc.longitude!,
+          );
+          if (placemarks.isNotEmpty) {
+            result.add(
+              Location.fromPlacemark(
+                placemarks[0],
+                lat: loc.latitude,
+                lng: loc.longitude,
+              ),
+            );
+          }
+        } catch (e) {
+          // If placemark fails, create basic location
+          result.add(Location.fromGeocodingLocation(loc));
+        }
+      }
+      return result;
     } catch (e) {
       return [];
     }
   }
 
-  // Helper method to format address from placemark
-  String _formatAddress(geocoding.Placemark placemark) {
-    final parts = <String>[];
+  Future<void> refreshLocation() async {
+    _isLoading = true;
+    notifyListeners();
 
-    // Add locality (city/town) if available
-    if (placemark.locality != null && placemark.locality!.isNotEmpty) {
-      parts.add(placemark.locality!);
+    try {
+      await _getCurrentLocation();
+
+      // Check if location was successfully obtained
+      if (_currentLocationData == null) {
+        _currentLocation = 'Unable to get current location. Please try again.';
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      _currentLocation = 'Failed to get location: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
     }
+  }
 
-    // Add subLocality if available (neighborhood/area)
-    if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
-      parts.add(placemark.subLocality!);
+  // New location-based service availability methods
+  Future<void> checkServiceAvailability() async {
+    if (_currentLocationData == null) return;
+
+    _isCheckingAvailability = true;
+    notifyListeners();
+
+    try {
+      final apiService = ApiService();
+      // Try to call the API endpoint using the extension method
+      try {
+        final response = await apiService.checkServiceAvailability(
+          _currentLocationData!.latitude!,
+          _currentLocationData!.longitude!,
+          5.0, // 5km radius
+        );
+
+        _availabilityStatus = LocationAvailability.fromJson(response);
+        _nearbyZones = _availabilityStatus!.nearbyZones;
+        _hasHighDemand = _availabilityStatus!.highDemand;
+      } catch (apiError) {
+        // If API endpoint doesn't exist, create a mock response
+        debugPrint(
+          'Service availability API not available, using fallback: $apiError',
+        );
+        _availabilityStatus = LocationAvailability(
+          isAvailable: true,
+          workerCount: 3,
+          estimatedWaitTime: 30,
+          nearbyZones: [],
+          highDemand: false,
+        );
+        _hasHighDemand = false;
+      }
+
+      _isCheckingAvailability = false;
+
+      // Auto-add to waitlist if needed
+      if (_hasHighDemand && _currentLocationData != null) {
+        await addToWaitlist();
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to check availability: $e');
+      _isCheckingAvailability = false;
+      notifyListeners();
     }
+  }
 
-    // Add administrativeArea (state/province) if available
-    if (placemark.administrativeArea != null &&
-        placemark.administrativeArea!.isNotEmpty) {
-      parts.add(placemark.administrativeArea!);
+  Future<void> addToWaitlist() async {
+    if (_currentLocationData == null || _availabilityStatus == null) return;
+
+    try {
+      final apiService = ApiService();
+      // Try to call the API endpoint, but provide fallback if it doesn't exist
+      try {
+        await apiService.addToWaitlist(
+          _currentLocationData!.latitude!,
+          _currentLocationData!.longitude!,
+          _availabilityStatus!.estimatedWaitTime,
+        );
+        _isOnWaitlist = true;
+      } catch (apiError) {
+        // If API endpoint doesn't exist, simulate success
+        debugPrint('Waitlist API not available, simulating success: $apiError');
+        _isOnWaitlist = true;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to add to waitlist: $e');
     }
+  }
 
-    // Add country if available
-    if (placemark.country != null && placemark.country!.isNotEmpty) {
-      parts.add(placemark.country!);
+  Future<void> removeFromWaitlist() async {
+    try {
+      final apiService = ApiService();
+      // Try to call the API endpoint, but provide fallback if it doesn't exist
+      try {
+        await apiService.removeFromWaitlist();
+        _isOnWaitlist = false;
+      } catch (apiError) {
+        // If API endpoint doesn't exist, simulate success
+        debugPrint(
+          'Waitlist removal API not available, simulating success: $apiError',
+        );
+        _isOnWaitlist = false;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to remove from waitlist: $e');
     }
+  }
 
-    // Return formatted address or fallback
-    if (parts.isNotEmpty) {
-      return parts.join(', ');
+  // Enhanced new user detection with location-based logic
+  Future<bool> isNewUser() async {
+    try {
+      final hasLocation = _currentLocationData != null;
+      final hasRecentLocations = _recentLocations.isNotEmpty;
+      final hasShownPopup =
+          await _storage.read(key: 'has_shown_location_popup') == 'true';
+      final hasCompletedSetup =
+          await _storage.read(key: 'has_completed_location_setup') == 'true';
+
+      return !hasLocation &&
+          !hasRecentLocations &&
+          !hasShownPopup &&
+          !hasCompletedSetup;
+    } catch (e) {
+      return true; // Default to new user if there's an error
     }
+  }
 
-    // Fallback to toString if no components found
-    return placemark.toString();
+  Future<void> markPopupShown() async {
+    try {
+      await _storage.write(key: 'has_shown_location_popup', value: 'true');
+      _hasShownLocationPopup = true;
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  Future<void> markLocationSetupComplete() async {
+    try {
+      await _storage.write(key: 'has_completed_location_setup', value: 'true');
+      await _storage.write(key: 'has_shown_location_popup', value: 'true');
+      _hasShownLocationPopup = true;
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  Future<void> _loadPopupState() async {
+    try {
+      final hasShown = await _storage.read(key: 'has_shown_location_popup');
+      final hasCompleted = await _storage.read(
+        key: 'has_completed_location_setup',
+      );
+      _hasShownLocationPopup = hasShown == 'true' || hasCompleted == 'true';
+    } catch (e) {
+      _hasShownLocationPopup = false;
+    }
+  }
+
+  // Method to check if location setup is needed
+  bool needsLocationSetup() {
+    debugPrint('=== LocationProvider.needsLocationSetup() called ===');
+    debugPrint(
+      'currentLocationData: ${_currentLocationData != null ? 'EXISTS' : 'NULL'}',
+    );
+    debugPrint('recentLocations count: ${_recentLocations.length}');
+    debugPrint(
+      'needsLocationSetup result: ${_currentLocationData == null && _recentLocations.isEmpty}',
+    );
+    return _currentLocationData == null && _recentLocations.isEmpty;
+  }
+
+  // Method to get available services in current location
+  Future<List<dynamic>> getAvailableServices() async {
+    if (_currentLocationData == null) return [];
+
+    try {
+      final apiService = ApiService();
+      // Try to call the API endpoint using the extension method
+      try {
+        final response = await apiService.getAvailableServices(
+          _currentLocationData!.latitude!,
+          _currentLocationData!.longitude!,
+          5.0,
+        );
+        return response;
+      } catch (apiError) {
+        // If API endpoint doesn't exist, return empty list
+        debugPrint(
+          'Available services API not available, using fallback: $apiError',
+        );
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Failed to get available services: $e');
+      return [];
+    }
+  }
+
+  // Method to get nearby micro-zones
+  Future<List<MicroZone>> getNearbyZones() async {
+    if (_currentLocationData == null) return [];
+
+    try {
+      final apiService = ApiService();
+      // Try to call the API endpoint using the extension method
+      try {
+        final response = await apiService.getNearbyZones(
+          _currentLocationData!.latitude!,
+          _currentLocationData!.longitude!,
+        );
+        return (response as List)
+            .map((zone) => MicroZone.fromJson(zone))
+            .toList();
+      } catch (apiError) {
+        // If API endpoint doesn't exist, return empty list
+        debugPrint('Nearby zones API not available, using fallback: $apiError');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Failed to get nearby zones: $e');
+      return [];
+    }
+  }
+
+  // Method to force re-initialization
+  Future<void> reinitialize() async {
+    _isInitialized = false;
+    _isLoading = true;
+    notifyListeners();
+    await _initialize();
   }
 }

@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { ServiceArea } from '../../locations/entities/service_area.entity';
 import { Worker } from '../../workers/entities/worker.entity';
 import { Booking } from '../../bookings/entities/booking.entity';

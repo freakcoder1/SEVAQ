@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 class User {
-  final int id;
+  // Backend uses UUID (String) for id, but we support both int and String for compatibility
+  final dynamic id;
   final String publicId;
   final String email;
   final String firstName;
@@ -33,9 +34,20 @@ class User {
   }
 
   static User fromJson(Map<String, dynamic> json) {
+    // Handle both int and String (UUID) id formats from backend
+    final dynamic rawId = json['id'];
+    dynamic parsedId;
+    if (rawId is int) {
+      parsedId = rawId;
+    } else if (rawId is String) {
+      parsedId = rawId;
+    } else {
+      parsedId = 0;
+    }
+
     return User(
-      id: json['id'] as int? ?? 0,
-      publicId: json['publicId'] ?? '',
+      id: parsedId,
+      publicId: json['publicId']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       firstName: json['firstName']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',

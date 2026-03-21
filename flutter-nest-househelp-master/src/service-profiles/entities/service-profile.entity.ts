@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 export enum ServiceType {
   COOK = 'COOK',
@@ -11,6 +17,14 @@ export enum ProfileName {
   STANDARD = 'STANDARD',
   EXTENDED = 'EXTENDED',
   COMPACT = 'COMPACT',
+}
+
+export enum VisitPattern {
+  DAILY = 'DAILY',
+}
+
+export enum MaxVisitsPerDay {
+  ONE = 1,
 }
 
 @Entity('service_profiles')
@@ -48,8 +62,28 @@ export class ServiceProfile {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   monthlyPrice: number;
 
+  @Column({
+    type: 'varchar',
+    enum: VisitPattern,
+    default: VisitPattern.DAILY,
+    name: 'visitpattern',
+  })
+  visitPattern: VisitPattern;
+
+  @Column({
+    type: 'int',
+    default: MaxVisitsPerDay.ONE,
+    name: 'maxvisitsperday',
+  })
+  maxVisitsPerDay: number;
+
+  @Column({ type: 'json', nullable: true, name: 'defaulttimewindows' })
+  defaultTimeWindows: string[];
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ServiceProfilesService } from './service-profiles.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ServiceProfile, ServiceType, ProfileName } from './entities/service-profile.entity';
+import {
+  ServiceProfile,
+  ServiceType,
+  ProfileName,
+} from './entities/service-profile.entity';
 
 describe('ServiceProfilesService', () => {
   let service: ServiceProfilesService;
@@ -34,17 +38,19 @@ describe('ServiceProfilesService', () => {
       { id: 1, serviceType: 'COOK', profileName: 'BASIC' },
       { id: 2, serviceType: 'COOK', profileName: 'STANDARD' },
     ];
-    jest.spyOn(service, 'getAllProfiles').mockResolvedValue(mockProfiles as any);
+    jest
+      .spyOn(service, 'getAllProfiles')
+      .mockResolvedValue(mockProfiles as any);
 
     const profiles = await service.getAllProfiles();
     expect(profiles).toEqual(mockProfiles);
   });
 
   it('should return profiles by service type', async () => {
-    const mockProfiles = [
-      { id: 1, serviceType: 'COOK', profileName: 'BASIC' },
-    ];
-    jest.spyOn(service, 'getProfilesByServiceType').mockResolvedValue(mockProfiles as any);
+    const mockProfiles = [{ id: 1, serviceType: 'COOK', profileName: 'BASIC' }];
+    jest
+      .spyOn(service, 'getProfilesByServiceType')
+      .mockResolvedValue(mockProfiles as any);
 
     const profiles = await service.getProfilesByServiceType(ServiceType.COOK);
     expect(profiles).toEqual(mockProfiles);
@@ -59,8 +65,15 @@ describe('ServiceProfilesService', () => {
   });
 
   it('should return profile by public id', async () => {
-    const mockProfile = { id: 1, publicId: 'test-public-id', serviceType: 'COOK', profileName: 'BASIC' };
-    jest.spyOn(service, 'getProfileByPublicId').mockResolvedValue(mockProfile as any);
+    const mockProfile = {
+      id: 1,
+      publicId: 'test-public-id',
+      serviceType: 'COOK',
+      profileName: 'BASIC',
+    };
+    jest
+      .spyOn(service, 'getProfileByPublicId')
+      .mockResolvedValue(mockProfile as any);
 
     const profile = await service.getProfileByPublicId('test-public-id');
     expect(profile).toEqual(mockProfile);

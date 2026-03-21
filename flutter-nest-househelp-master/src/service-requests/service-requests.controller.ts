@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { ServiceRequestsService } from './service-requests.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,16 +14,23 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('service-requests')
 @UseGuards(JwtAuthGuard)
 export class ServiceRequestsController {
-  constructor(
-    private serviceRequestsService: ServiceRequestsService,
-  ) {}
+  constructor(private serviceRequestsService: ServiceRequestsService) {}
 
   @Post()
-  async createServiceRequest(@Request() req, @Body() request: CreateServiceRequestDto): Promise<{ requestId: string; assignmentStatus: string }> {
-    console.log('🔍 DEBUG: Received service request data:', JSON.stringify(request, null, 2));
+  async createServiceRequest(
+    @Request() req,
+    @Body() request: CreateServiceRequestDto,
+  ): Promise<{ requestId: string; assignmentStatus: string }> {
+    console.log(
+      '🔍 DEBUG: Received service request data:',
+      JSON.stringify(request, null, 2),
+    );
 
     const userId = req.user.userId;
-    const serviceRequest = await this.serviceRequestsService.create(userId, request);
+    const serviceRequest = await this.serviceRequestsService.create(
+      userId,
+      request,
+    );
 
     console.log('📝 SERVICE REQUEST CREATED:', {
       id: serviceRequest.id,
@@ -23,7 +38,7 @@ export class ServiceRequestsController {
       status: serviceRequest.assignmentStatus,
       serviceId: serviceRequest.serviceId,
       date: serviceRequest.date,
-      timeWindow: serviceRequest.timeWindow
+      timeWindow: serviceRequest.timeWindow,
     });
 
     return {

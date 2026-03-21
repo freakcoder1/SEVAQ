@@ -3,7 +3,10 @@ import { DatabaseMonitoringService } from './database-monitoring.service';
 import { DatabaseMonitoringController } from './database-monitoring.controller';
 import { DatabaseMonitoringInterceptor } from './database-monitoring.interceptor';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
-import { makeGaugeProvider, makeHistogramProvider } from '@willsoto/nestjs-prometheus';
+import {
+  makeGaugeProvider,
+  makeHistogramProvider,
+} from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [PrometheusModule],

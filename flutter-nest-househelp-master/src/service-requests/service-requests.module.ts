@@ -10,6 +10,7 @@ import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
 import { SlotsModule } from '../slots/slots.module';
+import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SlotsModule } from '../slots/slots.module';
       name: 'assignment',
     }),
     SlotsModule,
+    ServiceProfilesModule,
   ],
   controllers: [ServiceRequestsController],
   providers: [ServiceRequestsService, AssignmentWorker, AssignmentProcessor],

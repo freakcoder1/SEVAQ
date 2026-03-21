@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
+import '../models/location.dart';
 import '../providers/auth_provider.dart';
 import '../providers/assignment_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/location_provider.dart';
 import '../screens/service_clarification_screen.dart';
 import '../screens/schedule_pricing_screen.dart';
 import '../screens/assignment_in_progress_screen.dart';
@@ -21,6 +23,8 @@ class EnhancedNavigationService {
   Future<void> navigateToServiceClarification({
     required BuildContext context,
     Service? service,
+    dynamic userId,
+    Location? initialLocation,
   }) async {
     final assignmentProvider = Provider.of<AssignmentProvider>(
       context,
@@ -32,7 +36,10 @@ class EnhancedNavigationService {
 
     await navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (context) => ServiceClarificationScreen(),
+        builder: (context) => ServiceClarificationScreen(
+          userId: userId,
+          initialLocation: initialLocation,
+        ),
         settings: RouteSettings(name: '/service-clarification'),
       ),
     );

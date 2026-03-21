@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { DataSource, QueryRunner } from 'typeorm';
 import NodeCache from 'node-cache';
 
@@ -9,7 +14,7 @@ export class DatabaseCacheService implements OnModuleInit, OnModuleDestroy {
   private queryRunner: QueryRunner;
 
   constructor(private readonly dataSource: DataSource) {
-    this.cache = new NodeCache({ 
+    this.cache = new NodeCache({
       stdTTL: 60, // 60 seconds default TTL
       checkperiod: 120, // Check for expired items every 120 seconds
       useClones: false, // Don't clone objects (better performance)
@@ -28,7 +33,11 @@ export class DatabaseCacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Cache a query result
-  async cacheQuery(key: string, query: string, parameters?: any[]): Promise<any> {
+  async cacheQuery(
+    key: string,
+    query: string,
+    parameters?: any[],
+  ): Promise<any> {
     // Check cache first
     const cachedResult = this.cache.get(key);
     if (cachedResult) {
@@ -37,13 +46,13 @@ export class DatabaseCacheService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.debug(`Cache miss for query: ${key}, executing database query`);
-    
+
     try {
       const result = await this.queryRunner.manager.query(query, parameters);
-      
+
       // Cache the result
       this.cache.set(key, result);
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error executing query ${key}: ${error.message}`);
@@ -75,7 +84,7 @@ export class DatabaseCacheService implements OnModuleInit, OnModuleDestroy {
   // Cache schema information to avoid repeated schema queries
   async cacheSchemaInfo(tableName: string): Promise<any> {
     const cacheKey = `schema:${tableName}`;
-    
+
     const cachedSchema = this.cache.get(cacheKey);
     if (cachedSchema) {
       return cachedSchema;
@@ -88,11 +97,13 @@ export class DatabaseCacheService implements OnModuleInit, OnModuleDestroy {
       WHERE table_name = $1
     `;
 
-    const result = await this.queryRunner.manager.query(schemaQuery, [tableName]);
-    
+    const result = await this.queryRunner.manager.query(schemaQuery, [
+      tableName,
+    ]);
+
     // Cache for longer period since schema doesn't change often
     this.cache.set(cacheKey, result, 3600); // 1 hour TTL
-    
+
     return result;
   }
 }

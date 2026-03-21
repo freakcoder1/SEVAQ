@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
-import '../models/location.dart' as models;
+import 'package:flutter_house_help/models/location.dart' as models;
 
 class LocationPickerDialog extends StatefulWidget {
   final LocationProvider locationProvider;

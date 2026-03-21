@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, JoinColumn, ManyToOne, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  JoinColumn,
+  ManyToOne,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
@@ -7,17 +18,17 @@ import { ServiceRequest } from '../../service-requests/entities/service-request.
 
 @Entity('worker')
 export class Worker {
-   @PrimaryGeneratedColumn()
-   id: number; // Internal ID
-   
-   @Column('uuid', { unique: true, nullable: false })
-   publicId: string; // Public API ID
+  @PrimaryGeneratedColumn()
+  id: number; // Internal ID
 
-  @Column({ type: 'int', name: 'userId' })
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string; // Public API ID
+
+  @Column({ type: 'int', name: 'user_id' })
   userId: number;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Column({ type: 'text', nullable: true })
@@ -91,11 +102,10 @@ export class Worker {
     endTime: string;
   }>;
 
-  @OneToMany(() => Slot, slot => slot.worker)
+  @OneToMany(() => Slot, (slot) => slot.worker)
   slots: Slot[];
 
-
-  @ManyToMany(() => Service, service => service.workers)
+  @ManyToMany(() => Service, (service) => service.workers)
   @JoinTable({
     name: 'service_worker',
     joinColumn: { name: 'worker_id', referencedColumnName: 'id' },
@@ -103,7 +113,7 @@ export class Worker {
   })
   services: Service[];
 
-  @OneToMany(() => Booking, booking => booking.worker)
+  @OneToMany(() => Booking, (booking) => booking.worker)
   bookings: Booking[];
 
   @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.worker)

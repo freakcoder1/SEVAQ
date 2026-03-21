@@ -1,7 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ServiceProfile, ServiceType, ProfileName } from './entities/service-profile.entity';
+import {
+  ServiceProfile,
+  ServiceType,
+  ProfileName,
+} from './entities/service-profile.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -23,7 +27,8 @@ export class ServiceProfilesService implements OnModuleInit {
         serviceType: ServiceType.COOK,
         profileName: ProfileName.BASIC,
         description: 'Cooking - Basic',
-        scopeDefinition: 'Daily breakfast and dinner preparation for small family',
+        scopeDefinition:
+          'Daily breakfast and dinner preparation for small family',
         maxCapacityHint: '1–2 people',
         internalRules: {
           mealsPerDay: 2,
@@ -50,7 +55,8 @@ export class ServiceProfilesService implements OnModuleInit {
         serviceType: ServiceType.COOK,
         profileName: ProfileName.EXTENDED,
         description: 'Cooking - Extended',
-        scopeDefinition: 'Full-day meals including snacks and special dishes for large family',
+        scopeDefinition:
+          'Full-day meals including snacks and special dishes for large family',
         maxCapacityHint: '4+ people',
         internalRules: {
           mealsPerDay: 4,
@@ -142,7 +148,13 @@ export class ServiceProfilesService implements OnModuleInit {
         scopeDefinition: 'Premium household assistance for large homes',
         maxCapacityHint: '3+ BHK',
         internalRules: {
-          tasks: ['Cleaning', 'Utensils', 'Kitchen Upkeep', 'Laundry', 'Organizing'],
+          tasks: [
+            'Cleaning',
+            'Utensils',
+            'Kitchen Upkeep',
+            'Laundry',
+            'Organizing',
+          ],
           workingHours: '8 hours/day',
           frequency: 'Daily',
           includesIroning: true,
@@ -174,7 +186,9 @@ export class ServiceProfilesService implements OnModuleInit {
     }
   }
 
-  async getProfilesByServiceType(serviceType: ServiceType): Promise<ServiceProfile[]> {
+  async getProfilesByServiceType(
+    serviceType: ServiceType,
+  ): Promise<ServiceProfile[]> {
     return this.serviceProfileRepository.find({
       where: {
         serviceType,

@@ -1,15 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+  Query,
+} from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { AdminCreateServiceDto } from './dto/admin-create-service.dto';
 import { AdminUpdateServiceDto } from './dto/admin-update-service.dto';
 import { AdminGuard } from '../auth/admin.guard';
+import {
+  PaginationDto,
+  createPaginatedResponse,
+} from '../common/dto/pagination.dto';
 
 @Controller('services')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class ServicesController {
-  constructor(private readonly servicesService: ServicesService) { }
+  constructor(private readonly servicesService: ServicesService) {}
 
   @Post()
   @UseGuards(AdminGuard)
@@ -18,8 +34,20 @@ export class ServicesController {
   }
 
   @Get()
-  findAll() {
-    return this.servicesService.findAll();
+  async findAll(@Query() paginationDto: PaginationDto) {
+    const page = paginationDto.page ?? 1;
+    const limit = paginationDto.limit ?? 20;
+    const { sortBy, sortOrder } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.servicesService.findAllPaginated(
+      skip,
+      limit,
+      sortBy,
+      sortOrder,
+    );
+
+    return createPaginatedResponse(data, total, page, limit);
   }
 
   @Get('categories/availability')
@@ -34,7 +62,10 @@ export class ServicesController {
 
   @Patch(':id')
   @UseGuards(AdminGuard)
-  update(@Param('id') id: string, @Body() updateServiceDto: AdminUpdateServiceDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateServiceDto: AdminUpdateServiceDto,
+  ) {
     return this.servicesService.update(id, updateServiceDto);
   }
 

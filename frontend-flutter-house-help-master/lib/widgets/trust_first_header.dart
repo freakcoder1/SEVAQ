@@ -23,7 +23,7 @@ class TrustFirstHeader extends StatelessWidget {
         border: Border.all(color: theme.colorScheme.primaryContainer),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: Offset(0, 4),
           ),

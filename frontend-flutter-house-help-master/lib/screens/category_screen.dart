@@ -9,12 +9,14 @@ class CategoryScreen extends StatelessWidget {
   final String category;
   final ServiceProvider serviceProvider;
   final WorkerProvider workerProvider;
+  final dynamic userId; // Accept both int and String (UUID)
 
   const CategoryScreen({
     Key? key,
     required this.category,
     required this.serviceProvider,
     required this.workerProvider,
+    required this.userId,
   }) : super(key: key);
 
   @override
@@ -49,6 +51,7 @@ class CategoryScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => ServiceDetailsScreen(
                           service: categoryServices[index],
+                          userId: userId,
                         ),
                       ),
                     );

@@ -81,8 +81,9 @@ describe('House Help App E2E', () => {
     const token = loginResponse.body.access_token;
 
     // Browse services
-    const servicesResponse = await request(app.getHttpServer())
-      .get('/services');
+    const servicesResponse = await request(app.getHttpServer()).get(
+      '/services',
+    );
     expect(servicesResponse.status).toBe(200);
     expect(servicesResponse.body.length).toBeGreaterThan(0);
 

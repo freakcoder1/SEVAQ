@@ -7,7 +7,12 @@ import { MetricsModule } from '../metrics/metrics.module';
 import { AlertsModule } from '../alerts/alerts.module';
 
 @Module({
-  imports: [HealthModule, DatabaseMonitoringModule, MetricsModule, AlertsModule],
+  imports: [
+    HealthModule,
+    DatabaseMonitoringModule,
+    MetricsModule,
+    AlertsModule,
+  ],
   controllers: [MonitoringDashboardController],
   providers: [MonitoringDashboardService],
   exports: [MonitoringDashboardService],

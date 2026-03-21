@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { register, Gauge } from 'prom-client';
 import * as si from 'systeminformation';
 
@@ -81,7 +86,7 @@ export class SystemMonitoringService implements OnModuleInit, OnModuleDestroy {
         const usagePercent = (disk.used / disk.size) * 100;
         this.diskUsageGauge.set(
           { filesystem: disk.fs, mount: disk.mount },
-          usagePercent
+          usagePercent,
         );
       });
 

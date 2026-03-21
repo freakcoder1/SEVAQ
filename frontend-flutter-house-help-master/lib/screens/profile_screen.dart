@@ -5,6 +5,8 @@ import '../providers/theme_provider.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).user;

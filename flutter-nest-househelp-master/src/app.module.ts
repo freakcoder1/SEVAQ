@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -21,7 +23,11 @@ import { HomeModule } from './home/home.module';
 import { HealthModule } from './health/health.module';
 import { MonitoringDashboardModule } from './monitoring-dashboard/monitoring-dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { PrometheusModule, makeCounterProvider, makeHistogramProvider } from '@willsoto/nestjs-prometheus';
+import {
+  PrometheusModule,
+  makeCounterProvider,
+  makeHistogramProvider,
+} from '@willsoto/nestjs-prometheus';
 import { DatabaseModule } from './database/database.module';
 import { ServiceProfilesModule } from './service-profiles/service-profiles.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
@@ -36,15 +42,27 @@ import { MicroZone } from './locations/entities/micro_zone.entity';
 import { ServiceArea } from './locations/entities/service_area.entity';
 import { Waitlist } from './locations/entities/waitlist.entity';
 import { ServiceRequest } from './service-requests/entities/service-request.entity';
-import { AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric } from './metrics/entities/metric.entity';
+import {
+  AssignmentMetric,
+  WorkerPerformanceMetric,
+  UserBehaviorMetric,
+  SystemPerformanceMetric,
+} from './metrics/entities/metric.entity';
 import { ServiceProfile } from './service-profiles/entities/service-profile.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { ResponseTimeInterceptor } from './common/interceptors/response-time.interceptor';
 
-
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000, // 1 minute
+          limit: 100, // 100 requests per minute
+        },
+      ],
+    }),
     PrometheusModule.register(),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -52,13 +70,11 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        console.log('TypeORM factory starting');
         const host = configService.get('DB_HOST', 'localhost');
         const port = configService.get<number>('DB_PORT', 5432);
         const username = configService.get('DB_USERNAME', 'sevaq_user');
         const password = configService.get('DB_PASSWORD', 'sevaq_password');
         const database = configService.get('DB_NAME', 'sevaq_db');
-        console.log('DB config:', { host, port, username, database });
 
         // Validate required environment variables
         if (!host) {
@@ -77,8 +93,25 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
           throw new Error('Missing required environment variable: DB_NAME');
         }
 
-        const entities = [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist, ServiceRequest, AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric, ServiceProfile, Subscription];
-        console.log('TypeORM entities:', entities.map(e => e.name));
+        const entities = [
+          User,
+          Service,
+          Worker,
+          Slot,
+          Booking,
+          Payment,
+          Review,
+          MicroZone,
+          ServiceArea,
+          Waitlist,
+          ServiceRequest,
+          AssignmentMetric,
+          WorkerPerformanceMetric,
+          UserBehaviorMetric,
+          SystemPerformanceMetric,
+          ServiceProfile,
+          Subscription,
+        ];
 
         return {
           type: 'postgres',
@@ -139,9 +172,13 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
       labelNames: ['method', 'endpoint', 'status_code'],
     }),
     {
+      provide: 'APP_GUARD',
+      useClass: ThrottlerGuard,
+    },
+    {
       provide: 'APP_INTERCEPTOR',
       useClass: ResponseTimeInterceptor,
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

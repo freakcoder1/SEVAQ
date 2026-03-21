@@ -12,7 +12,12 @@ describe('SlotsService Integration Tests', () => {
   let workerRepository: Repository<Worker>;
 
   // Test data for integration scenarios
-  const createTestWorker = (id: string, name: string, lat: number, lng: number): Worker => ({
+  const createTestWorker = (
+    id: string,
+    name: string,
+    lat: number,
+    lng: number,
+  ): Worker => ({
     id,
     user: null,
     name,
@@ -33,15 +38,15 @@ describe('SlotsService Integration Tests', () => {
   });
 
   const createTestSlot = (
-    id: string, 
-    workerId: string, 
-    date: string, 
-    startTime: string, 
-    endTime: string, 
-    isBooked = false
+    id: string,
+    workerId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    isBooked = false,
   ): Slot => ({
     id,
-    worker: createTestWorker(workerId, `Worker ${workerId}`, 28.6139, 77.2090),
+    worker: createTestWorker(workerId, `Worker ${workerId}`, 28.6139, 77.209),
     startTime: new Date(`${date}T${startTime}:00.000Z`),
     endTime: new Date(`${date}T${endTime}:00.000Z`),
     isBooked,
@@ -72,7 +77,9 @@ describe('SlotsService Integration Tests', () => {
 
     service = module.get<SlotsService>(SlotsService);
     slotRepository = module.get<Repository<Slot>>(getRepositoryToken(Slot));
-    workerRepository = module.get<Repository<Worker>>(getRepositoryToken(Worker));
+    workerRepository = module.get<Repository<Worker>>(
+      getRepositoryToken(Worker),
+    );
   });
 
   describe('Integration: Flexible Slot Matching with Assignment Flow', () => {
@@ -82,24 +89,25 @@ describe('SlotsService Integration Tests', () => {
       const requestedDate = '2024-01-15';
       const requestedStart = '10:00:00';
       const requestedEnd = '14:00:00';
-      
-      const userLocation = { lat: 28.6139, lng: 77.2090 };
-      const workerLocation = { lat: 28.6139, lng: 77.2090 };
+
+      const userLocation = { lat: 28.6139, lng: 77.209 };
+      const workerLocation = { lat: 28.6139, lng: 77.209 };
 
       // Scenario 1: No exact match, but flexible match available
       const flexibleSlot = createTestSlot(
-        'slot-flexible', 
-        workerId, 
-        requestedDate, 
+        'slot-flexible',
+        workerId,
+        requestedDate,
         '09:45:00', // 15 minutes earlier
-        '13:45:00' // 15 minutes earlier
+        '13:45:00', // 15 minutes earlier
       );
 
       // Mock the exact match to return null (no exact match)
       jest.spyOn(service, 'findAvailableSlot').mockResolvedValue(null);
-      
+
       // Mock flexible search to return the flexible slot
-      jest.spyOn(slotRepository, 'find')
+      jest
+        .spyOn(slotRepository, 'find')
         .mockResolvedValueOnce([flexibleSlot]) // Flexible window search
         .mockResolvedValueOnce([]); // Same-day search (not needed)
 
@@ -107,7 +115,7 @@ describe('SlotsService Integration Tests', () => {
       const result = await service.findAvailableSlotFlexible(
         workerId,
         new Date(`${requestedDate}T${requestedStart}:00.000Z`),
-        new Date(`${requestedDate}T${requestedEnd}:00.000Z`)
+        new Date(`${requestedDate}T${requestedEnd}:00.000Z`),
       );
 
       // Verify: Flexible slot should be found
@@ -119,7 +127,14 @@ describe('SlotsService Integration Tests', () => {
     it('should handle slot booking and unbooking workflow', async () => {
       const slotId = 'slot-booking-test';
       const workerId = 'worker-booking-test';
-      const slot = createTestSlot(slotId, workerId, '2024-01-15', '08:00:00', '12:00:00', false);
+      const slot = createTestSlot(
+        slotId,
+        workerId,
+        '2024-01-15',
+        '08:00:00',
+        '12:00:00',
+        false,
+      );
 
       // Mock slot retrieval
       jest.spyOn(slotRepository, 'findOne').mockResolvedValue(slot);
@@ -130,14 +145,18 @@ describe('SlotsService Integration Tests', () => {
       expect(bookResult).toBe(true);
 
       // Verify booking update was called
-      expect(slotRepository.update).toHaveBeenCalledWith(slotId, { isBooked: true });
+      expect(slotRepository.update).toHaveBeenCalledWith(slotId, {
+        isBooked: true,
+      });
 
       // Test unbooking
       const unbookResult = await service.unbookSlot(slotId);
       expect(unbookResult).toBe(true);
 
       // Verify unbooking update was called
-      expect(slotRepository.update).toHaveBeenCalledWith(slotId, { isBooked: false });
+      expect(slotRepository.update).toHaveBeenCalledWith(slotId, {
+        isBooked: false,
+      });
     });
 
     it('should handle slot creation with validation', async () => {
@@ -154,22 +173,38 @@ describe('SlotsService Integration Tests', () => {
         },
       ];
 
-      const mockWorker = createTestWorker(workerId, 'Test Worker', 28.6139, 77.2090);
+      const mockWorker = createTestWorker(
+        workerId,
+        'Test Worker',
+        28.6139,
+        77.209,
+      );
       const createdSlots = timeSlots.map((slot, index) =>
-        createTestSlot(`slot-${index + 1}`, workerId, '2024-01-15', slot.startTime.toISOString().split('T')[1].split('.')[0], slot.endTime.toISOString().split('T')[1].split('.')[0], false)
+        createTestSlot(
+          `slot-${index + 1}`,
+          workerId,
+          '2024-01-15',
+          slot.startTime.toISOString().split('T')[1].split('.')[0],
+          slot.endTime.toISOString().split('T')[1].split('.')[0],
+          false,
+        ),
       );
 
       // Mock worker validation
       jest.spyOn(workerRepository, 'findOne').mockResolvedValue(mockWorker);
-      
+
       // Mock existing slots check (none exist)
       jest.spyOn(slotRepository, 'find').mockResolvedValue([]);
-      
+
       // Mock slot creation
       jest.spyOn(slotRepository, 'save').mockResolvedValue(createdSlots);
 
       // Execute: Create slots
-      const result = await service.createSlotsForWorker(workerId, date, timeSlots);
+      const result = await service.createSlotsForWorker(
+        workerId,
+        date,
+        timeSlots,
+      );
 
       // Verify: Slots should be created
       expect(result).toEqual(createdSlots);
@@ -187,7 +222,7 @@ describe('SlotsService Integration Tests', () => {
             endTime: timeSlots[1].endTime,
             isBooked: false,
           }),
-        ])
+        ]),
       );
     });
 
@@ -199,7 +234,7 @@ describe('SlotsService Integration Tests', () => {
       jest.spyOn(workerRepository, 'findOne').mockResolvedValue(null);
 
       await expect(
-        service.createSlotsForWorker(workerId, new Date(), [])
+        service.createSlotsForWorker(workerId, new Date(), []),
       ).rejects.toThrow('Worker with ID worker-error-test not found');
 
       // Test: Slot not found for booking
@@ -209,7 +244,14 @@ describe('SlotsService Integration Tests', () => {
       expect(bookResult).toBe(false);
 
       // Test: Slot already booked
-      const bookedSlot = createTestSlot(slotId, workerId, '2024-01-15', '08:00:00', '12:00:00', true);
+      const bookedSlot = createTestSlot(
+        slotId,
+        workerId,
+        '2024-01-15',
+        '08:00:00',
+        '12:00:00',
+        true,
+      );
       jest.spyOn(slotRepository, 'findOne').mockResolvedValue(bookedSlot);
 
       const bookResult2 = await service.bookSlot(slotId);
@@ -224,7 +266,8 @@ describe('SlotsService Integration Tests', () => {
       const availableSlots = 15;
 
       // Mock count queries
-      jest.spyOn(slotRepository, 'count')
+      jest
+        .spyOn(slotRepository, 'count')
         .mockResolvedValueOnce(totalSlots) // Total slots
         .mockResolvedValueOnce(availableSlots); // Available slots
 
@@ -245,7 +288,8 @@ describe('SlotsService Integration Tests', () => {
       const workerId = 'worker-edge-test';
 
       // Edge case: Zero slots
-      jest.spyOn(slotRepository, 'count')
+      jest
+        .spyOn(slotRepository, 'count')
         .mockResolvedValueOnce(0) // Total slots
         .mockResolvedValueOnce(0); // Available slots
 
@@ -286,12 +330,13 @@ describe('SlotsService Integration Tests', () => {
       ];
 
       const mockWorkers = [
-        createTestWorker('worker-bulk-1', 'Worker 1', 28.6139, 77.2090),
-        createTestWorker('worker-bulk-2', 'Worker 2', 28.6139, 77.2090),
+        createTestWorker('worker-bulk-1', 'Worker 1', 28.6139, 77.209),
+        createTestWorker('worker-bulk-2', 'Worker 2', 28.6139, 77.209),
       ];
 
       // Mock worker validation
-      jest.spyOn(workerRepository, 'findOne')
+      jest
+        .spyOn(workerRepository, 'findOne')
         .mockResolvedValueOnce(mockWorkers[0])
         .mockResolvedValueOnce(mockWorkers[1]);
 
@@ -321,18 +366,23 @@ describe('SlotsService Integration Tests', () => {
         workerId,
         '2024-01-15',
         '16:00:00', // 4 PM
-        '20:00:00'  // 8 PM
+        '20:00:00', // 8 PM
       );
 
       // Mock exact match: null
       jest.spyOn(service, 'findAvailableSlot').mockResolvedValue(null);
-      
+
       // Mock flexible search: no matches
-      jest.spyOn(slotRepository, 'find')
+      jest
+        .spyOn(slotRepository, 'find')
         .mockResolvedValueOnce([]) // No flexible slots in 30-min window
         .mockResolvedValueOnce([sameDaySlot]); // Same-day slots available
 
-      const result = await service.findAvailableSlotFlexible(workerId, requestedStart, requestedEnd);
+      const result = await service.findAvailableSlotFlexible(
+        workerId,
+        requestedStart,
+        requestedEnd,
+      );
 
       expect(result).toEqual(sameDaySlot);
       expect(result.startTime).toEqual(sameDaySlot.startTime);
@@ -345,11 +395,16 @@ describe('SlotsService Integration Tests', () => {
 
       // Mock all searches returning empty results
       jest.spyOn(service, 'findAvailableSlot').mockResolvedValue(null);
-      jest.spyOn(slotRepository, 'find')
+      jest
+        .spyOn(slotRepository, 'find')
         .mockResolvedValueOnce([]) // No flexible slots
         .mockResolvedValueOnce([]); // No same-day slots
 
-      const result = await service.findAvailableSlotFlexible(workerId, requestedStart, requestedEnd);
+      const result = await service.findAvailableSlotFlexible(
+        workerId,
+        requestedStart,
+        requestedEnd,
+      );
 
       expect(result).toBeNull();
     });

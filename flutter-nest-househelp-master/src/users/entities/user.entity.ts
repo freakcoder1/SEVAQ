@@ -1,76 +1,88 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 
 export enum UserRole {
-    USER = 'user',
-    WORKER = 'worker',
-    ADMIN = 'admin',
+  USER = 'user',
+  WORKER = 'worker',
+  ADMIN = 'admin',
 }
 
 @Entity()
 export class User {
-    @PrimaryGeneratedColumn()
-    id: number; // Internal ID
-    
-    @Column('uuid', { unique: true, nullable: false })
-    publicId: string; // Public API ID
+  @PrimaryGeneratedColumn('uuid')
+  id: string; // UUID ID
 
-    @Column({ unique: true })
-    email: string;
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string; // Public API ID
 
-    @Column()
-    password: string;
+  @Column({ unique: true })
+  email: string;
 
-    @Column()
-    firstName: string;
+  @Column()
+  password: string;
 
-    @Column()
-    lastName: string;
+  @Column()
+  firstName: string;
 
-    @Column({
-        type: 'varchar',
-        default: 'user',
-    })
-    role: string;
+  @Column()
+  lastName: string;
 
-    @Column({ nullable: true })
-    address: string;
+  @Column({
+    type: 'varchar',
+    default: 'user',
+  })
+  role: string;
 
-    @Column({ nullable: true })
-    phone: string;
+  @Column({ nullable: true })
+  address: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
-    latitude: number;
+  @Column({ nullable: true, unique: true, length: 20 })
+  @Index()
+  phone: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
-    longitude: number;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  latitude: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
-    preferredLat: number;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  longitude: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
-    preferredLng: number;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  preferredLat: number;
 
-    @Column({ nullable: true })
-    preferredZoneId: string;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  preferredLng: number;
 
-    @Column({ default: false })
-    hasCompletedLocationSetup: boolean;
+  @Column({ nullable: true })
+  preferredZoneId: string;
 
-    @Column({ type: 'json', nullable: true })
-    locationHistory: Array<{
-        lat: number;
-        lng: number;
-        timestamp: Date;
-        accuracy: number;
-    }>;
+  @Column({ default: false })
+  hasCompletedLocationSetup: boolean;
 
-    @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.user)
-    serviceRequests: ServiceRequest[];
+  @Column({ nullable: true })
+  fcmToken: string;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @Column({ type: 'json', nullable: true })
+  locationHistory: Array<{
+    lat: number;
+    lng: number;
+    timestamp: Date;
+    accuracy: number;
+  }>;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.user)
+  serviceRequests: ServiceRequest[];
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

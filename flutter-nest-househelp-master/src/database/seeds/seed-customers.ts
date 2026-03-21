@@ -13,11 +13,13 @@ export class SeedCustomers {
 
     // Check if customers already exist
     const existingCustomers = await userRepository.count({
-      where: { role: UserRole.USER }
+      where: { role: UserRole.USER },
     });
-    
+
     if (existingCustomers > 0) {
-      this.logger.log(`${existingCustomers} customers already exist, skipping creation`);
+      this.logger.log(
+        `${existingCustomers} customers already exist, skipping creation`,
+      );
       return;
     }
 
@@ -30,11 +32,11 @@ export class SeedCustomers {
         password: 'password123',
         phone: '+919876543215',
         latitude: 28.6139,
-        longitude: 77.2090,
+        longitude: 77.209,
         preferredLat: 28.6139,
-        preferredLng: 77.2090,
+        preferredLng: 77.209,
         hasCompletedLocationSetup: true,
-        role: UserRole.USER
+        role: UserRole.USER,
       },
       {
         firstName: 'Jane',
@@ -47,18 +49,20 @@ export class SeedCustomers {
         preferredLat: 28.6149,
         preferredLng: 77.2095,
         hasCompletedLocationSetup: true,
-        role: UserRole.USER
-      }
+        role: UserRole.USER,
+      },
     ];
 
     for (const customerData of customers) {
       // Check if user already exists
       const existingUser = await userRepository.findOne({
-        where: { email: customerData.email }
+        where: { email: customerData.email },
       });
 
       if (existingUser) {
-        this.logger.log(`User ${customerData.email} already exists, skipping...`);
+        this.logger.log(
+          `User ${customerData.email} already exists, skipping...`,
+        );
         continue;
       }
 
@@ -79,24 +83,30 @@ export class SeedCustomers {
       });
 
       await userRepository.save(user);
-      this.logger.log(`Created customer: ${customerData.firstName} ${customerData.lastName} (${customerData.email})`);
+      this.logger.log(
+        `Created customer: ${customerData.firstName} ${customerData.lastName} (${customerData.email})`,
+      );
     }
 
     this.logger.log('Customer seeding completed');
     await this.verifyCustomerData(userRepository);
   }
 
-  private async verifyCustomerData(userRepository: Repository<User>): Promise<void> {
+  private async verifyCustomerData(
+    userRepository: Repository<User>,
+  ): Promise<void> {
     this.logger.log('Verifying seeded customer data...');
 
     const customers = await userRepository.find({
-      where: { role: UserRole.USER }
+      where: { role: UserRole.USER },
     });
 
     this.logger.log(`Found ${customers.length} customers in database`);
 
     for (const customer of customers) {
-      this.logger.debug(`Customer: ${customer.firstName} ${customer.lastName} - Email: ${customer.email} - Location: (${customer.latitude}, ${customer.longitude})`);
+      this.logger.debug(
+        `Customer: ${customer.firstName} ${customer.lastName} - Email: ${customer.email} - Location: (${customer.latitude}, ${customer.longitude})`,
+      );
     }
 
     this.logger.log('Customer data verification completed');

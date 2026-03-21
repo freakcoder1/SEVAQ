@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity('assignment_metrics')
 @Index(['assignmentId', 'timestamp'])
@@ -12,11 +18,11 @@ export class AssignmentMetric {
   @Column('uuid')
   assignmentId: string;
 
-  @Column('int')
-  bookingId: number;
+  @Column('uuid')
+  bookingId: string;
 
-  @Column('int')
-  userId: number;
+  @Column('uuid')
+  userId: string;
 
   @Column('int')
   workerId: number;
@@ -107,8 +113,8 @@ export class UserBehaviorMetric {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('int')
-  userId: number;
+  @Column('uuid')
+  userId: string;
 
   @Column({ type: 'date' })
   date: Date;

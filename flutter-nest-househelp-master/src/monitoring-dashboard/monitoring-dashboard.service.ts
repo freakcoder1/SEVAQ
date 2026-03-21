@@ -3,7 +3,11 @@ import { HealthService } from '../health/health.service';
 import { DatabaseMonitoringService } from '../database-monitoring/database-monitoring.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { AlertsService } from '../alerts/alerts.service';
-import { SystemMetrics, AssignmentMetrics, WorkerMetrics } from '../metrics/metrics.service';
+import {
+  SystemMetrics,
+  AssignmentMetrics,
+  WorkerMetrics,
+} from '../metrics/metrics.service';
 import { Alert, AlertRule } from '../alerts/alerts.service';
 
 export interface DashboardMetrics {
@@ -45,7 +49,8 @@ export class MonitoringDashboardService {
       const databaseMetrics = await this.databaseMonitoringService.getMetrics();
 
       // Get application metrics
-      const assignmentMetrics = await this.metricsService.getAssignmentMetrics('day');
+      const assignmentMetrics =
+        await this.metricsService.getAssignmentMetrics('day');
       const workerMetrics = await this.getTopWorkerMetrics();
 
       // Get alerts
@@ -103,7 +108,7 @@ export class MonitoringDashboardService {
         averageRating: 4.8,
         averageAssignmentTime: 245,
         utilizationRate: 87.5,
-        totalEarnings: 4500
+        totalEarnings: 4500,
       },
       {
         workerId: 2,
@@ -112,7 +117,7 @@ export class MonitoringDashboardService {
         averageRating: 4.6,
         averageAssignmentTime: 270,
         utilizationRate: 78.3,
-        totalEarnings: 3800
+        totalEarnings: 3800,
       },
       {
         workerId: 3,
@@ -121,10 +126,10 @@ export class MonitoringDashboardService {
         averageRating: 4.4,
         averageAssignmentTime: 300,
         utilizationRate: 65.8,
-        totalEarnings: 3200
-      }
+        totalEarnings: 3200,
+      },
     ];
-    
+
     // Sort by success rate and return top 5
     return dummyWorkers
       .sort((a, b) => b.successRate - a.successRate)

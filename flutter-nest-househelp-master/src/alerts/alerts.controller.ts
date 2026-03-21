@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { AlertsService, AlertRule, Alert } from './alerts.service';
 import { AdminGuard } from '../auth/admin.guard';
 
@@ -34,7 +42,7 @@ export class AlertsController {
   @UseGuards(AdminGuard)
   updateAlertRule(
     @Param('ruleId') ruleId: string,
-    @Body() updates: Partial<AlertRule>
+    @Body() updates: Partial<AlertRule>,
   ): void {
     this.alertsService.updateAlertRule(ruleId, updates);
   }

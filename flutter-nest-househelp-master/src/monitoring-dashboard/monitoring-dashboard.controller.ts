@@ -5,7 +5,9 @@ import { AdminGuard } from '../auth/admin.guard';
 @Controller('monitoring-dashboard')
 @UseGuards(AdminGuard)
 export class MonitoringDashboardController {
-  constructor(private readonly monitoringDashboardService: MonitoringDashboardService) {}
+  constructor(
+    private readonly monitoringDashboardService: MonitoringDashboardService,
+  ) {}
 
   @Get('metrics')
   async getDashboardMetrics() {

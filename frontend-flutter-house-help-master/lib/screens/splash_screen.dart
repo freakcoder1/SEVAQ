@@ -181,7 +181,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Watch location provider to trigger rebuild when location changes
     final locationProvider = context.watch<LocationProvider>();
     final currentLocation = locationProvider.currentLocationData;
-    final hasCompletedSetup = locationProvider.hasCompletedLocationSetup;
+    final hasCompletedSetup = !locationProvider.needsLocationSetup();
 
     debugPrint(
       'SplashScreen.build: START, location=$currentLocation, completed=$hasCompletedSetup',
@@ -252,7 +252,7 @@ class _SplashScreenState extends State<SplashScreen>
                             gradient: LinearGradient(
                               colors: [
                                 theme.primaryColor,
-                                theme.primaryColor.withOpacity(0.8),
+                                theme.primaryColor.withValues(alpha: 0.8),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,

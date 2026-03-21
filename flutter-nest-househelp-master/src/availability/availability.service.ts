@@ -9,7 +9,7 @@ import { User } from '../users/entities/user.entity';
 export enum AvailabilityStatus {
   AVAILABLE = 'available',
   LIMITED = 'limited',
-  UNAVAILABLE = 'unavailable'
+  UNAVAILABLE = 'unavailable',
 }
 
 export interface AvailabilityCheckRequest {
@@ -47,11 +47,13 @@ export class AvailabilityService {
     private slotsService: SlotsService,
   ) {}
 
-  async checkAvailability(request: AvailabilityCheckRequest): Promise<AvailabilityCheckResult> {
+  async checkAvailability(
+    request: AvailabilityCheckRequest,
+  ): Promise<AvailabilityCheckResult> {
     // 1. Find workers who offer this service
     const workers = await this.workersRepository.find({
       where: { services: { id: request.serviceId } },
-      relations: ['user', 'services']
+      relations: ['user', 'services'],
     });
 
     if (workers.length === 0) {
@@ -59,27 +61,39 @@ export class AvailabilityService {
         status: AvailabilityStatus.UNAVAILABLE,
         availableCount: 0,
         estimatedWaitTime: 1440, // 24 hours in minutes
-        alternativeTimeSlots: []
+        alternativeTimeSlots: [],
       };
     }
 
     // 2. Filter workers by location (within radius)
-    const nearbyWorkers = await this.filterWorkersByLocation(workers, request.userLat, request.userLng, request.radius || 5);
+    const nearbyWorkers = await this.filterWorkersByLocation(
+      workers,
+      request.userLat,
+      request.userLng,
+      request.radius || 5,
+    );
 
     if (nearbyWorkers.length === 0) {
       return {
         status: AvailabilityStatus.UNAVAILABLE,
         availableCount: 0,
         estimatedWaitTime: 1440,
-        alternativeTimeSlots: []
+        alternativeTimeSlots: [],
       };
     }
 
     // 3. Parse date and time window to get start and end times
-    const { startTime, endTime } = this.parseTimeWindow(request.date, request.timeWindow);
+    const { startTime, endTime } = this.parseTimeWindow(
+      request.date,
+      request.timeWindow,
+    );
 
     // 4. Check availability for the requested time slot
-    const availableWorkers = await this.checkWorkersAvailability(nearbyWorkers, startTime, endTime);
+    const availableWorkers = await this.checkWorkersAvailability(
+      nearbyWorkers,
+      startTime,
+      endTime,
+    );
 
     // 5. Determine availability status
     const availableCount = availableWorkers.length;
@@ -105,7 +119,7 @@ export class AvailabilityService {
         request.date,
         request.timeWindow,
         request.userLat,
-        request.userLng
+        request.userLng,
       );
     }
 
@@ -113,7 +127,7 @@ export class AvailabilityService {
       status,
       availableCount,
       estimatedWaitTime,
-      alternativeTimeSlots
+      alternativeTimeSlots,
     };
   }
 
@@ -121,7 +135,7 @@ export class AvailabilityService {
     workers: Worker[],
     userLat: number,
     userLng: number,
-    radius: number
+    radius: number,
   ): Promise<Worker[]> {
     const nearbyWorkers: Worker[] = [];
 
@@ -129,7 +143,12 @@ export class AvailabilityService {
       const user = worker.user;
       if (!user || !user.latitude || !user.longitude) continue;
 
-      const distance = this.calculateDistance(userLat, userLng, user.latitude, user.longitude);
+      const distance = this.calculateDistance(
+        userLat,
+        userLng,
+        user.latitude,
+        user.longitude,
+      );
       if (distance <= radius) {
         nearbyWorkers.push(worker);
       }
@@ -141,12 +160,16 @@ export class AvailabilityService {
   private async checkWorkersAvailability(
     workers: Worker[],
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<Worker[]> {
     const availableWorkers: Worker[] = [];
 
     for (const worker of workers) {
-      const availableSlot = await this.slotsService.findAvailableSlotFlexible(worker.id, startTime, endTime);
+      const availableSlot = await this.slotsService.findAvailableSlotFlexible(
+        worker.id,
+        startTime,
+        endTime,
+      );
       if (availableSlot) {
         availableWorkers.push(worker);
       }
@@ -155,9 +178,12 @@ export class AvailabilityService {
     return availableWorkers;
   }
 
-  private parseTimeWindow(dateString: string, timeWindow: string): { startTime: Date; endTime: Date } {
+  private parseTimeWindow(
+    dateString: string,
+    timeWindow: string,
+  ): { startTime: Date; endTime: Date } {
     const date = new Date(dateString);
-    
+
     let startHour: number;
     let endHour: number;
 
@@ -185,12 +211,24 @@ export class AvailabilityService {
     const endHourUTC = endHour - utcOffset;
 
     const startTime = new Date(date);
-    startTime.setUTCHours(Math.floor(startHourUTC), Math.round((startHourUTC % 1) * 60), 0, 0);
+    startTime.setUTCHours(
+      Math.floor(startHourUTC),
+      Math.round((startHourUTC % 1) * 60),
+      0,
+      0,
+    );
 
     const endTime = new Date(date);
-    endTime.setUTCHours(Math.floor(endHourUTC), Math.round((endHourUTC % 1) * 60), 0, 0);
+    endTime.setUTCHours(
+      Math.floor(endHourUTC),
+      Math.round((endHourUTC % 1) * 60),
+      0,
+      0,
+    );
 
-    console.log(`Time window conversion (${timeWindow}): IST ${startHour}:00-${endHour}:00 -> UTC ${startTime.getUTCHours()}:${startTime.getUTCMinutes()}-${endTime.getUTCHours()}:${endTime.getUTCMinutes()}`);
+    console.log(
+      `Time window conversion (${timeWindow}): IST ${startHour}:00-${endHour}:00 -> UTC ${startTime.getUTCHours()}:${startTime.getUTCMinutes()}-${endTime.getUTCHours()}:${endTime.getUTCMinutes()}`,
+    );
 
     return { startTime, endTime };
   }
@@ -200,7 +238,7 @@ export class AvailabilityService {
     dateStr: string,
     originalTimeWindow: string,
     userLat: number,
-    userLng: number
+    userLng: number,
   ): Promise<AlternativeTimeSlot[]> {
     const alternativeSlots: AlternativeTimeSlot[] = [];
     const date = new Date(dateStr);
@@ -215,14 +253,18 @@ export class AvailabilityService {
       const timeWindow = timeWindows[nextIndex];
 
       const { startTime, endTime } = this.parseTimeWindow(dateStr, timeWindow);
-      const availableWorkers = await this.checkWorkersAvailability(workers, startTime, endTime);
+      const availableWorkers = await this.checkWorkersAvailability(
+        workers,
+        startTime,
+        endTime,
+      );
 
       if (availableWorkers.length > 0) {
         alternativeSlots.push({
           date: dateStr,
           timeWindow: timeWindow,
           availableCount: availableWorkers.length,
-          estimatedWaitTime: availableWorkers.length >= 3 ? 0 : 15
+          estimatedWaitTime: availableWorkers.length >= 3 ? 0 : 15,
         });
       }
 
@@ -233,14 +275,21 @@ export class AvailabilityService {
     return alternativeSlots;
   }
 
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     const R = 6371; // Radius of the Earth in km
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
     const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) *
+        Math.cos(this.deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in km
   }

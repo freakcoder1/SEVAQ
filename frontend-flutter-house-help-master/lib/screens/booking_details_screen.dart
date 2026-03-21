@@ -79,18 +79,32 @@ class BookingDetailsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${booking.worker.user.firstName} ${booking.worker.user.lastName}',
+                                '${booking.worker.user.firstName} ${booking.worker.user.lastName}'
+                                        .trim()
+                                        .isNotEmpty
+                                    ? '${booking.worker.user.firstName} ${booking.worker.user.lastName}'
+                                    : 'Professional',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black87,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                'Verified SEVAQ professional',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.black54,
-                                ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Color(0xFFFFB300),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${booking.worker.rating.toStringAsFixed(1)} (${booking.worker.reviewCount} reviews)',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

@@ -1,4 +1,8 @@
-import { Injectable, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { UserRole } from '../users/entities/user.entity';
@@ -11,7 +15,12 @@ export class AdminGuard extends AuthGuard('jwt') {
 
   handleRequest(err: any, user: any, info: any, context?: ExecutionContext) {
     // First handle JWT authentication
-    const authenticatedUser = super.handleRequest(err, user, info, context || {} as ExecutionContext);
+    const authenticatedUser = super.handleRequest(
+      err,
+      user,
+      info,
+      context || ({} as ExecutionContext),
+    );
 
     if (!authenticatedUser) {
       throw new ForbiddenException('User not authenticated');

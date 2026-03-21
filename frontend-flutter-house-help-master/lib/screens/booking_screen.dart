@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:provider/provider.dart';
-import '../models/worker.dart';
 import '../models/slot.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
@@ -12,16 +11,19 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 
+/// BookingScreen - SEVAQ assignment system
+/// Workers are assigned just-in-time (24-48h before service)
+/// Users do NOT select or see workers before payment
 class BookingScreen extends StatefulWidget {
-  final Worker worker;
   final Slot slot;
   final Service? service;
+  final String? workerPublicId; // Internal - only for assignment flow
 
   const BookingScreen({
     Key? key,
-    required this.worker,
     required this.slot,
     this.service,
+    this.workerPublicId,
   }) : super(key: key);
 
   @override
@@ -102,9 +104,8 @@ class _BookingScreenState extends State<BookingScreen> {
     final user = authProvider.user!;
 
     // Prepare booking data with assignment reference
-    final selectedService =
-        widget.service ??
-        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    // SEVAQ: Worker is assigned by backend from assignment data
+    final selectedService = widget.service;
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
@@ -135,16 +136,17 @@ class _BookingScreenState extends State<BookingScreen> {
     if (verifyResponse != null && verifyResponse['status'] == 'success') {
       final booking = Booking.fromJson(verifyResponse['booking']);
 
-      // Navigate to assignment confirmed screen instead of direct booking confirmation
+      // Navigate to assignment confirmed screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => AssignmentConfirmedScreen(
-            worker: widget.worker,
+            worker:
+                assignmentData['worker'] ?? assignmentData['assignedWorker'],
             service: selectedService,
             startTime: widget.slot.startTime,
             endTime: widget.slot.endTime,
-            amount: (amount / 100), // Convert back to rupees
+            amount: (amount / 100),
             assignmentData: assignmentData,
           ),
         ),
@@ -159,10 +161,8 @@ class _BookingScreenState extends State<BookingScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user!;
 
-    // Prepare booking data
-    final selectedService =
-        widget.service ??
-        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    // Prepare booking data - worker will be assigned by backend
+    final selectedService = widget.service;
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
@@ -172,7 +172,6 @@ class _BookingScreenState extends State<BookingScreen> {
 
     final bookingData = {
       'user': user.id,
-      'worker': widget.worker.id,
       'service': selectedService?.id,
       'startTime': widget.slot.startTime.toIso8601String(),
       'endTime': widget.slot.endTime.toIso8601String(),
@@ -217,11 +216,7 @@ class _BookingScreenState extends State<BookingScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final selectedService =
-          widget.service ??
-          (widget.worker.services.isNotEmpty
-              ? widget.worker.services[0]
-              : null);
+      final selectedService = widget.service;
       final duration = widget.slot.endTime
           .difference(widget.slot.startTime)
           .inHours;
@@ -242,8 +237,8 @@ class _BookingScreenState extends State<BookingScreen> {
           'key': 'rzp_test_1234567890', // Replace with your actual Razorpay key
           'amount': (amountInRupees * 100).toInt(), // Amount in paise
           'currency': 'INR',
-          'name': 'House Help',
-          'description': 'Booking for ${widget.worker.user.firstName}',
+          'name': 'SEVAQ',
+          'description': 'Professional Home Service',
           'order_id': _orderId,
           'prefill': {'contact': '9999999999', 'email': 'test@example.com'},
           'external': {
@@ -268,9 +263,7 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final selectedService =
-        widget.service ??
-        (widget.worker.services.isNotEmpty ? widget.worker.services[0] : null);
+    final selectedService = widget.service;
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
@@ -300,26 +293,40 @@ class _BookingScreenState extends State<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Booking Summary', style: theme.textTheme.headlineSmall),
-            SizedBox(height: 24),
-            ListTile(
-              leading: CircleAvatar(child: Icon(Icons.person)),
-              title: Text(
-                '${widget.worker.user.firstName} ${widget.worker.user.lastName}',
+            // Assignment messaging - SEVAQ core rule
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
               ),
-              subtitle: Text(widget.worker.bio, maxLines: 1),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'We\'ll assign a verified professional 24-48 hours before your service begins.',
+                      style: TextStyle(color: Colors.blue[800], fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 24),
+            Text('Booking Summary', style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 16),
             if (selectedService != null) ...[
-              Divider(),
               ListTile(
-                leading: Icon(Icons.work),
+                leading: Icon(Icons.work, color: Colors.blue[700]),
                 title: Text('Service'),
                 subtitle: Text(selectedService.name),
               ),
+              const Divider(),
             ],
-            Divider(),
             ListTile(
-              leading: Icon(Icons.calendar_today),
+              leading: Icon(Icons.calendar_today, color: Colors.blue[700]),
               title: Text(
                 DateFormat('EEEE, MMMM d, yyyy').format(widget.slot.startTime),
               ),
@@ -327,14 +334,15 @@ class _BookingScreenState extends State<BookingScreen> {
                 '${DateFormat('jm').format(widget.slot.startTime)} - ${DateFormat('jm').format(widget.slot.endTime)} (${duration}h)',
               ),
             ),
-            Divider(),
+            const Divider(),
             ListTile(
-              leading: Icon(Icons.attach_money),
+              leading: Icon(Icons.attach_money, color: Colors.blue[700]),
               title: Text('Total Amount'),
               trailing: Text(
                 '₹${totalAmount.toStringAsFixed(0)}',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
                 ),
               ),
             ),

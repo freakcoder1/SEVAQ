@@ -71,6 +71,7 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
         'startTime': widget.startTime.toIso8601String(),
         'endTime': widget.endTime.toIso8601String(),
         'assignmentId': widget.assignmentData['assignmentId'],
+        'type': 'on_demand',
       };
 
       // Create confirmed booking with assignment reference

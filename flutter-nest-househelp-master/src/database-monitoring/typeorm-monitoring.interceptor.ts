@@ -20,7 +20,11 @@ export class TypeOrmMonitoringInterceptor implements OnModuleInit {
 
     // Override the query method to add monitoring
     const originalQuery = this.dataSource.query;
-    this.dataSource.query = async function (this: DataSource, query: string, parameters?: any[]) {
+    this.dataSource.query = async function (
+      this: DataSource,
+      query: string,
+      parameters?: any[],
+    ) {
       const timer = monitoringService.startQueryTimer();
       try {
         const result = await originalQuery.call(this, query, parameters);
@@ -34,7 +38,11 @@ export class TypeOrmMonitoringInterceptor implements OnModuleInit {
 
     // Also monitor entity manager queries
     const originalManagerQuery = DataSource.prototype.manager.query;
-    DataSource.prototype.manager.query = async function (this: DataSource, query: string, parameters?: any[]) {
+    DataSource.prototype.manager.query = async function (
+      this: DataSource,
+      query: string,
+      parameters?: any[],
+    ) {
       const timer = monitoringService.startQueryTimer();
       try {
         const result = await originalManagerQuery.call(this, query, parameters);

@@ -7,9 +7,7 @@ import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([SystemHealth, Worker, Service]),
-  ],
+  imports: [TypeOrmModule.forFeature([SystemHealth, Worker, Service])],
   controllers: [SystemReadinessController],
   providers: [SystemReadinessService],
   exports: [SystemReadinessService],
