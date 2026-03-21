@@ -88,10 +88,10 @@ export class AssignmentWorker {
         }
       }
 
-      // Fallback to default service if no mapping found
-      if (!serviceId) {
+      // Fallback to default service if no mapping found or invalid (0)
+      if (!serviceId || serviceId === 0) {
         serviceId = 1; // Default to service 1 if not specified
-        this.logger.log(`Using default service ${serviceId} for assignment`);
+        this.logger.log(`Using default service ${serviceId} for assignment (original: ${serviceId})`);
       }
 
       const bestWorker = await this.findBestWorker(
