@@ -322,23 +322,21 @@ class _ServiceEngagementTypeScreenState
       debugPrint('DEBUG: LocationProvider NOT found in context - error: $e');
     }
 
+    // Get LocationProvider before navigation - capture it before pushing new route
+    LocationProvider? existingLocationProvider;
+    try {
+      existingLocationProvider = context.read<LocationProvider>();
+    } catch (e) {
+      debugPrint('Could not read LocationProvider: $e');
+    }
+
     // Use initialLocation from widget constructor (passed from parent) as primary source
     // This is more reliable than accessing provider in a pushed route context
     Location? currentLocation = widget.initialLocation;
 
     // If initialLocation is null, try to get from provider as fallback
-    // Use context.read() which returns null instead of throwing when provider not found
-    if (currentLocation == null) {
-      try {
-        final locationProvider = context.read<LocationProvider>();
-        if (locationProvider != null) {
-          currentLocation = locationProvider.currentLocationData;
-        } else {
-          debugPrint('LocationProvider not available in route context');
-        }
-      } catch (e) {
-        debugPrint('LocationProvider read error: $e');
-      }
+    if (currentLocation == null && existingLocationProvider != null) {
+      currentLocation = existingLocationProvider.currentLocationData;
     }
 
     if (_selectedEngagementType == EngagementType.monthly) {
@@ -369,9 +367,11 @@ class _ServiceEngagementTypeScreenState
         MaterialPageRoute(
           builder: (ctx) => MultiProvider(
             providers: [
-              // Use try-catch to safely access providers
-              // If providers are not available, create default values
-              Provider<LocationProvider>.value(value: _getLocationProvider()),
+              // Use ChangeNotifierProvider for LocationProvider since it's a ChangeNotifier
+              // Pass the existing provider or create a new one if not available
+              ChangeNotifierProvider<LocationProvider>.value(
+                value: existingLocationProvider ?? LocationProvider(),
+              ),
             ],
             child: SchedulePricingScreen(
               worker: null,

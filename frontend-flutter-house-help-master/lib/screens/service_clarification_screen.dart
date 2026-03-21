@@ -101,18 +101,22 @@ class _ServiceClarificationScreenState
         return;
       }
 
-      // FIXED: Wrap navigation with MultiProvider to ensure AuthProvider is available
+      // FIXED: Get providers BEFORE navigation to avoid context issues
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (ctx) => MultiProvider(
             providers: [
-              // Pass through the existing providers from the widget tree
-              Provider<AuthProvider>.value(
-                value: Provider.of<AuthProvider>(context, listen: false),
-              ),
-              Provider<LocationProvider>.value(
-                value: Provider.of<LocationProvider>(context, listen: false),
+              // Use ChangeNotifierProvider.value for ChangeNotifier-based providers
+              ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+              ChangeNotifierProvider<LocationProvider>.value(
+                value: locationProvider,
               ),
             ],
             child: ServiceEngagementTypeScreen(

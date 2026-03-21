@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_BASE = 'http://127.0.0.1:45357';
+const API_BASE = 'http://127.0.0.1:45357/api';
 
 async function testAssignmentSystem() {
   console.log('🧪 TESTING ASSIGNMENT SYSTEM COMPLETE FLOW');

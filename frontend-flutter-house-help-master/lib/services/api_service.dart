@@ -142,9 +142,18 @@ class ApiService {
 
   Future<dynamic> get(String endpoint) async {
     try {
+      final url = '$baseUrl/$endpoint';
+      final headers = await _getHeaders();
+      debugPrint('ApiService: GET request to $url');
+      debugPrint('ApiService: GET headers: $headers');
+      final stopwatch = Stopwatch()..start();
       final response = await http
-          .get(Uri.parse('$baseUrl/$endpoint'), headers: await _getHeaders())
+          .get(Uri.parse(url), headers: headers)
           .timeout(AppConfig.requestTimeout);
+      stopwatch.stop();
+      debugPrint(
+        'ApiService: GET response received in ${stopwatch.elapsedMilliseconds}ms for $url',
+      );
       return _processResponse(response);
     } catch (e) {
       debugPrint('GET Error to $endpoint: $e');

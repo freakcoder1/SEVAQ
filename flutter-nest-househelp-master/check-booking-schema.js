@@ -1,37 +1,37 @@
-const { Client } = require('pg');
 require('dotenv').config();
+const { DataSource } = require('typeorm');
 
-const client = new Client({
-    host: 'localhost',
-    port: 5432,
-    database: 'sevaq_db',
-    user: 'postgres',
-    password: 'admin'
+console.log('Checking database connection...');
+
+const dataSource = new DataSource({
+  type: 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  username: process.env.DB_USERNAME || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'househelp',
 });
 
-async function checkBookingSchema() {
-    try {
-        await client.connect();
-        console.log('✅ Connected to database');
-        
-        // Check booking table schema
-        const result = await client.query(`
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns
-            WHERE table_name = 'booking'
-            ORDER BY ordinal_position
-        `);
-        
-        console.log('=== Booking Table Schema ===');
-        result.rows.forEach(row => {
-            console.log(`- ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
-        });
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-    } finally {
-        await client.end();
-    }
-}
+dataSource.initialize()
+  .then(async () => {
+    console.log('Connected successfully');
 
-checkBookingSchema();
+    // Check booking table schema
+    const result = await dataSource.query(
+      "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'booking' ORDER BY ordinal_position"
+    );
+    console.log('\n=== BOOKING TABLE SCHEMA ===');
+    console.table(result);
+
+    // Check if there's a booking record
+    const count = await dataSource.query("SELECT COUNT(*) as count FROM booking");
+    console.log('\nBooking count:', count[0].count);
+
+    await dataSource.destroy();
+    process.exit(0);
+  })
+  .catch(async (err) => {
+    console.error('Database error:', err.message);
+    try { await dataSource.destroy(); } catch(e) {}
+    process.exit(1);
+  });

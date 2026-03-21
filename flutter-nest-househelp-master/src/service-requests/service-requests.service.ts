@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ServiceRequest } from './entities/service-request.entity';
 import { AssignmentWorker } from './assignment.worker';
 import { Worker } from '../workers/entities/worker.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class ServiceRequestsService {
@@ -19,10 +20,12 @@ export class ServiceRequestsService {
     private assignmentWorker: AssignmentWorker,
     @InjectRepository(Worker)
     private workersRepository: Repository<Worker>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async create(
-    userId: number,
+    userIdOrPublicId: string, // Can be either numeric ID or UUID (publicId)
     createDto: {
       serviceId?: number;
       serviceProfileId?: number;
@@ -33,9 +36,37 @@ export class ServiceRequestsService {
       source?: string;
     },
   ): Promise<ServiceRequest> {
+    // Convert userId (which might be UUID/publicId) to numeric ID
+    let numericUserId: number;
+    
+    // Check if userIdOrPublicId is a UUID (contains dashes and is 36 chars)
+    if (userIdOrPublicId.includes('-') && userIdOrPublicId.length === 36) {
+      // It's a UUID (publicId), look up the user to get numeric ID
+      const user = await this.usersRepository.findOne({
+        where: { publicId: userIdOrPublicId },
+      });
+      if (!user) {
+        throw new BadRequestException('User not found with the provided ID');
+      }
+      // The User entity has both numeric id and publicId - convert string id to number
+      numericUserId = parseInt(user.id as unknown as string, 10);
+      if (isNaN(numericUserId)) {
+        this.logger.warn(`User id is not numeric: ${user.id}, treating as string`);
+        // If parse fails, try to use the id directly (might work if DB returns string)
+        numericUserId = Number(user.id);
+      }
+      this.logger.debug(`Converted publicId ${userIdOrPublicId} to numeric userId ${numericUserId}`);
+    } else {
+      // It's already a numeric ID
+      numericUserId = parseInt(userIdOrPublicId, 10);
+      if (isNaN(numericUserId)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+    }
+
     const serviceRequestData: any = {
       publicId: uuidv4(),
-      userId: userId,
+      userId: numericUserId,
       serviceId: createDto.serviceId,
       serviceProfileId: createDto.serviceProfileId,
       date: new Date(createDto.date),
