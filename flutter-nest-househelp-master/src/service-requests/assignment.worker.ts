@@ -184,27 +184,24 @@ export class AssignmentWorker {
         endHour = 12;
     }
 
+    // Use local time (IST) instead of UTC to match slot database times
     const startTime = new Date(
-      Date.UTC(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        startHour,
-        0,
-        0,
-        0,
-      ),
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      startHour,
+      0,
+      0,
+      0,
     );
     const endTime = new Date(
-      Date.UTC(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        endHour,
-        0,
-        0,
-        0,
-      ),
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      endHour,
+      0,
+      0,
+      0,
     );
 
     return { startTime, endTime };
