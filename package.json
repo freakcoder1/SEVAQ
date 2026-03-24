@@ -12,7 +12,7 @@
   "version": "1.0.0",
   "main": "add-missing-columns.js",
   "scripts": {
-    "build": "npm install --legacy-peer-deps --prefix flutter-nest-househelp-master && npm run build --prefix flutter-nest-househelp-master",
+    "build": "npm install && npm run build",
     "start:dev": "cd flutter-nest-househelp-master && npm run start:dev",
     "start:prod": "cd flutter-nest-househelp-master && node dist/src/main",
     "test": "echo \"Error: no test specified\" && exit 1"
