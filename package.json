@@ -13,6 +13,7 @@
   "main": "add-missing-columns.js",
   "scripts": {
     "build": "cd flutter-nest-househelp-master && npm install && npm run build",
+    "start:dev": "cd flutter-nest-househelp-master && npm run start:dev",
     "start:prod": "cd flutter-nest-househelp-master && npm run start:prod",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
