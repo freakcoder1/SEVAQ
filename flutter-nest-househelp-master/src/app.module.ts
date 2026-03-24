@@ -70,27 +70,38 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const host = configService.get('DB_HOST', 'localhost');
-        const port = configService.get<number>('DB_PORT', 5432);
-        const username = configService.get('DB_USERNAME', 'sevaq_user');
-        const password = configService.get('DB_PASSWORD', 'sevaq_password');
-        const database = configService.get('DB_NAME', 'sevaq_db');
+        // Support both DATABASE_URL (Railway) and individual DB_* variables
+        const databaseUrl = configService.get('DATABASE_URL');
+        
+        let host: string;
+        let port: number;
+        let username: string;
+        let password: string;
+        let database: string;
+        
+        if (databaseUrl) {
+          // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
+          const url = new URL(databaseUrl);
+          host = url.hostname;
+          port = parseInt(url.port) || 5432;
+          username = url.username;
+          password = url.password;
+          database = url.pathname.replace('/', '');
+        } else {
+          // Use individual DB_* variables
+          host = configService.get('DB_HOST', 'localhost');
+          port = configService.get<number>('DB_PORT', 5432);
+          username = configService.get('DB_USERNAME', 'sevaq_user');
+          password = configService.get('DB_PASSWORD', 'sevaq_password');
+          database = configService.get('DB_NAME', 'sevaq_db');
+        }
 
         // Validate required environment variables
         if (!host) {
-          throw new Error('Missing required environment variable: DB_HOST');
-        }
-        if (!port) {
-          throw new Error('Missing required environment variable: DB_PORT');
-        }
-        if (!username) {
-          throw new Error('Missing required environment variable: DB_USERNAME');
-        }
-        if (!password) {
-          throw new Error('Missing required environment variable: DB_PASSWORD');
+          throw new Error('Missing required environment variable: DB_HOST or DATABASE_URL');
         }
         if (!database) {
-          throw new Error('Missing required environment variable: DB_NAME');
+          throw new Error('Missing required environment variable: DB_NAME or DATABASE_URL');
         }
 
         const entities = [
