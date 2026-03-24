@@ -427,6 +427,9 @@ export class PaymentsService {
         // Create new subscription within transaction
         const subscriptionRepo =
           queryRunner.manager.getRepository('Subscription');
+        // Import SubscriptionStatus from subscriptions module
+        const { SubscriptionStatus } = await import('../subscriptions/entities/subscription.entity');
+        
         const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
           userId: subscriptionData.userId,
@@ -435,7 +438,7 @@ export class PaymentsService {
           startDate: new Date(subscriptionData.startDate),
           location: subscriptionData.location,
           monthlyPriceSnapshot: subscriptionData.monthlyPriceSnapshot ?? 0, // Default to 0 if null
-          status: 'active',
+          status: SubscriptionStatus.ACTIVE,
           isPaid: true,
         });
         subscription = await subscriptionRepo.save(newSubscription);

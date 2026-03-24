@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Booking, AssignmentState } from '../bookings/entities/booking.entity';
 import { SlotsService } from '../slots/slots.service';
 import { Worker } from '../workers/entities/worker.entity';
@@ -23,6 +23,7 @@ export class AssignmentsService {
     private usersRepository: Repository<User>,
     private slotsService: SlotsService,
     private availabilityService: AvailabilityService,
+    private dataSource: DataSource,
   ) {}
 
   async assignProfessional(assignmentRequest: {
@@ -568,8 +569,14 @@ export class AssignmentsService {
         return { success: false, reason: `Invalid booking state: ${booking.assignmentState}` };
       }
 
-      // CRITICAL FIX: Get user location by PUBLIC ID (UUID), not internal ID
-      const userLocation = await this.getUserLocationByPublicId(booking.user.publicId);
+      // Get user location - try user profile first, then fallback to subscription location
+      let userLocation = await this.getUserLocationByPublicId(booking.user.publicId);
+      
+      // Fallback: If user location not found, try to get location from subscription
+      if (!userLocation) {
+        userLocation = await this.getSubscriptionLocationForBooking(booking.id, booking.user.publicId, booking.date);
+      }
+      
       if (!userLocation) {
         return { success: false, reason: 'User location not found' };
       }
@@ -629,6 +636,52 @@ export class AssignmentsService {
       return null;
     } catch (error) {
       this.logger.error(`Error fetching user location for publicId ${userPublicId}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get subscription location for a booking when user location is not available
+   * This is used as a fallback for subscription bookings where location is stored in the subscription
+   */
+  async getSubscriptionLocationForBooking(
+    bookingId: string,
+    userPublicId: string,
+    bookingDate: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    try {
+      // Find active subscription for this user that matches the booking date using DataSource
+      const subscription = await this.dataSource
+        .createQueryBuilder()
+        .select('subscription')
+        .from('subscription', 'subscription')
+        .where('subscription.userId = :userPublicId', { userPublicId })
+        .andWhere('subscription.status = :status', { status: 'active' })
+        .andWhere('subscription.startDate <= :bookingDate', { bookingDate })
+        .orderBy('subscription.startDate', 'DESC')
+        .take(1)
+        .getOne();
+
+      if (!subscription) {
+        this.logger.warn(`No active subscription found for user publicId: ${userPublicId}`);
+        return null;
+      }
+
+      // Extract location from subscription - handle both JSON and separate lat/lng columns
+      const location = subscription.location as any;
+      if (location && typeof location === 'object') {
+        if (location.lat && location.lng) {
+          return {
+            lat: parseFloat(location.lat),
+            lng: parseFloat(location.lng),
+          };
+        }
+      }
+
+      this.logger.warn(`No location data in subscription for user publicId: ${userPublicId}`);
+      return null;
+    } catch (error) {
+      this.logger.error(`Error fetching subscription location for user ${userPublicId}: ${error.message}`);
       return null;
     }
   }

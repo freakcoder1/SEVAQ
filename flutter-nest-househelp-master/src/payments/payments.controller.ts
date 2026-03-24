@@ -31,8 +31,12 @@ export class PaymentsController {
       throw new BadRequestException('Service profile not found');
     }
 
-    const amount = Number(serviceProfile.monthlyPrice);
-    const order = await this.paymentsService.createOrder(amount, 'INR');
+    // Store the original price in rupees for the subscription snapshot
+    const monthlyPriceInRupees = Number(serviceProfile.monthlyPrice);
+    
+    // Convert rupees to paise for Razorpay (Razorpay expects amount in paise)
+    const amountInPaise = monthlyPriceInRupees * 100;
+    const order = await this.paymentsService.createOrder(amountInPaise, 'INR');
 
     // Use authenticated user's publicId (UUID) from JWT token
     const userId = (req.user as any).userId;
@@ -46,7 +50,7 @@ export class PaymentsController {
         preferredTimeWindow: body.preferredTimeWindow,
         startDate: body.startDate,
         location: body.location,
-        monthlyPriceSnapshot: amount,
+        monthlyPriceSnapshot: monthlyPriceInRupees, // Store in rupees for scheduler
       },
     };
   }
