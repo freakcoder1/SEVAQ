@@ -6,7 +6,9 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "npx nest build",
+    "prebuild": "npm install --legacy-peer-deps --omit=dev",
+    "build": "npm run build:ts",
+    "build:ts": "npx nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch --host 0.0.0.0",
