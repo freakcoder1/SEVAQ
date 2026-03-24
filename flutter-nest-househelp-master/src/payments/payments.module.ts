@@ -8,10 +8,11 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { AssignmentsModule } from '../assignments/assignments.module';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payment]),
+    TypeOrmModule.forFeature([Payment, User]),
     ConfigModule,
     BookingsModule,
     SubscriptionsModule,

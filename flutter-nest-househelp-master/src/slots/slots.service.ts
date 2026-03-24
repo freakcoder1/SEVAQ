@@ -72,8 +72,28 @@ export class SlotsService {
     this.logger.log(
       `Finding flexible slot for worker ${workerId} from ${requestedStartTime} to ${requestedEndTime}`,
     );
+    
+    // DEBUG: Log timezone info
+    this.logger.log(
+      `🔍 DEBUG: requestedStartTime ISO: ${requestedStartTime.toISOString()}, local: ${requestedStartTime.toString()}`,
+    );
 
     try {
+      // DEBUG: Log all slots for this worker on this day to see what's actually available
+      const startOfDay = new Date(requestedStartTime);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(requestedStartTime);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const allSlotsToday = await this.slotsRepository.find({
+        where: {
+          worker: { id: workerId },
+          startTime: Between(startOfDay, endOfDay),
+        }
+      });
+      
+      this.logger.log(`🔍 DEBUG: Worker ${workerId} has ${allSlotsToday.length} slots today. First slot: ${allSlotsToday.length > 0 ? allSlotsToday[0].startTime.toISOString() + ' to ' + allSlotsToday[0].endTime.toISOString() : 'none'}`);
+
       // 1. First try exact match
       const exactMatch = await this.findAvailableSlot(
         workerId,
@@ -98,6 +118,9 @@ export class SlotsService {
       };
 
       // Find available slots within the time window
+      this.logger.log(
+        `🔍 DEBUG: Querying slots with Between ${startTimeWindow.start.toISOString()} and ${startTimeWindow.end.toISOString()}`,
+      );
       const flexibleSlots = await this.slotsRepository.find({
         where: {
           worker: { id: workerId },
@@ -108,6 +131,10 @@ export class SlotsService {
           startTime: 'ASC',
         },
       });
+
+      this.logger.log(
+        `🔍 DEBUG: Found ${flexibleSlots.length} slots for worker ${workerId} in flexible search`,
+      );
 
       if (flexibleSlots.length > 0) {
         this.logger.log(
@@ -125,6 +152,10 @@ export class SlotsService {
       const nextDay = new Date(requestedDate);
       nextDay.setDate(requestedDate.getDate() + 1);
 
+      this.logger.log(
+        `🔍 DEBUG: Same-day search - requestedDate: ${requestedDate.toISOString()}, nextDay: ${nextDay.toISOString()}`,
+      );
+
       const sameDaySlots = await this.slotsRepository.find({
         where: {
           worker: { id: workerId },
@@ -135,6 +166,10 @@ export class SlotsService {
           startTime: 'ASC',
         },
       });
+
+      this.logger.log(
+        `🔍 DEBUG: Found ${sameDaySlots.length} same-day slots for worker ${workerId}`,
+      );
 
       if (sameDaySlots.length > 0) {
         this.logger.log(
@@ -176,17 +211,20 @@ export class SlotsService {
       }
 
       // Check for existing slots on the same date to avoid duplicates
+      // Use date-only comparison (ignore time) to properly detect duplicate days
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+      
       const existingSlots = await this.slotsRepository.find({
         where: {
           worker: { id: workerId },
-          startTime: Between(
-            new Date(date.getFullYear(), date.getMonth(), date.getDate()),
-            new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
-          ),
+          startTime: Between(startOfDay, endOfDay),
         },
       });
 
-      if (existingSlots.length > 0) {
+      // Only skip if we have slots covering most of the day (at least 16 slots = full day coverage)
+      // Otherwise, add more slots to fill gaps
+      if (existingSlots.length >= 16) {
         this.logger.warn(
           `Worker ${workerId} already has ${existingSlots.length} slots for ${date}. Skipping slot creation.`,
         );
@@ -255,7 +293,11 @@ export class SlotsService {
     startDate: Date,
     endDate: Date,
   ): Promise<Slot[]> {
-    return this.slotsRepository.find({
+    this.logger.log(
+      `🔍 DEBUG: getAvailableSlotsForWorker - workerId: ${workerId}, startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`,
+    );
+    
+    const slots = await this.slotsRepository.find({
       where: {
         worker: { id: workerId },
         startTime: Between(startDate, endDate),
@@ -265,6 +307,12 @@ export class SlotsService {
         startTime: 'ASC',
       },
     });
+    
+    this.logger.log(
+      `🔍 DEBUG: getAvailableSlotsForWorker found ${slots.length} slots for worker ${workerId}`,
+    );
+    
+    return slots;
   }
 
   /**
@@ -299,11 +347,45 @@ export class SlotsService {
   }
 
   async markAsAvailable(id: number): Promise<void> {
-    await this.slotsRepository.update(id, { isBooked: false });
+    const result = await this.slotsRepository
+      .createQueryBuilder()
+      .update(Slot)
+      .set({ isBooked: false, currentBookings: 0 })
+      .where('id = :id AND "isBooked" = true', { id })
+      .execute();
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `markAsAvailable: Slot ${id} was not booked or does not exist`,
+      );
+    }
   }
 
-  async markAsBooked(id: number): Promise<void> {
-    await this.slotsRepository.update(id, { isBooked: true });
+  /**
+   * Atomically mark a slot as booked using a conditional UPDATE.
+   * Prevents race conditions where two concurrent requests could book the same slot.
+   * The WHERE clause ensures only an unbooked slot can be marked as booked.
+   */
+  async markAsBooked(id: number): Promise<boolean> {
+    const result = await this.slotsRepository
+      .createQueryBuilder()
+      .update(Slot)
+      .set({
+        isBooked: true,
+        currentBookings: () => '"currentBookings" + 1',
+      })
+      .where('id = :id AND "isBooked" = false', { id })
+      .execute();
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `markAsBooked: Slot ${id} is already booked or does not exist (race condition prevented)`,
+      );
+      return false;
+    }
+
+    this.logger.log(`Successfully marked slot ${id} as booked (atomic)`);
+    return true;
   }
 
   /**

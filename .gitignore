@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+
+# Database
+*.sqlite
+*.db
+
+# Misc scripts (development only)
+*.sql
+check-*.js
+add-*.js
+fix-*.js
+run-*.js
+get-*.js
+create-*.js
+delete-*.js
+reset-*.js
+rename-*.js
+migrate-*.js
+decode-*.js
+debug-*.js
+check_*.js
+add_*.js
+nul

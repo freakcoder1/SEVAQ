@@ -17,6 +17,11 @@ import '../screens/schedule_pricing_screen.dart';
 /// Navigation Service for Sevaq Assignment Flow
 /// Manages seamless transitions between assignment-related screens
 class NavigationService {
+  // Singleton pattern - use same instance everywhere
+  static final NavigationService _instance = NavigationService._internal();
+  factory NavigationService() => _instance;
+  NavigationService._internal();
+
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   /// Navigate to Service Clarification Screen
@@ -26,11 +31,26 @@ class NavigationService {
     dynamic userId,
     Location? initialLocation,
   }) async {
+    // Get providers BEFORE navigation
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
+
     await navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (context) => ServiceClarificationScreen(
-          userId: userId,
-          initialLocation: initialLocation,
+        builder: (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<LocationProvider>.value(
+              value: locationProvider,
+            ),
+          ],
+          child: ServiceClarificationScreen(
+            userId: userId,
+            initialLocation: initialLocation,
+          ),
         ),
       ),
     );

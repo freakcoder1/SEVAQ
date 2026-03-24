@@ -2,72 +2,125 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  // API Configuration
-  // Flag to use localhost (for USB debugging with ADB reverse)
+  // ──────────────────────────────────────────────────────────────────────────
+  // API Configuration — Environment-Aware
+  // ──────────────────────────────────────────────────────────────────────────
+  //
+  // Override at build time with:
+  //   flutter run   --dart-define=API_BASE_URL=http://your-server:port/api
+  //   flutter build --dart-define=API_BASE_URL=https://api.production.com/api
+  //
+  // If API_BASE_URL is provided via --dart-define it takes precedence over
+  // every other heuristic below.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Compile-time override supplied via `--dart-define=API_BASE_URL=…`
+  static const String _envApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  /// Production API URL — replace with your actual production domain.
+  static const String _productionApiBaseUrl =
+      'https://api.yourdomain.com/api'; // TODO: replace with your real production URL
+
+  /// Development API URL used when running on iOS / web / Android via USB.
+  static const String _devLocalhostUrl = 'http://localhost:45357/api';
+
+  /// Development API URL for Android physical devices over WiFi.
+  /// Override at build time: --dart-define=DEV_WIFI_IP=192.168.x.x
+  static const String _envDevWifiIp = String.fromEnvironment(
+    'DEV_WIFI_IP',
+    defaultValue: '192.168.1.38',
+  );
+  static String get _devWifiUrl => 'http://$_envDevWifiIp:45357/api';
+
+  /// Flag to use localhost (for USB debugging with ADB reverse).
+  /// In release mode this is ignored because the production URL is used.
   static const bool useLocalhostForUSB = true;
 
+  /// Returns the appropriate API base URL for the current build mode and
+  /// platform.
+  ///
+  /// Priority:
+  /// 1. `--dart-define=API_BASE_URL` (always wins if provided)
+  /// 2. Release mode → [_productionApiBaseUrl]
+  /// 3. Debug mode   → platform-specific dev URL
   static String get apiBaseUrl {
-    // Determine the correct API URL based on platform
-    String url;
-
-    if (Platform.isAndroid) {
-      // For USB debugging with ADB reverse: use localhost
-      // Run: adb reverse tcp:45357 tcp:45357
-      if (useLocalhostForUSB) {
-        url = 'http://localhost:45357/api';
+    // 1. Explicit override via --dart-define
+    if (_envApiBaseUrl.isNotEmpty) {
+      if (kDebugMode) {
         debugPrint(
-          'AppConfig: apiBaseUrl = $url (Android USB debugging - using localhost)',
-        );
-      } else {
-        // For Android physical devices over WiFi: Use IP address instead of localhost
-        // localhost doesn't work on physical Android devices
-        // For Android emulator: use 10.0.2.2 to connect to host machine's localhost
-        // For physical devices: use the actual server IP address
-        url = 'http://192.168.1.38:45357/api';
-        debugPrint(
-          'AppConfig: apiBaseUrl = $url (Android physical device - using IP address)',
+          'AppConfig: apiBaseUrl = $_envApiBaseUrl (from --dart-define)',
         );
       }
-    } else {
-      // For iOS or web
-      url = 'http://localhost:45357/api';
-      debugPrint('AppConfig: apiBaseUrl = $url (iOS/Web - using localhost)');
+      return _envApiBaseUrl;
     }
 
+    // 2. Release / profile builds → production URL
+    if (kReleaseMode) {
+      return _productionApiBaseUrl;
+    }
+
+    // 3. Debug builds → platform-aware dev URL
+    String url;
+    if (!kIsWeb && Platform.isAndroid) {
+      if (useLocalhostForUSB) {
+        url = _devLocalhostUrl;
+        debugPrint(
+          'AppConfig: apiBaseUrl = $url (Android USB debugging — localhost)',
+        );
+      } else {
+        url = _devWifiUrl;
+        debugPrint('AppConfig: apiBaseUrl = $url (Android WiFi — IP address)');
+      }
+    } else {
+      url = _devLocalhostUrl;
+      debugPrint('AppConfig: apiBaseUrl = $url (iOS/Web — localhost)');
+    }
     return url;
   }
 
-  // For development, you might want to use localhost
-  static String get localApiBaseUrl {
-    return 'http://localhost:45357/api';
-  }
+  /// Convenience getter kept for backward compatibility.
+  static String get localApiBaseUrl => _devLocalhostUrl;
 
-  // For testing with a different IP
-  static String get testApiBaseUrl {
-    return 'http://192.168.1.38:45357/api'; // Local machine IP for physical device
-  }
+  /// Convenience getter kept for backward compatibility.
+  static String get testApiBaseUrl => _devWifiUrl;
 
-  // Alternative IP addresses for different scenarios
-  static String get alternativeApiBaseUrl {
-    return 'http://192.168.1.38:45357/api'; // Current computer's IP address
-  }
+  /// Convenience getter kept for backward compatibility.
+  static String get alternativeApiBaseUrl => _devWifiUrl;
 
+  // ──────────────────────────────────────────────────────────────────────────
   // App Configuration
+  // ──────────────────────────────────────────────────────────────────────────
   static const String appName = 'House Help';
   static const String version = '1.0.0';
 
-  // Feature flags
-  static const bool enableDebugLogging = true;
-  // Updated backend URL for login fix - Test customer created
+  // ──────────────────────────────────────────────────────────────────────────
+  // Feature Flags
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Debug logging is automatically disabled in release builds.
+  static const bool enableDebugLogging = kDebugMode;
+
   static const bool enableMockData = false;
 
-  // Network configuration
+  // ──────────────────────────────────────────────────────────────────────────
+  // Network Configuration
+  // ──────────────────────────────────────────────────────────────────────────
   static const Duration requestTimeout = Duration(seconds: 30);
   static const int maxRetries = 3;
 
+  // ──────────────────────────────────────────────────────────────────────────
   // Razorpay Configuration
-  static const String razorpayTestKey = 'rzp_test_S5NgGMcDqTBauH';
-  static const String razorpayLiveKey = 'rzp_live_your_live_key_here';
+  // ──────────────────────────────────────────────────────────────────────────
+  // TODO: Configure per environment. Do NOT hardcode real keys here.
+  // Use --dart-define=RAZORPAY_KEY=your_key or a .env file with flutter_dotenv.
+  static const String razorpayTestKey = String.fromEnvironment(
+    'RAZORPAY_TEST_KEY',
+    defaultValue: 'rzp_test_S5NgGMcDqTBauH',
+  );
+  static const String razorpayLiveKey = String.fromEnvironment(
+    'RAZORPAY_LIVE_KEY',
+    defaultValue: 'rzp_live_XXXXXXXXXXXX',
+  );
   static const bool isRazorpayTestMode = true;
 
   // Default contact/email for payment prefill (fallback values)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
@@ -8,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 import 'booking_confirmation_screen.dart';
+import '../config/app_config.dart';
 
 /// Assignment Confirmed Screen
 /// Shows professional details and payment prompt
@@ -37,13 +39,84 @@ class AssignmentConfirmedScreen extends StatefulWidget {
 class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
   late ApiService _apiService;
   late AuthProvider _authProvider;
+  late Razorpay _razorpay;
   bool _isProcessing = false;
+  String? _orderId;
+  Map<String, dynamic>? _pendingBookingData;
 
   @override
   void initState() {
     super.initState();
     _apiService = ApiService();
     _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    setState(() => _isProcessing = true);
+
+    try {
+      if (_pendingBookingData == null || _orderId == null) {
+        throw Exception('Missing booking data or order ID');
+      }
+
+      // Verify payment and create booking
+      final verifyResponse = await _apiService.post('payments/verify', {
+        'razorpayOrderId': _orderId,
+        'razorpayPaymentId': response.paymentId,
+        'signature': response.signature,
+        'bookingData': _pendingBookingData,
+      });
+
+      if (verifyResponse != null && verifyResponse['status'] == 'success') {
+        final booking = Booking.fromJson(verifyResponse['booking']);
+
+        // Navigate to booking confirmation
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookingConfirmationScreen(booking: booking),
+          ),
+        );
+      } else {
+        throw Exception('Payment verification failed');
+      }
+    } catch (e) {
+      debugPrint('Payment success error: ${e.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment Failed: ${response.message}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    setState(() => _isProcessing = false);
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External Wallet: ${response.walletName}')),
+    );
   }
 
   Future<void> _handlePayment() async {
@@ -57,47 +130,76 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
         throw Exception('User not logged in');
       }
 
-      // Prepare booking data with payment
-      final service =
-          widget.service ??
-          (widget.worker.services.isNotEmpty
-              ? widget.worker.services[0]
-              : null);
+      // Get the service - find valid one from worker if needed
+      Service? selectedService = widget.service;
 
-      final bookingData = {
-        'userId': user.id,
+      // If widget.service is null or has invalid ID (0), find a valid service from worker
+      if (selectedService == null || selectedService.id == 0) {
+        // Find first service with valid ID (not 0)
+        final validServices = widget.worker.services
+            .where((s) => s.id != 0)
+            .toList();
+        if (validServices.isNotEmpty) {
+          selectedService = validServices.first;
+        } else {
+          throw Exception('No valid service available for this worker');
+        }
+      }
+
+      // Debug log the service being used
+      debugPrint(
+        'Using service for booking: id=${selectedService.id}, name=${selectedService.name}',
+      );
+
+      // Prepare booking data (will be used after payment success)
+      _pendingBookingData = {
+        'userId': user.publicId,
         'workerId': widget.worker.id,
-        'serviceId': service?.id,
+        'serviceId': selectedService.id,
         'startTime': widget.startTime.toIso8601String(),
         'endTime': widget.endTime.toIso8601String(),
         'assignmentId': widget.assignmentData['assignmentId'],
         'type': 'on_demand',
+        'amount': (widget.amount * 100).toInt(), // Amount in paise
       };
 
-      // Create confirmed booking with assignment reference
-      final response = await _apiService.post('bookings', bookingData);
+      // Create payment order on backend
+      final amountInPaise = (widget.amount * 100).toInt();
+      final orderResponse = await _apiService.post('payments/create-order', {
+        'amount': amountInPaise,
+        'currency': 'INR',
+      });
 
-      if (response != null) {
-        final booking = Booking.fromJson(response);
+      if (orderResponse != null && orderResponse['id'] != null) {
+        _orderId = orderResponse['id'];
 
-        // Navigate to payment confirmation screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BookingConfirmationScreen(booking: booking),
-          ),
-        );
+        // Open Razorpay payment gateway
+        var options = {
+          'key': AppConfig.razorpayTestKey,
+          'amount': amountInPaise,
+          'currency': 'INR',
+          'name': 'House Help',
+          'description': 'Payment for ${selectedService.name}',
+          'order_id': _orderId,
+          'prefill': {
+            'contact':
+                '9999999999', // Default contact - phone number not available in User model
+            'email': user.email ?? 'test@example.com',
+          },
+        };
+
+        _razorpay.open(options);
       } else {
-        throw Exception('Failed to create booking');
+        throw Exception('Failed to create payment order');
       }
     } catch (e) {
+      debugPrint('Payment error: ${e.toString()}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
       setState(() => _isProcessing = false);
     }
   }

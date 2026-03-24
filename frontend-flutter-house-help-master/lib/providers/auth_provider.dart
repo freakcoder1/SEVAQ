@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../services/api_service.dart';
 import '../services/navigation_service.dart';
 import '../models/user.dart';
@@ -16,6 +17,7 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isInitialized = false;
+  bool _needsProfileCompletion = false;
 
   // Static cache for authentication state
   // NOTE: Static variables are reset on Dart isolate restart (app resume)
@@ -37,6 +39,12 @@ class AuthProvider with ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get needsProfileCompletion => _needsProfileCompletion;
+
+  void clearNeedsProfileCompletion() {
+    _needsProfileCompletion = false;
+    notifyListeners();
+  }
 
   // Get user ID - prefer publicId (UUID) for modern APIs, fall back to id for legacy
   dynamic get userId {
@@ -492,6 +500,16 @@ class AuthProvider with ChangeNotifier {
       await prefs.remove(_USER_ID_KEY);
       await prefs.remove(_CACHED_USER_KEY);
 
+      // Sign out from Firebase
+      try {
+        await firebase_auth.FirebaseAuth.instance.signOut();
+        debugPrint('AuthProvider: Firebase signed out');
+      } catch (e) {
+        debugPrint(
+          'AuthProvider: Firebase sign out error (can be ignored): $e',
+        );
+      }
+
       _currentUser = null;
       // Clear static cache
       _cachedToken = null;
@@ -619,6 +637,13 @@ class AuthProvider with ChangeNotifier {
           _cachedUserId = user['publicId'] ?? user['id'].toString();
           _cachedUser = _currentUser;
           _cacheLoaded = true;
+
+          // Check if profile needs completion
+          _needsProfileCompletion = response['needsProfileCompletion'] == true;
+          debugPrint(
+            'AuthProvider: needsProfileCompletion: $_needsProfileCompletion',
+          );
+
           _isLoading = false;
 
           _releaseAuthLock();

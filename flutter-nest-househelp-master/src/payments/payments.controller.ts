@@ -14,6 +14,7 @@ export class PaymentsController {
   ) {}
 
   @Post('create-order')
+  @UseGuards(JwtAuthGuard)
   async createOrder(@Body() body: { amount: number; currency?: string }) {
     return this.paymentsService.createOrder(body.amount, body.currency);
   }
@@ -51,6 +52,7 @@ export class PaymentsController {
   }
 
   @Post('verify')
+  @UseGuards(JwtAuthGuard)
   async verifyPayment(
     @Body()
     body: {
@@ -61,22 +63,14 @@ export class PaymentsController {
       subscriptionData?: any;
     },
   ) {
-    const isValid = await this.paymentsService.verifyPayment(
-      body.razorpayOrderId,
-      body.razorpayPaymentId,
-      body.signature,
-    );
-    if (!isValid) {
-      throw new BadRequestException('Invalid payment signature');
-    }
-
     // Check if it's a booking payment or subscription payment
     if (body.bookingData) {
-      // Create booking after successful payment verification
-      const booking = await this.paymentsService.createBookingAfterPayment(
-        body.bookingData,
+      // Atomically verify payment + create booking in a single flow
+      const booking = await this.paymentsService.verifyAndCreateBooking(
         body.razorpayOrderId,
         body.razorpayPaymentId,
+        body.signature,
+        body.bookingData,
       );
 
       // If booking has a provisional assignment, confirm it
@@ -93,12 +87,13 @@ export class PaymentsController {
 
       return { status: 'success', booking };
     } else if (body.subscriptionData) {
-      // Create subscription after successful payment verification
+      // Atomically verify payment + create subscription in a single flow
       const subscription =
-        await this.paymentsService.createSubscriptionAfterPayment(
-          body.subscriptionData,
+        await this.paymentsService.verifyAndCreateSubscription(
           body.razorpayOrderId,
           body.razorpayPaymentId,
+          body.signature,
+          body.subscriptionData,
         );
       return { status: 'success', subscription };
     } else {
@@ -109,15 +104,6 @@ export class PaymentsController {
   @Post('confirm-subscription')
   @UseGuards(JwtAuthGuard)
   async confirmSubscription(@Body() body: any, @Req() req: Request) {
-    const isValid = await this.paymentsService.verifyPayment(
-      body.razorpayOrderId,
-      body.razorpayPaymentId,
-      body.signature,
-    );
-    if (!isValid) {
-      throw new BadRequestException('Invalid payment signature');
-    }
-
     // Use authenticated user's publicId (UUID) from JWT token
     const userId = (req.user as any).userId;
 
@@ -131,11 +117,13 @@ export class PaymentsController {
       monthlyPriceSnapshot: body.monthlyPriceSnapshot,
     };
 
+    // Atomically verify payment + create subscription in a single flow
     const subscription =
-      await this.paymentsService.createSubscriptionAfterPayment(
-        subscriptionData,
+      await this.paymentsService.verifyAndCreateSubscription(
         body.razorpayOrderId,
         body.razorpayPaymentId,
+        body.signature,
+        subscriptionData,
       );
     return { status: 'success', subscription };
   }

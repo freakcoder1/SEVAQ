@@ -22,10 +22,12 @@ import { JwtAuthGuard } from './jwt-auth.guard';
           throw new Error('Missing required environment variable: JWT_SECRET');
         }
 
+        const expiresIn = configService.get<string>('JWT_EXPIRY') || '24h';
         console.log('JWT_SECRET loaded: YES (length: ${secret.length})');
+        console.log(`JWT token expiry: ${expiresIn}`);
         return {
           secret,
-          signOptions: { expiresIn: '30d' },
+          signOptions: { expiresIn },
         };
       },
       inject: [ConfigService],

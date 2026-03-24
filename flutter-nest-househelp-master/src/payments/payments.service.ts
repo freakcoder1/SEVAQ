@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AssignmentsService } from '../assignments/assignments.service';
+import { User } from '../users/entities/user.entity';
 import Razorpay = require('razorpay');
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,6 +19,8 @@ export class PaymentsService {
   constructor(
     @InjectRepository(Payment)
     private paymentsRepository: Repository<Payment>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
     private configService: ConfigService,
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
@@ -38,9 +41,79 @@ export class PaymentsService {
     });
   }
 
+  private serializeBooking(booking: any): any {
+    if (!booking) return null;
+    
+    const serialized: any = {
+      id: booking.id,
+      publicId: booking.publicId,
+      userId: booking.userId,
+      workerId: booking.workerId,
+      serviceId: booking.serviceId,
+      serviceRequestId: booking.serviceRequestId,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      totalAmount: booking.totalAmount ? booking.totalAmount / 100 : 0,
+      amount: booking.totalAmount ? booking.totalAmount / 100 : 0,
+      status: booking.status,
+      isPaid: booking.isPaid,
+      type: booking.type,
+      notes: booking.notes,
+      location: booking.location,
+      metadata: booking.metadata,
+    };
+    
+    // Include worker with user if available
+    if (booking.worker) {
+      serialized.worker = {
+        id: booking.worker.id,
+        publicId: booking.worker.publicId,
+        rating: booking.worker.rating,
+        reviewCount: booking.worker.reviewCount,
+        bio: booking.worker.bio,
+      };
+      if (booking.worker.user) {
+        serialized.worker.user = {
+          id: booking.worker.user.id,
+          publicId: booking.worker.user.publicId,
+          firstName: booking.worker.user.firstName,
+          lastName: booking.worker.user.lastName,
+          email: booking.worker.user.email,
+        };
+      }
+    }
+    
+    // Include service if available
+    if (booking.service) {
+      serialized.service = {
+        id: booking.service.id,
+        publicId: booking.service.publicId,
+        name: booking.service.name,
+        description: booking.service.description,
+        basePrice: booking.service.basePrice,
+        category: booking.service.category,
+      };
+    }
+    
+    // Include user if available
+    if (booking.user) {
+      serialized.user = {
+        id: booking.user.id,
+        publicId: booking.user.publicId,
+        firstName: booking.user.firstName,
+        lastName: booking.user.lastName,
+        email: booking.user.email,
+      };
+    }
+    
+    return serialized;
+  }
+
   async createOrder(amount: number, currency: string = 'INR') {
+    // Amount is already in paise from frontend, don't multiply again
     const options = {
-      amount: amount * 100, // Razorpay expects amount in paise
+      amount: amount, // Razorpay expects amount in paise
       currency,
       receipt: 'receipt_' + Date.now(),
     };
@@ -53,7 +126,7 @@ export class PaymentsService {
     razorpayOrderId: string,
     razorpayPaymentId: string,
     signature: string,
-  ) {
+  ): Promise<boolean> {
     const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
     if (!secret) {
       throw new Error('Payment verification configuration error');
@@ -65,6 +138,83 @@ export class PaymentsService {
       .digest('hex');
 
     return generated_signature === signature;
+  }
+
+  /**
+   * Atomically verify payment and create booking in a single transaction.
+   * Ensures that if booking creation fails, no partial state is left behind,
+   * and if verification fails, no booking is created.
+   */
+  async verifyAndCreateBooking(
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    signature: string,
+    bookingData: any,
+  ): Promise<any> {
+    // Step 1: Verify payment signature (stateless, no DB)
+    const isValid = await this.verifyPayment(
+      razorpayOrderId,
+      razorpayPaymentId,
+      signature,
+    );
+
+    if (!isValid) {
+      throw new Error('Invalid payment signature');
+    }
+
+    // Step 2: Create booking + payment record atomically in a transaction
+    return this.createBookingAfterPayment(
+      bookingData,
+      razorpayOrderId,
+      razorpayPaymentId,
+    );
+  }
+
+  /**
+   * Atomically verify payment and create subscription in a single transaction.
+   * Ensures that if subscription creation fails, no partial state is left behind.
+   */
+  async verifyAndCreateSubscription(
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    signature: string,
+    subscriptionData: any,
+  ): Promise<any> {
+    // Step 1: Verify payment signature (stateless, no DB)
+    const isValid = await this.verifyPayment(
+      razorpayOrderId,
+      razorpayPaymentId,
+      signature,
+    );
+
+    if (!isValid) {
+      throw new Error('Invalid payment signature');
+    }
+
+    // Step 2: Create subscription + payment record atomically in a transaction
+    return this.createSubscriptionAfterPayment(
+      subscriptionData,
+      razorpayOrderId,
+      razorpayPaymentId,
+    );
+  }
+
+  private convertToTimeString(dateInput: any): string {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  private convertToDateString(dateInput: any): string {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   async createBookingAfterPayment(
@@ -102,17 +252,84 @@ export class PaymentsService {
         if (bookingData.assignmentId || bookingData.serviceRequestId) {
           validBookingData.serviceRequestId =
             bookingData.assignmentId || bookingData.serviceRequestId;
+          
+          // Fetch the service request to get the correct date
+          const srId = bookingData.assignmentId || bookingData.serviceRequestId;
+          console.log('🔍 DEBUG: Looking for service request with ID:', srId, 'Type:', typeof srId);
+          
+          // Handle both UUID (publicId) and numeric ID
+          let serviceRequest;
+          if (String(srId).includes('-')) {
+            // It's a UUID (publicId)
+            serviceRequest = await this.dataSource.query(
+              'SELECT id, date FROM service_request WHERE publicId = $1 LIMIT 1',
+              [srId]
+            );
+            console.log('🔍 DEBUG: Querying by publicId');
+          } else {
+            // It's a numeric ID
+            serviceRequest = await this.dataSource.query(
+              'SELECT id, date FROM service_request WHERE id = $1 LIMIT 1',
+              [parseInt(srId)]
+            );
+            console.log('🔍 DEBUG: Querying by numeric ID');
+          }
+          console.log('🔍 DEBUG: Service request query result:', serviceRequest);
+          if (serviceRequest && serviceRequest.length > 0 && serviceRequest[0].date) {
+            validBookingData.date = this.convertToDateString(serviceRequest[0].date);
+            console.log('🔍 DEBUG: Got date from service request:', validBookingData.date);
+          } else {
+            // FIX: Throw error if service request doesn't have a date
+            // This ensures the bug is caught rather than silently defaulting to today
+            const errorMsg = `Service request ${srId} does not have a valid date. Cannot create booking.`;
+            console.error('🔍 ERROR: PaymentsService -', errorMsg);
+            throw new Error(errorMsg);
+          }
         } else {
-          if (bookingData.userId) validBookingData.userId = bookingData.userId;
-          if (bookingData.worker)
-            validBookingData.workerId = bookingData.worker;
-          if (bookingData.service)
-            validBookingData.serviceId = bookingData.service;
+          // Handle userId - convert from UUID (publicId) to internal integer ID
+          if (bookingData.userId) {
+            const userIdStr = String(bookingData.userId);
+            if (userIdStr.includes('-')) {
+              // It's a UUID (publicId), find the internal user ID
+              const user = await this.usersRepository.findOne({
+                where: { publicId: userIdStr },
+              });
+              if (user) {
+                validBookingData.userId = user.id;
+              } else {
+                this.logger.warn(`User not found for publicId: ${userIdStr}`);
+                validBookingData.userId = bookingData.userId;
+              }
+            } else {
+              validBookingData.userId = bookingData.userId;
+            }
+          }
+          if (bookingData.workerId)
+            validBookingData.workerId = bookingData.workerId;
+          if (bookingData.serviceId)
+            validBookingData.serviceId = bookingData.serviceId;
           if (bookingData.startTime)
-            validBookingData.startTime = bookingData.startTime;
+            validBookingData.startTime = this.convertToTimeString(bookingData.startTime);
           if (bookingData.endTime)
-            validBookingData.endTime = bookingData.endTime;
-          if (bookingData.date) validBookingData.date = bookingData.date;
+            validBookingData.endTime = this.convertToTimeString(bookingData.endTime);
+          if (bookingData.date) {
+            validBookingData.date = this.convertToDateString(bookingData.date);
+          } else if (bookingData.startTime) {
+            // Extract date from startTime datetime string
+            validBookingData.date = this.convertToDateString(bookingData.startTime);
+          }
+          // Handle amount - FIX: The amount from payment verification is in paise, convert to rupees
+          // bookingData.amount comes from Razorpay which uses paise (1200 rupees = 120000 paise)
+          if (bookingData.amount !== undefined) {
+            const amountValue = Number(bookingData.amount) / 100; // Convert from paise to rupees
+            console.log('🔍 DEBUG PaymentsService: bookingData.amount =', bookingData.amount, '-> converted to', amountValue);
+            validBookingData.totalAmount = amountValue;
+            validBookingData.amount = amountValue;
+          }
+          // Get date from startTime if available (extracted from service request)
+          if (bookingData.startTime && !validBookingData.date) {
+            validBookingData.date = this.convertToDateString(bookingData.startTime);
+          }
           if (bookingData.notes) validBookingData.notes = bookingData.notes;
           if (bookingData.type) validBookingData.type = bookingData.type;
           if (bookingData.metadata)
@@ -129,6 +346,12 @@ export class PaymentsService {
           status: 'confirmed',
         });
         booking = await bookingRepo.save(newBooking);
+
+        // Fetch the booking with related data for the response
+        booking = await bookingRepo.findOne({
+          where: { id: booking.id },
+          relations: ['worker', 'worker.user', 'service', 'user'],
+        });
       }
 
       // Save payment record within transaction
@@ -151,7 +374,9 @@ export class PaymentsService {
       this.logger.log(
         `Payment and booking transaction completed successfully for booking: ${booking.id}`,
       );
-      return booking;
+
+      // Serialize the booking to ensure relations are included in response
+      return this.serializeBooking(booking);
     } catch (error) {
       // Rollback transaction on error
       await queryRunner.rollbackTransaction();

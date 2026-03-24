@@ -17,11 +17,11 @@ export enum UserRole {
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string; // UUID ID
+  @PrimaryGeneratedColumn()
+  id: number; // Auto-increment numeric ID
 
   @Column('uuid', { unique: true, nullable: false })
-  publicId: string; // Public API ID
+  publicId: string; // Public-facing UUID identifier
 
   @Column({ unique: true })
   email: string;

@@ -278,9 +278,17 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ServiceClarificationScreen(
-            userId: userId,
-            initialLocation: initialLocation,
+          builder: (context) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+              ChangeNotifierProvider<LocationProvider>.value(
+                value: locationProvider,
+              ),
+            ],
+            child: ServiceClarificationScreen(
+              userId: userId,
+              initialLocation: initialLocation,
+            ),
           ),
         ),
       );
@@ -528,12 +536,32 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
                     ),
                     onAccept: () {
                       print('🔍 DEBUG: Fallback recommendation CTA clicked');
+                      // Get providers BEFORE navigation
+                      final authProvider = Provider.of<AuthProvider>(
+                        context,
+                        listen: false,
+                      );
+                      final locationProvider = Provider.of<LocationProvider>(
+                        context,
+                        listen: false,
+                      );
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ServiceClarificationScreen(
-                            userId: userId,
-                            initialLocation: initialLocation,
+                          builder: (context) => MultiProvider(
+                            providers: [
+                              ChangeNotifierProvider<AuthProvider>.value(
+                                value: authProvider,
+                              ),
+                              ChangeNotifierProvider<LocationProvider>.value(
+                                value: locationProvider,
+                              ),
+                            ],
+                            child: ServiceClarificationScreen(
+                              userId: userId,
+                              initialLocation: initialLocation,
+                            ),
                           ),
                         ),
                       );
@@ -564,13 +592,33 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
               child: TextButton(
                 onPressed: () {
                   print('🔍 DEBUG: Secondary CTA clicked - See all services');
+                  // Get providers BEFORE navigation
+                  final authProvider = Provider.of<AuthProvider>(
+                    context,
+                    listen: false,
+                  );
+                  final locationProvider = Provider.of<LocationProvider>(
+                    context,
+                    listen: false,
+                  );
+
                   // Navigate to Service Clarification Page for exploration
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ServiceClarificationScreen(
-                        userId: userId,
-                        initialLocation: initialLocation,
+                      builder: (context) => MultiProvider(
+                        providers: [
+                          ChangeNotifierProvider<AuthProvider>.value(
+                            value: authProvider,
+                          ),
+                          ChangeNotifierProvider<LocationProvider>.value(
+                            value: locationProvider,
+                          ),
+                        ],
+                        child: ServiceClarificationScreen(
+                          userId: userId,
+                          initialLocation: initialLocation,
+                        ),
                       ),
                     ),
                   );

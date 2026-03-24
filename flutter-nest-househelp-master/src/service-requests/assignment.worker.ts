@@ -291,6 +291,11 @@ export class AssignmentWorker {
           return null;
         }
 
+        // DEBUG: Log the time parameters being passed
+        this.logger.log(
+          `🔍 DEBUG: Calling findAvailableSlotFlexible for worker ${worker.id} with startTime=${startTime.toISOString()}, endTime=${endTime.toISOString()}`,
+        );
+
         // Enhanced availability check with multiple fallback strategies
         let availableSlot = await this.slotsService.findAvailableSlotFlexible(
           worker.id,

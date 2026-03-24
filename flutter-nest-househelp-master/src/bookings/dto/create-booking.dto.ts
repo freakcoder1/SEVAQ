@@ -20,9 +20,9 @@ export class CreateBookingDto {
   @IsOptional()
   serviceId?: number;
 
-  @IsNumber()
+  @IsUUID()
   @IsOptional()
-  userId?: number;
+  userId?: string;
 
   @IsNumber()
   @IsOptional()
@@ -40,6 +40,11 @@ export class CreateBookingDto {
   @IsString()
   @IsOptional()
   endTime?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  amount?: number;
 
   @IsOptional()
   @IsString()

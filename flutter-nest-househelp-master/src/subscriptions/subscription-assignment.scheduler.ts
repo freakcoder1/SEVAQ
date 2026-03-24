@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, IsNull } from 'typeorm';
+import { Repository, Between, In, IsNull, Like } from 'typeorm';
 import {
   Subscription,
   SubscriptionStatus,
@@ -165,9 +165,9 @@ export class SubscriptionAssignmentScheduler {
   }
 
   /**
-   * Main scheduler method that runs every minute
+   * Main scheduler method that runs every 10 minutes
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async handleSubscriptionAssignments(): Promise<void> {
     this.logger.log('Running subscription assignment scheduler...');
 
@@ -294,12 +294,43 @@ export class SubscriptionAssignmentScheduler {
   }
 
   /**
+   * Check if a booking already exists for a given subscription on a given date
+   * Used for idempotency to prevent duplicate booking creation
+   */
+  private async bookingExistsForSubscription(
+    subscriptionId: number,
+    dateStr: string,
+  ): Promise<boolean> {
+    const existing = await this.bookingRepository.findOne({
+      where: {
+        type: 'subscription' as any,
+        date: dateStr,
+        notes: Like(`%subscription ${subscriptionId}%`),
+      },
+    });
+    return !!existing;
+  }
+
+  /**
    * Assign a worker to a subscription by creating a booking and then assigning a worker
    */
   async assignWorkerForSubscription(
     subscription: Subscription,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
+      // Idempotency check: skip if a booking already exists for this subscription today
+      const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const alreadyExists = await this.bookingExistsForSubscription(
+        subscription.id,
+        todayStr,
+      );
+      if (alreadyExists) {
+        this.logger.log(
+          `Skipping subscription ${subscription.id}: booking already exists for today (${todayStr})`,
+        );
+        return { success: true, reason: 'Booking already exists for today' };
+      }
+
       // Validate subscription has required data
       if (!subscription.userId) {
         this.logger.error(`Subscription ${subscription.id} has no userId`);

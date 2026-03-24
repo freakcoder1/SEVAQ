@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:provider/provider.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
 import '../widgets/loading_widget.dart';
 
@@ -53,8 +55,19 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       // Create booking from service request
       final bookingResponse = await _apiService.post(
         'bookings/create-with-assignment',
-        {'serviceRequestId': widget.requestId, 'userId': user.id},
+        {'serviceRequestId': widget.requestId, 'userId': user.publicId},
       );
+
+      // DEBUG: Log the raw booking response
+      debugPrint('=== PAYMENT CONFIRMATION DEBUG ===');
+      debugPrint('bookingResponse: $bookingResponse');
+      if (bookingResponse != null && bookingResponse['booking'] != null) {
+        final booking = bookingResponse['booking'];
+        debugPrint('Booking startTime: ${booking['startTime']}');
+        debugPrint('Booking date: ${booking['date']}');
+        debugPrint('Booking endTime: ${booking['endTime']}');
+      }
+      debugPrint('=================================');
 
       if (bookingResponse != null && bookingResponse['status'] == 'success') {
         // Navigate to booking confirmation

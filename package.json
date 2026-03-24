@@ -5,7 +5,8 @@
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^7.0.12",
     "pg": "^8.17.2",
-    "twilio": "^5.11.2"
+    "twilio": "^5.11.2",
+    "uuid": "^13.0.0"
   },
   "name": "newsevaq",
   "version": "1.0.0",

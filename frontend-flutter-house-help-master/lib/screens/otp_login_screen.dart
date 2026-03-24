@@ -5,6 +5,7 @@ import '../services/firebase_auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/navigation_service.dart';
 import 'main_screen.dart';
+import 'profile_completion_screen.dart';
 
 class OtpLoginScreen extends StatefulWidget {
   final String phoneNumber;
@@ -133,13 +134,29 @@ class _OtpLoginScreenState extends State<OtpLoginScreen> {
       if (!mounted) return;
 
       if (success) {
-        // Navigate to home screen
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-            (route) => false,
-          );
+        // Check if profile needs completion
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+        if (authProvider.needsProfileCompletion) {
+          // Navigate to profile completion screen
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfileCompletionScreen(),
+              ),
+              (route) => false,
+            );
+          }
+        } else {
+          // Navigate to home screen
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const MainScreen()),
+              (route) => false,
+            );
+          }
         }
       } else {
         setState(() {

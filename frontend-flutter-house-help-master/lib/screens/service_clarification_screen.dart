@@ -6,6 +6,7 @@ import 'package:flutter_house_help/models/service.dart';
 import 'package:flutter_house_help/models/location.dart';
 import 'package:flutter_house_help/providers/auth_provider.dart';
 import 'package:flutter_house_help/providers/location_provider.dart';
+import 'package:flutter_house_help/providers/provider_manager.dart';
 import 'package:flutter_house_help/services/api_service.dart';
 import 'package:flutter_house_help/utils/service_mapper.dart';
 import 'package:flutter_house_help/widgets/service_option_card.dart';
@@ -101,29 +102,33 @@ class _ServiceClarificationScreenState
         return;
       }
 
-      // FIXED: Get providers BEFORE navigation to avoid context issues
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final locationProvider = Provider.of<LocationProvider>(
-        context,
-        listen: false,
+      // Use ProviderManager for safer provider access with fallback
+      // This handles cases where providers might not be in scope
+
+      // First check if providers are available in the current context
+      bool providersAvailable = false;
+      try {
+        providersAvailable = ProviderManager.areProvidersAvailable(context);
+      } catch (e) {
+        print('🔍 DEBUG: Error checking provider availability: $e');
+      }
+      print(
+        '🔍 DEBUG: Providers available in current context: $providersAvailable',
       );
+
+      // Navigate directly - the main app's providers will be available in the new screen
+      // We don't need to wrap in MultiProvider since providers are available in current context
+      print('🔍 DEBUG: Proceeding to navigation');
+      print('🔍 DEBUG: userId from widget: $userId');
+      print('🔍 DEBUG: currentLocation from widget: $currentLocation');
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (ctx) => MultiProvider(
-            providers: [
-              // Use ChangeNotifierProvider.value for ChangeNotifier-based providers
-              ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
-              ChangeNotifierProvider<LocationProvider>.value(
-                value: locationProvider,
-              ),
-            ],
-            child: ServiceEngagementTypeScreen(
-              selectedServiceOption: _selectedService!,
-              userId: userId,
-              initialLocation: currentLocation,
-            ),
+          builder: (ctx) => ServiceEngagementTypeScreen(
+            selectedServiceOption: _selectedService!,
+            userId: userId,
+            initialLocation: currentLocation,
           ),
         ),
       );

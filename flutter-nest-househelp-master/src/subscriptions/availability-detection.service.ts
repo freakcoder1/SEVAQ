@@ -228,7 +228,7 @@ export class AvailabilityDetectionService {
   ): Promise<void> {
     // Get user from database
     const user = await this.usersRepository.findOne({
-      where: { id: subscription.userId },
+      where: { publicId: subscription.userId },
     });
 
     if (!user) {

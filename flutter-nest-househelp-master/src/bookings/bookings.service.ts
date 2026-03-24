@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking } from './entities/booking.entity';
@@ -15,6 +15,8 @@ import { ServiceRequest } from '../service-requests/entities/service-request.ent
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
@@ -133,18 +135,10 @@ export class BookingsService {
 
   async create(createBookingDto: any) {
     try {
-      console.log(
-        'DEBUG: Entering create method with createBookingDto:',
-        createBookingDto,
-      );
       let worker: Worker | null = null;
 
       // If serviceRequestId is provided, validate it exists and retrieve details
       if (createBookingDto.serviceRequestId) {
-        console.log(
-          'DEBUG: serviceRequestId is provided:',
-          createBookingDto.serviceRequestId,
-        );
         // Check if serviceRequestId is a UUID (publicId) or numeric id
         let serviceRequest;
         if (
@@ -169,9 +163,7 @@ export class BookingsService {
         }
 
         // Validate service request is not in FAILED_TO_ASSIGN state before creating booking
-        console.log('DEBUG: Service request assignmentStatus:', serviceRequest.assignmentStatus);
         if (serviceRequest.assignmentStatus === 'FAILED_TO_ASSIGN') {
-          console.log('DEBUG: Service request is in FAILED_TO_ASSIGN state, throwing error');
           throw new BadRequestException(
             'Service request failed to assign a worker. Please try again.',
           );
@@ -182,7 +174,29 @@ export class BookingsService {
         createBookingDto.userId = serviceRequest.userId;
         createBookingDto.serviceId = serviceRequest.serviceId;
         createBookingDto.workerId = serviceRequest.assignedWorkerId;
-        createBookingDto.date = serviceRequest.date;
+        
+        // DEBUG: Log service request date and price
+        console.log('🔍 DEBUG: Service Request details:', {
+          id: serviceRequest.id,
+          date: serviceRequest.date,
+          dateType: typeof serviceRequest.date,
+          priceSnapshot: serviceRequest.priceSnapshot,
+          priceSnapshotType: typeof serviceRequest.priceSnapshot
+        });
+        
+        // Use priceSnapshot from service request for booking amount
+        console.log('🔍 DEBUG create: serviceRequest.priceSnapshot =', serviceRequest.priceSnapshot);
+        createBookingDto.amount = serviceRequest.priceSnapshot || createBookingDto.amount;
+        
+        // Extract just the date portion (YYYY-MM-DD) from the service request date
+        if (serviceRequest.date) {
+          const serviceReqDate = new Date(serviceRequest.date);
+          // Keep as Date object for DTO validation
+          createBookingDto.date = new Date(serviceReqDate.toISOString().split('T')[0] + 'T00:00:00.000Z');
+          console.log('🔍 DEBUG: Converted date for booking:', createBookingDto.date);
+        } else {
+          createBookingDto.date = serviceRequest.date;
+        }
 
         // Parse time window to get start and end times
         let startHour: number;
@@ -313,74 +327,47 @@ export class BookingsService {
 
       // Calculate amount if not provided
       let amount = createBookingDto.amount;
+      console.log('🔍 DEBUG create: Initial amount from DTO =', amount);
       if (!amount) {
-        console.log('DEBUG: Calculating amount, createBookingDto:', {
-          serviceId: createBookingDto.serviceId,
-          startTime: createBookingDto.startTime,
-          startTimeType: typeof createBookingDto.startTime,
-          endTime: createBookingDto.endTime,
-          endTimeType: typeof createBookingDto.endTime,
-        });
-
         const service = await this.servicesRepository.findOne({
           where: { id: createBookingDto.serviceId },
         });
 
-        console.log('DEBUG: Found service:', service);
+        console.log('🔍 DEBUG create: Service found =', service ? service.id : 'null');
+        console.log('🔍 DEBUG create: Service basePrice =', service?.basePrice);
 
         if (service) {
           const basePrice = parseFloat(service.basePrice.toString());
-          console.log('DEBUG: Parsed basePrice:', basePrice);
 
           // Parse time string to calculate duration
           const parseTimeToHours = (timeStr: string | Date): number => {
-            try {
-              console.log('DEBUG: parseTimeToHours input:', timeStr, typeof timeStr);
-              if (typeof timeStr === 'string') {
-                if (timeStr.includes('T')) {
-                  // ISO datetime string
-                  const date = new Date(timeStr);
-                  console.log('DEBUG: Parsed as ISO datetime:', date);
-                  return date.getHours() + date.getMinutes() / 60;
-                }
-                // Time format is HH:mm:ss or HH:mm
-                const parts = timeStr.split(':');
-                const hours = parseInt(parts[0], 10);
-                const minutes = parseInt(parts[1] || '0', 10);
-                console.log('DEBUG: Parsed as time string:', hours, minutes);
-                return hours + minutes / 60;
+            if (typeof timeStr === 'string') {
+              if (timeStr.includes('T')) {
+                // ISO datetime string
+                const date = new Date(timeStr);
+                return date.getHours() + date.getMinutes() / 60;
               }
-              console.log('DEBUG: Parsed as Date object:', timeStr);
-              return timeStr.getHours() + timeStr.getMinutes() / 60;
-            } catch (err) {
-              console.error('DEBUG: Error in parseTimeToHours:', err.message);
-              throw err;
+              // Time format is HH:mm:ss or HH:mm
+              const parts = timeStr.split(':');
+              const hours = parseInt(parts[0], 10);
+              const minutes = parseInt(parts[1] || '0', 10);
+              return hours + minutes / 60;
             }
+            return timeStr.getHours() + timeStr.getMinutes() / 60;
           };
 
           const startHours = parseTimeToHours(createBookingDto.startTime);
           const endHours = parseTimeToHours(createBookingDto.endTime);
-          console.log('DEBUG: After parseTimeToHours, startHours:', startHours, 'endHours:', endHours);
           const durationHours = Math.max(0, endHours - startHours);
-          console.log('DEBUG: Duration calculated:', durationHours);
 
-          console.log('DEBUG: Parsed times (hours):', {
-            startHours,
-            endHours,
-            durationHours,
-          });
+          console.log('🔍 DEBUG create: startHours =', startHours, ', endHours =', endHours, ', durationHours =', durationHours);
 
           amount = basePrice * durationHours;
-
-          console.log('DEBUG: Calculated durationHours:', durationHours);
-          console.log('DEBUG: Calculated amount:', amount);
+          console.log('🔍 DEBUG create: Calculated amount =', amount, '(basePrice', basePrice, '* duration', durationHours, ')');
         } else {
           amount = 0;
-          console.log('DEBUG: No service found, amount set to 0');
         }
       }
-
-      console.log('DEBUG: Amount calculation completed, amount:', amount);
 
       // Parse time string to ensure it's in HH:mm:ss format for PostgreSQL
       const parseTimeForStorage = (time: string | Date): string => {
@@ -410,13 +397,43 @@ export class BookingsService {
         // Parse to time string for PostgreSQL time type
         startTime: parseTimeForStorage(createBookingDto.startTime),
         endTime: parseTimeForStorage(createBookingDto.endTime),
-        // Extract date from startTime if not provided
-        date:
-          createBookingDto.date ||
-          (typeof createBookingDto.startTime === 'string' &&
-          createBookingDto.startTime.includes('T')
-            ? new Date(createBookingDto.startTime).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0]),
+        // FIX: Date handling - require date from service request or explicit date
+        // Don't default to today's date silently
+        date: (() => {
+          // Priority 1: Use explicit date if provided
+          if (createBookingDto.date) {
+            const dateStr = typeof createBookingDto.date === 'string' 
+              ? createBookingDto.date 
+              : new Date(createBookingDto.date).toISOString().split('T')[0];
+            console.log('🔍 DEBUG: Date handling - using explicit date:', dateStr);
+            return dateStr;
+          }
+          
+          // Priority 2: Extract date from startTime if it's an ISO datetime string
+          if (typeof createBookingDto.startTime === 'string' &&
+              createBookingDto.startTime.includes('T')) {
+            const dateStr = new Date(createBookingDto.startTime).toISOString().split('T')[0];
+            console.log('🔍 DEBUG: Date handling - extracted from startTime:', dateStr);
+            return dateStr;
+          }
+          
+          // Priority 3: Look up date from service request if serviceRequestId is provided
+          if (createBookingDto.serviceRequestId) {
+            console.log('🔍 DEBUG: Date handling - serviceRequestId provided, date should be set earlier in the flow');
+            // The date should have been set from service request earlier in this function (lines 192-199)
+            // If we reach here, the service request might not have a valid date
+          }
+          
+          // FIX: Throw error instead of defaulting to today's date
+          // This ensures the bug is caught rather than silently showing wrong date
+          const errorMsg = 'Date is required but could not be determined. Please provide a date or use a valid service request.';
+          console.error('🔍 ERROR: Date handling -', errorMsg, 'createBookingDto:', JSON.stringify({
+            date: createBookingDto.date,
+            startTime: createBookingDto.startTime,
+            serviceRequestId: createBookingDto.serviceRequestId
+          }));
+          throw new Error(errorMsg);
+        })(),
         // Ensure we have service relation
         service: await this.servicesRepository.findOne({
           where: { id: createBookingDto.serviceId },
@@ -427,8 +444,6 @@ export class BookingsService {
         }),
       };
 
-      // Ensure serviceRequestId is numeric when creating the booking
-      console.log('DEBUG: Creating booking with data:', bookingData);
       const booking = this.bookingsRepository.create(bookingData);
 
       const savedBooking = await this.bookingsRepository.save(booking);
@@ -548,8 +563,15 @@ export class BookingsService {
         endTimeDate,
       );
 
-      // Book the slot and assign worker
-      await this.slotsService.markAsBooked((bestMatch.slot as any).id);
+      // Book the slot atomically (prevents race conditions)
+      const slotBooked = await this.slotsService.markAsBooked((bestMatch.slot as any).id);
+      if (!slotBooked) {
+        // Slot was already booked by another concurrent request
+        this.logger.warn(
+          `Slot ${(bestMatch.slot as any).id} was already booked (race condition). Booking remains in REQUESTED state.`,
+        );
+        return booking;
+      }
 
       // Update booking with assigned worker
       booking.worker = bestMatch.worker;
@@ -567,8 +589,15 @@ export class BookingsService {
   }
 
   async createWithAssignment(createBookingDto: any) {
+    // DEBUG: Log incoming amount
+    console.log('🔍 DEBUG createWithAssignment: createBookingDto.amount =', createBookingDto.amount);
+    
     // Create service request first
     const savedBooking = await this.create(createBookingDto);
+    
+    // DEBUG: Log the created booking's amount
+    console.log('🔍 DEBUG createWithAssignment: savedBooking.amount =', savedBooking.amount);
+    console.log('🔍 DEBUG createWithAssignment: savedBooking.totalAmount =', savedBooking.totalAmount);
 
     // Attempt assignment asynchronously
     try {
@@ -585,6 +614,16 @@ export class BookingsService {
   }
 
   async findAll(userId?: string) {
+    // Resolve userId: if it's a publicId (UUID), convert to numeric id
+    let resolvedUserId: number | undefined;
+    if (userId) {
+      const resolved = await this.resolveUserId(userId);
+      if (!resolved) {
+        return [];
+      }
+      resolvedUserId = resolved;
+    }
+
     const query = this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
@@ -593,11 +632,72 @@ export class BookingsService {
       .leftJoinAndSelect('worker.user', 'workerUser')
       .orderBy('booking.createdAt', 'DESC');
 
-    if (userId) {
-      query.where('booking.userId = :userId', { userId });
+    if (resolvedUserId) {
+      query.where('booking.userId = :userId', { userId: resolvedUserId });
     }
 
-    return query.getMany();
+    const bookings = await query.getMany();
+    
+    // Serialize bookings to ensure amount field is properly returned
+    return bookings.map(booking => this.serializeBooking(booking));
+  }
+
+  private serializeBooking(booking: any): any {
+    if (!booking) return null;
+    
+    console.log('🔍 DEBUG serializeBooking: booking.totalAmount =', booking.totalAmount);
+    console.log('🔍 DEBUG serializeBooking: booking.amount =', booking.amount);
+    
+    // FIX: Don't divide by 100 - frontend sends amount in rupees, not paise
+    // Previously we were dividing by 100 which caused 1200 → 12 rupees
+    return {
+      id: booking.id,
+      publicId: booking.publicId,
+      userId: booking.userId,
+      workerId: booking.workerId,
+      serviceId: booking.serviceId,
+      serviceRequestId: booking.serviceRequestId,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      totalAmount: booking.amount || booking.totalAmount || 0,
+      amount: booking.amount || booking.totalAmount || 0,
+      status: booking.status,
+      isPaid: booking.isPaid,
+      type: booking.type,
+      notes: booking.notes,
+      location: booking.location,
+      createdAt: booking.createdAt,
+      worker: booking.worker ? {
+        id: booking.worker.id,
+        publicId: booking.worker.publicId,
+        rating: booking.worker.rating,
+        reviewCount: booking.worker.reviewCount,
+        bio: booking.worker.bio,
+        user: booking.worker.user ? {
+          id: booking.worker.user.id,
+          publicId: booking.worker.user.publicId,
+          firstName: booking.worker.user.firstName,
+          lastName: booking.worker.user.lastName,
+          email: booking.worker.user.email,
+        } : null,
+      } : null,
+      service: booking.service ? {
+        id: booking.service.id,
+        publicId: booking.service.publicId,
+        name: booking.service.name,
+        description: booking.service.description,
+        basePrice: booking.service.basePrice,
+        category: booking.service.category,
+      } : null,
+      user: booking.user ? {
+        id: booking.user.id,
+        publicId: booking.user.publicId,
+        firstName: booking.user.firstName,
+        lastName: booking.user.lastName,
+        email: booking.user.email,
+      } : null,
+    };
   }
 
   async findOne(id: string) {
@@ -724,14 +824,25 @@ export class BookingsService {
     sortBy?: string,
     sortOrder?: 'ASC' | 'DESC',
   ): Promise<[Booking[], number]> {
+    // Resolve userId: if it's a publicId (UUID), convert to numeric id
+    let resolvedUserId: number | undefined;
+    if (userId) {
+      const resolved = await this.resolveUserId(userId);
+      if (!resolved) {
+        // Return empty results if user not found
+        return [[], 0];
+      }
+      resolvedUserId = resolved;
+    }
+
     const query = this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('booking.service', 'service');
 
-    if (userId) {
-      query.andWhere('booking.userId = :userId', { userId });
+    if (resolvedUserId) {
+      query.andWhere('booking.userId = :userId', { userId: resolvedUserId });
     }
 
     if (workerId) {
@@ -752,7 +863,12 @@ export class BookingsService {
       query.orderBy('booking.createdAt', 'DESC');
     }
 
-    return query.getManyAndCount();
+    const [bookings, total] = await query.getManyAndCount();
+    
+    // Serialize bookings to ensure proper date/time formatting
+    const serializedBookings = bookings.map(booking => this.serializeBooking(booking));
+    
+    return [serializedBookings, total];
   }
 
   async assignBooking(assignBookingDto: { bookingId: string; workerId: string }) {
@@ -767,13 +883,19 @@ export class BookingsService {
     });
   }
 
-  async getUpcomingBookings(userId: string) {
+  async getUpcomingBookings(userPublicId: string) {
+    // Resolve userId: if it's a publicId (UUID), convert to numeric id
+    const resolvedUserId = await this.resolveUserId(userPublicId);
+    if (!resolvedUserId) {
+      return [];
+    }
+
     return this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
-      .where('booking.userId = :userId', { userId })
+      .where('booking.userId = :userId', { userId: resolvedUserId })
       .andWhere('booking.status IN (:...statuses)', {
         statuses: [
           BookingStatus.REQUESTED,
@@ -785,13 +907,19 @@ export class BookingsService {
       .getMany();
   }
 
-  async getPastBookings(userId: string) {
+  async getPastBookings(userPublicId: string) {
+    // Resolve userId: if it's a publicId (UUID), convert to numeric id
+    const resolvedUserId = await this.resolveUserId(userPublicId);
+    if (!resolvedUserId) {
+      return [];
+    }
+
     return this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
-      .where('booking.userId = :userId', { userId })
+      .where('booking.userId = :userId', { userId: resolvedUserId })
       .andWhere('booking.status IN (:...statuses)', {
         statuses: [
           BookingStatus.COMPLETED,
@@ -801,5 +929,27 @@ export class BookingsService {
       })
       .orderBy('booking.startTime', 'DESC')
       .getMany();
+  }
+
+  /**
+   * Resolve user ID from various formats (publicId/UUID or numeric id)
+   * @param userId - Could be publicId (UUID) or numeric id
+   * @returns Numeric user id for database queries
+   */
+  private async resolveUserId(userId: string): Promise<number | null> {
+    // If it's already a number, return it directly
+    const numericId = parseInt(userId, 10);
+    if (!isNaN(numericId)) {
+      return numericId;
+    }
+
+    // If it's a UUID (publicId), look up the user to get numeric id
+    try {
+      const user = await this.usersRepository.findOneBy({ publicId: userId } as any);
+      return user?.id ?? null;
+    } catch (error) {
+      this.logger.error(`Error resolving userId: ${error.message}`);
+      return null;
+    }
   }
 }

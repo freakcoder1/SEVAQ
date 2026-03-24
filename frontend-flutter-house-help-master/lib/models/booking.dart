@@ -106,7 +106,85 @@ class Booking {
     }
   }
 
-  static DateTime _parseTime(String timeStr, String? dateStr) {
+  // Improved dateTime parser that handles multiple input formats
+  static DateTime _parseDateTime(
+    dynamic timeValue,
+    dynamic dateStr, {
+    Duration defaultOffset = Duration.zero,
+  }) {
+    debugPrint(
+      '🔍 DEBUG _parseDateTime: timeValue=$timeValue, dateStr=$dateStr',
+    );
+
+    // Case 1: Already a DateTime object
+    if (timeValue is DateTime) {
+      debugPrint(
+        '🔍 DEBUG _parseDateTime: input is DateTime, returning ${timeValue.toLocal()}',
+      );
+      return timeValue.toLocal();
+    }
+
+    // Case 2: String format - could be ISO8601 or time only
+    if (timeValue is String) {
+      try {
+        // Try parsing as ISO8601 (full timestamp)
+        if (timeValue.contains('T') || timeValue.contains('-')) {
+          final parsed = DateTime.parse(timeValue);
+          debugPrint(
+            '🔍 DEBUG _parseDateTime: parsed ISO8601 to ${parsed.toLocal()}',
+          );
+          return parsed.toLocal();
+        }
+
+        // It's just a time string (HH:MM:SS), need to combine with date
+        List<String> timeParts = timeValue.split(':');
+        if (timeParts.length >= 2) {
+          int hours = int.tryParse(timeParts[0]) ?? 0;
+          int minutes = int.tryParse(timeParts[1]) ?? 0;
+          int seconds = timeParts.length > 2
+              ? (int.tryParse(timeParts[2]) ?? 0)
+              : 0;
+
+          // Get base date from dateStr or use now
+          DateTime baseDate = DateTime.now();
+          if (dateStr != null) {
+            try {
+              if (dateStr is String) {
+                baseDate = DateTime.parse(dateStr);
+              } else if (dateStr is DateTime) {
+                baseDate = dateStr;
+              }
+            } catch (e) {
+              debugPrint(
+                '🔍 DEBUG _parseDateTime: failed to parse dateStr: $e',
+              );
+            }
+          }
+
+          final result = DateTime(
+            baseDate.year,
+            baseDate.month,
+            baseDate.day,
+            hours,
+            minutes,
+            seconds,
+          );
+          debugPrint('🔍 DEBUG _parseDateTime: combined date+time to $result');
+          return result;
+        }
+      } catch (e) {
+        debugPrint('🔍 DEBUG _parseDateTime: failed to parse timeValue: $e');
+      }
+    }
+
+    // Case 3: Fallback - use current date/time + default offset
+    final result = DateTime.now().add(defaultOffset);
+    debugPrint('🔍 DEBUG _parseDateTime: using fallback $result');
+    return result;
+  }
+
+  static DateTime _parseTime(String timeStr, dynamic dateStr) {
+    debugPrint('🔍 DEBUG _parseTime: timeStr=$timeStr, dateStr=$dateStr');
     try {
       // First, try to parse as full ISO8601 timestamp
       if (timeStr.contains('T') || timeStr.contains('-')) {
@@ -123,15 +201,34 @@ class Booking {
             : 0;
 
         DateTime baseDate = DateTime.now();
-        if (dateStr != null && dateStr.contains('-')) {
+        // Handle different dateStr formats: null, String, or DateTime
+        if (dateStr != null) {
           try {
-            baseDate = DateTime.parse(dateStr);
+            if (dateStr is String && dateStr.contains('-')) {
+              // String format like "2026-03-31" - parse as UTC midnight then add timezone offset
+              // Use DateTime.parse which treats it as UTC, then convert to local
+              final parsed = DateTime.parse(dateStr);
+              // Adjust for timezone - the date string is in YYYY-MM-DD format (local date)
+              // We need to preserve the local date, not UTC date
+              baseDate = DateTime(parsed.year, parsed.month, parsed.day);
+              debugPrint(
+                '🔍 DEBUG _parseTime: parsed string date to $baseDate',
+              );
+            } else if (dateStr is DateTime) {
+              baseDate = DateTime(dateStr.year, dateStr.month, dateStr.day);
+              debugPrint('🔍 DEBUG _parseTime: using DateTime date $baseDate');
+            } else if (dateStr is String) {
+              // Try parsing any other string format
+              baseDate = DateTime.parse(dateStr);
+            }
           } catch (e) {
-            debugPrint('Failed to parse date: $dateStr');
+            debugPrint(
+              '🔍 DEBUG _parseTime: Failed to parse date: $dateStr, error: $e',
+            );
           }
         }
 
-        return DateTime(
+        final result = DateTime(
           baseDate.year,
           baseDate.month,
           baseDate.day,
@@ -139,9 +236,11 @@ class Booking {
           minutes,
           seconds,
         );
+        debugPrint('🔍 DEBUG _parseTime: returning $result');
+        return result;
       }
     } catch (e) {
-      debugPrint('Failed to parse time: $timeStr - $e');
+      debugPrint('🔍 DEBUG _parseTime: Failed to parse time: $timeStr - $e');
     }
 
     return DateTime.now();
@@ -236,12 +335,14 @@ class Booking {
               basePrice: 0,
               category: '',
             ),
-      startTime: (json['startTime'] != null && json['startTime'] is String)
-          ? _parseTime(json['startTime'], json['date'])
-          : DateTime.now(),
-      endTime: (json['endTime'] != null && json['endTime'] is String)
-          ? _parseTime(json['endTime'], json['date'])
-          : DateTime.now().add(const Duration(hours: 1)),
+      // Handle startTime - try to parse from different formats
+      startTime: _parseDateTime(json['startTime'], json['date']),
+      // Handle endTime - try to parse from different formats
+      endTime: _parseDateTime(
+        json['endTime'],
+        json['date'],
+        defaultOffset: const Duration(hours: 1),
+      ),
       status: _mapStatus(json['status'] ?? 'assignmentInProgress'),
 
       isPaid: json['isPaid'] ?? false,

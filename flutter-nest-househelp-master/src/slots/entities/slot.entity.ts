@@ -6,8 +6,10 @@ import {
   JoinColumn,
   Index,
   VersionColumn,
+  BeforeInsert,
 } from 'typeorm';
 import { Worker } from '../../workers/entities/worker.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity()
 @Index(['worker', 'startTime', 'isBooked']) // Composite index for slot lookup queries
@@ -18,6 +20,13 @@ export class Slot {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = uuidv4();
+    }
+  }
 
   @Column({ type: 'date' })
   date: Date;

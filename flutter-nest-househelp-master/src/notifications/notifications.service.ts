@@ -167,11 +167,13 @@ export class NotificationsService {
     booking: Booking,
     reminderType: '24h' | '2h',
   ): Promise<void> {
+    // FIX: booking.userId is already a UUID (stored as uuid type in booking table)
+    // Use it directly to find the user via their publicId (which is also a UUID)
     const user = await this.usersRepository.findOne({
-      where: { id: booking.userId },
+      where: { publicId: booking.userId },
     });
     if (!user) {
-      console.error(`User not found for booking ${booking.id}`);
+      console.error(`User not found for booking ${booking.id}, userId: ${booking.userId}`);
       return;
     }
 
@@ -318,7 +320,8 @@ export class NotificationsService {
     const twentySixHoursFromNow = new Date(now.getTime() + 26 * 60 * 60 * 1000);
 
     try {
-      let query = this.bookingsRepository
+      // Get all bookings first, then filter in memory to avoid UUID/INT join issues
+      const allBookings = await this.bookingsRepository
         .createQueryBuilder('booking')
         .leftJoinAndSelect('booking.user', 'user')
         .leftJoinAndSelect('booking.worker', 'worker')
@@ -330,17 +333,18 @@ export class NotificationsService {
         })
         .andWhere('booking.date <= :tomorrow', {
           tomorrow: tomorrow.toISOString().split('T')[0],
-        });
+        })
+        .getMany();
 
+      // Filter by userId if provided (after fetching)
+      let bookings = allBookings;
       if (userId) {
-        query = query.andWhere('booking.userId = :userId', { userId });
+        bookings = allBookings.filter(booking => booking.userId === userId);
       }
 
-      const bookings = await query.getMany();
-
-      // Filter to only include bookings within the 24h-26h window
+      // Filter to only include bookings within the 2h-26h window
       return bookings.filter((booking) => {
-        // startTime is now a time string (HH:mm:ss)
+        if (!booking.startTime) return false;
         const timeParts = booking.startTime.split(':');
         const hours = parseInt(timeParts[0], 10);
         const minutes = parseInt(timeParts[1] || '0', 10);
@@ -361,26 +365,19 @@ export class NotificationsService {
   }
 
   async findAllUserBookings(userPublicId: string): Promise<Booking[]> {
-    // First, find the user by their publicId (UUID from JWT)
-    const user = await this.usersRepository.findOne({
-      where: { publicId: userPublicId } as any,
-    });
-
-    if (!user) {
-      return [];
-    }
-
-    // Use the internal numeric user.id for the booking query
-    return this.bookingsRepository
+    // Fetch all bookings and filter by userPublicId to avoid UUID/INT join issues
+    const allBookings = await this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
       .leftJoinAndSelect('booking.service', 'service')
-      .where('booking.userId = :userId', { userId: user.id })
       .orderBy('booking.date', 'ASC')
       .addOrderBy('booking.startTime', 'ASC')
       .getMany();
+
+    // Filter in memory by comparing UUIDs
+    return allBookings.filter(booking => booking.userId === userPublicId);
   }
 
   async findAllBookings(): Promise<Booking[]> {

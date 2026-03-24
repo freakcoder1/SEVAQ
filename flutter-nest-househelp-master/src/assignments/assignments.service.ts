@@ -72,8 +72,22 @@ export class AssignmentsService {
       assignmentMetadata: JSON.stringify(assignmentMetadata)
     });
 
-    // 4. Mark slot as booked
-    await this.slotsService.markAsBooked(bestWorker.slot.id);
+    // 4. Mark slot as booked (atomic - prevents race conditions)
+    const slotBooked = await this.slotsService.markAsBooked(bestWorker.slot.id);
+    if (!slotBooked) {
+      this.logger.warn(
+        `Slot ${bestWorker.slot.id} was already booked by another request (race condition). Reverting assignment.`,
+      );
+      // Revert the booking assignment since the slot is no longer available
+      await this.bookingsRepository.update(booking.id, {
+        assignmentState: AssignmentState.PENDING,
+        assignedWorkerId: undefined,
+        assignmentTimestamp: undefined,
+        assignmentReason: undefined,
+        assignmentMetadata: undefined,
+      });
+      return { success: false, reason: 'Slot was booked by another request' };
+    }
 
     return { success: true, worker: bestWorker.worker };
   }

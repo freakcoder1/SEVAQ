@@ -204,7 +204,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
 
       final serviceRequestData = {
         'serviceId':
-            (service?.id != null ? service!.id : null) ??
+            (service?.id != null && service!.id > 0 ? service!.id : null) ??
             ServiceMapper.getRepresentativeBackendId('maid'),
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate!),
         'timeWindow': _selectedTimeWindow!.id,

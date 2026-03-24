@@ -3,14 +3,93 @@ import 'package:intl/intl.dart';
 import '../models/booking.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
-  final Booking booking;
+  final Booking? booking;
 
-  const BookingConfirmationScreen({Key? key, required this.booking})
-    : super(key: key);
+  const BookingConfirmationScreen({Key? key, this.booking}) : super(key: key);
+
+  // Method to extract booking from route arguments
+  Booking? _getBookingFromArgs(BuildContext context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['booking'] != null) {
+      final bookingData = args['booking'];
+      if (bookingData is Booking) {
+        return bookingData;
+      } else if (bookingData is Map<String, dynamic>) {
+        // Parse from JSON
+        try {
+          return Booking.fromJson(bookingData);
+        } catch (e) {
+          debugPrint('Error parsing booking from args: $e');
+        }
+      }
+    }
+    return null;
+  }
+
+  // Helper method to parse time with date fallback
+  DateTime _parseTime(DateTime? time, DateTime? date) {
+    if (time != null) {
+      return time;
+    }
+    if (date != null) {
+      return DateTime(date.year, date.month, date.day, 9, 0); // Default 9 AM
+    }
+    return DateTime.now();
+  }
+
+  // Factory constructor to handle both widget parameter and route arguments
+  factory BookingConfirmationScreen.fromRoute(BuildContext context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['booking'] != null) {
+      return BookingConfirmationScreen(
+        key: args['key'] as Key?,
+        booking: args['booking'] is Booking ? args['booking'] as Booking : null,
+      );
+    }
+    return const BookingConfirmationScreen(booking: null);
+  }
 
   @override
   Widget build(BuildContext context) {
+    // If booking is null, try to get it from route arguments
+    final effectiveBooking = booking ?? _getBookingFromArgs(context);
+
+    if (effectiveBooking == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+              SizedBox(height: 16),
+              Text(
+                'Booking data not found',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () =>
+                    Navigator.of(context).popUntil((route) => route.isFirst),
+                child: Text('Go Home'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
+    final displayBooking = effectiveBooking;
+
+    // Debug: Log the date values
+    debugPrint('=== BOOKING CONFIRMATION SCREEN DEBUG ===');
+    debugPrint('Booking ID: ${displayBooking.id}');
+    debugPrint('Booking startTime: ${displayBooking.startTime}');
+    debugPrint('Booking endTime: ${displayBooking.endTime}');
+    debugPrint('Display date: ${displayBooking.startTime}');
+    debugPrint('===========================================');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -103,8 +182,8 @@ class BookingConfirmationScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              booking.worker.user.firstName.isNotEmpty
-                                  ? booking.worker.user.firstName[0]
+                              displayBooking.worker.user.firstName.isNotEmpty
+                                  ? displayBooking.worker.user.firstName[0]
                                   : '?',
                               style: const TextStyle(
                                 fontSize: 20,
@@ -120,7 +199,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${booking.worker.user.firstName} ${booking.worker.user.lastName}',
+                                '${displayBooking.worker.user.firstName} ${displayBooking.worker.user.lastName}',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black87,
@@ -186,14 +265,14 @@ class BookingConfirmationScreen extends StatelessWidget {
                               Text(
                                 DateFormat(
                                   'EEEE, MMMM d, yyyy',
-                                ).format(booking.startTime),
+                                ).format(displayBooking.startTime),
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black87,
                                 ),
                               ),
                               Text(
-                                '${DateFormat('jm').format(booking.startTime)} - ${DateFormat('jm').format(booking.endTime)}',
+                                '${DateFormat('jm').format(displayBooking.startTime)} - ${DateFormat('jm').format(displayBooking.endTime)}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Colors.black54,
                                 ),
@@ -211,7 +290,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                         const Icon(Icons.work, color: Colors.black54, size: 20),
                         const SizedBox(width: 12),
                         Text(
-                          booking.service.name,
+                          displayBooking.service.name,
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],
@@ -228,7 +307,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          '₹${booking.amount?.toStringAsFixed(0) ?? (booking.service.basePrice * booking.endTime.difference(booking.startTime).inHours).toStringAsFixed(0)}',
+                          '₹${displayBooking.amount?.toStringAsFixed(0) ?? (displayBooking.service.basePrice * displayBooking.endTime.difference(displayBooking.startTime).inHours).toStringAsFixed(0)}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,

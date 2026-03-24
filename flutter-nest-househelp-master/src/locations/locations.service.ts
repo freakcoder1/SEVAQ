@@ -355,7 +355,7 @@ export class LocationService {
     );
 
     try {
-      const user = await this.userRepository.findOne({ where: { id: userId } });
+      const user = await this.userRepository.findOne({ where: { publicId: userId } });
       if (!user) {
         this.logger.warn(`User not found: ${userId}`);
         throw new NotFoundException(`User with ID ${userId} not found`);

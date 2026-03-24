@@ -70,7 +70,7 @@ export class MetricsService {
       const metric = new AssignmentMetric();
       metric.assignmentId = assignment.id;
       metric.bookingId = booking.id;
-      metric.userId = booking.user?.id ?? '';
+      metric.userId = booking.user?.publicId ?? '';
       metric.workerId = worker.id;
       metric.serviceType = booking.service?.name || 'unknown';
       metric.location = 'unknown'; // Booking entity doesn't have location field

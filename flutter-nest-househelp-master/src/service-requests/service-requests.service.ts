@@ -48,13 +48,8 @@ export class ServiceRequestsService {
       if (!user) {
         throw new BadRequestException('User not found with the provided ID');
       }
-      // The User entity has both numeric id and publicId - convert string id to number
-      numericUserId = parseInt(user.id as unknown as string, 10);
-      if (isNaN(numericUserId)) {
-        this.logger.warn(`User id is not numeric: ${user.id}, treating as string`);
-        // If parse fails, try to use the id directly (might work if DB returns string)
-        numericUserId = Number(user.id);
-      }
+      // User.id is now correctly typed as number (auto-increment)
+      numericUserId = user.id;
       this.logger.debug(`Converted publicId ${userIdOrPublicId} to numeric userId ${numericUserId}`);
     } else {
       // It's already a numeric ID

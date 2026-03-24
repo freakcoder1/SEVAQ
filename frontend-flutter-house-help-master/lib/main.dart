@@ -23,6 +23,7 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/location_first_splash_screen.dart';
 import 'services/firebase_messaging_service.dart';
+import 'services/navigation_service.dart';
 
 void main() async {
   // Preload SharedPreferences synchronously to prevent navigation loop
@@ -72,12 +73,16 @@ class SevaqAppMaterial extends StatelessWidget {
     // Get ThemeProvider from the existing MultiProvider (wrapped above)
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
 
+    // Use singleton NavigationService's navigatorKey
+    final navigationService = NavigationService();
+
     return MaterialApp(
       title: 'Sevaq - House Help Services',
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigationService.navigatorKey,
       home: const AuthWrapper(),
       routes: {
         '/auth': (_) => const AuthWrapper(),

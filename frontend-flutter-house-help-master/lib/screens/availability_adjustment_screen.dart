@@ -189,10 +189,30 @@ class _AvailabilityAdjustmentScreenState
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => ServiceClarificationScreen(
-          userId: userId,
-          initialLocation: initialLocation,
-        ),
+        builder: (context) {
+          // Get providers BEFORE navigation
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          final locationProvider = Provider.of<LocationProvider>(
+            context,
+            listen: false,
+          );
+
+          return MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+              ChangeNotifierProvider<LocationProvider>.value(
+                value: locationProvider,
+              ),
+            ],
+            child: ServiceClarificationScreen(
+              userId: userId,
+              initialLocation: initialLocation,
+            ),
+          );
+        },
       ),
     );
   }

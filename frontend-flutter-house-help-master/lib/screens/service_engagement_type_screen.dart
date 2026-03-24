@@ -362,11 +362,25 @@ class _ServiceEngagementTypeScreenState
       // Navigate to one-time scheduling screen
       // FIXED: Use widget.userId directly instead of reading from AuthProvider
       // The userId is already passed to this screen via constructor
+
+      // Get AuthProvider from current context
+      AuthProvider? authProvider;
+      try {
+        authProvider = context.read<AuthProvider>();
+      } catch (e) {
+        debugPrint('DEBUG: Could not get AuthProvider: $e');
+        authProvider = null;
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (ctx) => MultiProvider(
             providers: [
+              // Provide AuthProvider
+              ChangeNotifierProvider<AuthProvider>.value(
+                value: authProvider ?? AuthProvider(),
+              ),
               // Use ChangeNotifierProvider for LocationProvider since it's a ChangeNotifier
               // Pass the existing provider or create a new one if not available
               ChangeNotifierProvider<LocationProvider>.value(
@@ -398,8 +412,43 @@ class _ServiceEngagementTypeScreenState
   }
 
   Service? _convertServiceOptionToService(ServiceOption serviceOption) {
+    // Map frontend service option IDs to backend numeric service IDs
+    int backendServiceId;
+    switch (serviceOption.id) {
+      case 'cleaning':
+        backendServiceId = 1; // homeCleaningId
+        break;
+      case 'cooking':
+        backendServiceId = 3; // cookingId
+        break;
+      case 'driver':
+        backendServiceId = 5; // driverId
+        break;
+      case 'errands':
+        backendServiceId = 6; // errandsId
+        break;
+      case 'laundry':
+        backendServiceId = 7; // laundryId
+        break;
+      case 'babysitting':
+        backendServiceId = 8; // babysittingId
+        break;
+      case 'gardening':
+        backendServiceId = 9; // gardeningId
+        break;
+      case 'senior_care':
+        backendServiceId = 10; // seniorCareId
+        break;
+      case 'shopping':
+        backendServiceId = 12; // shoppingId
+        break;
+      case 'maid':
+      default:
+        backendServiceId = 1; // Default to home cleaning
+    }
+
     return Service(
-      id: 0,
+      id: backendServiceId,
       publicId: '',
       name: serviceOption.name,
       description: serviceOption.description,

@@ -1,0 +1,1 @@
+column "type" does not exist

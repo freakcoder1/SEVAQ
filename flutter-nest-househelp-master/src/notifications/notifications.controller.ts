@@ -79,10 +79,11 @@ export class NotificationsController {
         return {
           id: booking.id,
           type: booking.type,
+          date: booking.date, // Include the date field - CRITICAL for frontend
           startTime: booking.startTime,
           endTime: booking.endTime,
           status: booking.status,
-          amount: booking.amount,
+          amount: booking.amount || booking.totalAmount,
           user: {
             id: booking.user.id,
             publicId: booking.user.publicId,

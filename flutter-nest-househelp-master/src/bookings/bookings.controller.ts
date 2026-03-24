@@ -8,7 +8,10 @@ import {
   Query,
   UsePipes,
   ValidationPipe,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -18,6 +21,7 @@ import {
 } from '../common/dto/pagination.dto';
 
 @Controller('bookings')
+@UseGuards(JwtAuthGuard)
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
@@ -29,7 +33,6 @@ export class BookingsController {
 
   @Post(':id/attempt-assignment')
   attemptAssignment(@Param('id') id: string) {
-    console.log('🔍 Attempting assignment for booking ID:', id);
     return this.bookingsService.attemptAssignment(id);
   }
 
@@ -44,10 +47,12 @@ export class BookingsController {
 
   @Get()
   async findAll(
+    @Request() req,
     @Query() paginationDto: PaginationDto,
-    @Query('userId') userId?: string,
     @Query('workerId') workerId?: string,
   ) {
+    // User-scoping: authenticated users can only see their own bookings
+    const userId = req.user.userId;
     const page = paginationDto.page ?? 1;
     const limit = paginationDto.limit ?? 20;
     const { sortBy, sortOrder } = paginationDto;

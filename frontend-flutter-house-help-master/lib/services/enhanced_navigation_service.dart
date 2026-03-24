@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
@@ -31,14 +33,29 @@ class EnhancedNavigationService {
       listen: false,
     );
 
+    // Get providers BEFORE navigation
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
+
     // Reset assignment state when starting fresh
     assignmentProvider.resetAssignmentState();
 
     await navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (context) => ServiceClarificationScreen(
-          userId: userId,
-          initialLocation: initialLocation,
+        builder: (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<LocationProvider>.value(
+              value: locationProvider,
+            ),
+          ],
+          child: ServiceClarificationScreen(
+            userId: userId,
+            initialLocation: initialLocation,
+          ),
         ),
         settings: RouteSettings(name: '/service-clarification'),
       ),

@@ -1,0 +1,91 @@
+=== COLUMNS IN service_request ===
+id
+userId
+serviceId
+date
+startTime
+endTime
+status
+customerLatitude
+customerLongitude
+address
+notes
+createdAt
+updatedAt
+
+=== ALL BOOKINGS from service_request (Last 30) ===
+
+
+Total service_request rows: 0
+
+=== COLUMNS IN booking ===
+id
+userId
+workerId
+serviceId
+slotId
+date
+startTime
+endTime
+status
+totalAmount
+customerLatitude
+customerLongitude
+address
+notes
+createdAt
+updatedAt
+amount
+isPaid
+type
+responsibilityTransferred
+systemMonitoring
+protectionStatus
+assignmentState
+assignedWorkerId
+assignmentReason
+reassignmentCount
+assignmentTimestamp
+assignmentMetadata
+publicId
+serviceRequestId
+assignedworkerid
+reassignmentcount
+assignmentType
+assignmentExpiresAt
+assignmentStartsAt
+
+=== ALL BOOKINGS from booking (Last 30) ===
+
+ID:33308 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33307 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33306 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33305 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33304 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33303 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33302 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33301 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33300 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33299 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33298 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33297 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33296 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33295 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33294 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33293 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33292 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33291 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33290 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33289 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33288 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33287 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33286 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33285 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33284 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33283 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33282 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33281 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33280 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+ID:33279 | date:Sat Mar 21 2026 00:00:00 GMT+0530 (India Standard Time) | status:requested
+
+Total booking rows: 30

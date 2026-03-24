@@ -12,12 +12,14 @@ import {
   ValidationPipe,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import {
+  LoginDto,
   VerifyOtpLoginDto,
   VerifyIdTokenDto,
   GetUserByPhoneDto,
@@ -34,35 +36,25 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  async login(@Body() req) {
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // Max 5 login attempts per minute
+  async login(@Body() loginDto: LoginDto) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
 
     this.logger.log(
-      `🔐 [${requestId}] Login request received - Email: ${req.email || 'N/A'}, IP: ${req.ip || 'unknown'}`,
+      `🔐 [${requestId}] Login request received - Email: ${loginDto.email || 'N/A'}`,
     );
 
     try {
-      // Validate input
-      if (!req.email || !req.password) {
-        this.logger.warn(
-          `❌ [${requestId}] Missing credentials - Email: ${req.email || 'empty'}, Password: ${req.password ? 'provided' : 'empty'}`,
-        );
-        throw new HttpException(
-          'Email and password are required',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
       this.logger.debug(
-        `🔍 [${requestId}] Starting user validation for email: ${req.email}`,
+        `🔍 [${requestId}] Starting user validation for email: ${loginDto.email}`,
       );
 
-      const user = await this.authService.validateUser(req.email, req.password);
+      const user = await this.authService.validateUser(loginDto.email, loginDto.password);
 
       if (!user) {
         this.logger.warn(
-          `❌ [${requestId}] Authentication failed - Invalid credentials for email: ${req.email}`,
+          `❌ [${requestId}] Authentication failed - Invalid credentials for email: ${loginDto.email}`,
         );
         throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
       }
@@ -82,13 +74,14 @@ export class AuthController {
     } catch (error) {
       const duration = Date.now() - startTime;
       this.logger.error(
-        `💥 [${requestId}] Login failed - Email: ${req.email || 'N/A'}, Error: ${error.message}, Duration: ${duration}ms`,
+        `💥 [${requestId}] Login failed - Email: ${loginDto.email || 'N/A'}, Error: ${error.message}, Duration: ${duration}ms`,
       );
       throw error;
     }
   }
 
   @Post('signup')
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // Max 3 signup attempts per minute
   async signup(@Body() createUserDto: CreateUserDto) {
     console.log('Signup request received:', createUserDto);
     const result = await this.authService.signup(createUserDto);
@@ -98,6 +91,7 @@ export class AuthController {
 
   // OTP Login endpoints
   @Post('otp/verify-login')
+  @Throttle({ default: { ttl: 60000, limit: 10 } }) // Max 10 OTP attempts per minute
   async verifyOtpLogin(@Body() verifyOtpLoginDto: VerifyOtpLoginDto) {
     this.logger.log(`OTP login request received - Phone: ${verifyOtpLoginDto.phone}`);
 
@@ -115,6 +109,7 @@ export class AuthController {
   }
 
   @Post('otp/verify-token')
+  @Throttle({ default: { ttl: 60000, limit: 10 } }) // Max 10 OTP token verifications per minute
   async verifyIdToken(@Body() verifyIdTokenDto: VerifyIdTokenDto) {
     this.logger.log('OTP token verification request received');
 
@@ -130,6 +125,7 @@ export class AuthController {
   }
 
   @Post('otp/get-user')
+  @Throttle({ default: { ttl: 60000, limit: 10 } }) // Max 10 OTP user lookups per minute
   async getUserByPhone(@Body() getUserByPhoneDto: GetUserByPhoneDto) {
     this.logger.log(`Getting user by phone: ${getUserByPhoneDto.phone}`);
 

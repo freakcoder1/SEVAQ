@@ -9,7 +9,9 @@ import {
   BadRequestException,
   HttpStatus,
 } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Response } from 'express';
+import { SerializeInterceptor } from './common/interceptors/serialize.interceptor';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import * as path from 'path';
@@ -106,18 +108,59 @@ async function bootstrap() {
   );
 
   // Enable CORS with production-safe configuration
-  const corsOrigin =
-    process.env.CORS_ORIGIN ||
-    (process.env.NODE_ENV === 'production' ? false : true);
+  // Read allowed origins from CORS_ORIGINS env var (comma-separated)
+  const corsOriginsEnv =
+    process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:8080';
+  const allowedOrigins = corsOriginsEnv
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
   app.enableCors({
-    origin: corsOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // In development, allow all origins
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+    exposedHeaders: ['X-Total-Count', 'X-Request-Id'],
+    maxAge: 86400, // Cache preflight for 24 hours
   });
+
+  // Global interceptor to strip password fields from all API responses
+  app.useGlobalInterceptors(new SerializeInterceptor());
 
   // Global exception filter for better error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // Swagger API Documentation (only in non-production)
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('SEVAQ API')
+      .setDescription('SEVAQ House Help Service API Documentation')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT ?? 45357;
   await app.listen(port, '0.0.0.0');

@@ -305,12 +305,28 @@ class _AssignmentInProgressScreenState
                     final initialLocation =
                         locationProvider.currentLocationData;
 
+                    // Get providers BEFORE navigation
+                    final authProvider = Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    );
+
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ServiceClarificationScreen(
-                          userId: userId,
-                          initialLocation: initialLocation,
+                        builder: (context) => MultiProvider(
+                          providers: [
+                            ChangeNotifierProvider<AuthProvider>.value(
+                              value: authProvider,
+                            ),
+                            ChangeNotifierProvider<LocationProvider>.value(
+                              value: locationProvider,
+                            ),
+                          ],
+                          child: ServiceClarificationScreen(
+                            userId: userId,
+                            initialLocation: initialLocation,
+                          ),
                         ),
                       ),
                     );

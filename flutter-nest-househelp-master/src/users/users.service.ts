@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   ConflictException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -136,7 +137,7 @@ export class UsersService {
   }
 
   findOne(id: string) {
-    return this.usersRepository.findOneBy({ id });
+    return this.usersRepository.findOneBy({ publicId: id });
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
@@ -147,12 +148,24 @@ export class UsersService {
     return this.usersRepository.findOneBy({ phone });
   }
 
-  update(id: string, updateUserDto: UpdateUserDto) {
-    return this.usersRepository.update(id, updateUserDto);
+  async update(publicId: string, updateUserDto: UpdateUserDto) {
+    // Find user by publicId first
+    const user = await this.findOne(publicId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    // Update using the numeric id
+    return this.usersRepository.update(user.id, updateUserDto);
   }
 
-  async updateFcmToken(id: string, fcmToken: string): Promise<void> {
-    await this.usersRepository.update(id, { fcmToken });
+  async updateFcmToken(publicId: string, fcmToken: string): Promise<void> {
+    // Find user by publicId first
+    const user = await this.findOne(publicId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    // Update using the numeric id
+    await this.usersRepository.update(user.id, { fcmToken });
   }
 
   async remove(id: string) {
