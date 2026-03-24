@@ -365,19 +365,25 @@ export class NotificationsService {
   }
 
   async findAllUserBookings(userPublicId: string): Promise<Booking[]> {
-    // Fetch all bookings and filter by userPublicId to avoid UUID/INT join issues
-    const allBookings = await this.bookingsRepository
+    // First, find the user by their publicId to get the internal ID
+    const user = await this.usersRepository.findOne({
+      where: { publicId: userPublicId },
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    return this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
       .leftJoinAndSelect('booking.service', 'service')
+      .where('booking.userId = :userId', { userId: user.id })
       .orderBy('booking.date', 'ASC')
       .addOrderBy('booking.startTime', 'ASC')
       .getMany();
-
-    // Filter in memory by comparing UUIDs
-    return allBookings.filter(booking => booking.userId === userPublicId);
   }
 
   async findAllBookings(): Promise<Booking[]> {
