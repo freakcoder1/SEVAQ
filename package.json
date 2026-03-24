@@ -14,7 +14,7 @@
   "scripts": {
     "build": "cd flutter-nest-househelp-master && npm install --legacy-peer-deps && npm run build --legacy-peer-deps",
     "start:dev": "cd flutter-nest-househelp-master && npm run start:dev",
-    "start:prod": "cd flutter-nest-househelp-master && node dist/main",
+    "start:prod": "cd flutter-nest-househelp-master && node dist/src/main",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
