@@ -3,8 +3,8 @@
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",
-    "buildCommand": "npm ci && npm run build",
-    "installCommand": "npm ci"
+    "buildCommand": "npm ci --legacy-peer-deps && npm run build",
+    "installCommand": "npm ci --legacy-peer-deps"
   },
   "deploy": {
     "numReplicas": 1,
