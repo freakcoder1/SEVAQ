@@ -4,8 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
+COPY src ./src
 RUN npm install --legacy-peer-deps
-COPY . .
 RUN npm run build
 
 # Production stage
@@ -14,5 +14,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps --omit=dev
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["npm", "run", "start:prod"]
