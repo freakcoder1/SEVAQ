@@ -73,20 +73,32 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         // Support both DATABASE_URL (Railway) and individual DB_* variables
         const databaseUrl = configService.get('DATABASE_URL');
         
-        let host: string;
-        let port: number;
-        let username: string;
-        let password: string;
-        let database: string;
+        let host = '';
+        let port = 5432;
+        let username = '';
+        let password = '';
+        let database = '';
         
         if (databaseUrl) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
-          const url = new URL(databaseUrl);
-          host = url.hostname;
-          port = parseInt(url.port) || 5432;
-          username = url.username;
-          password = url.password;
-          database = url.pathname.replace('/', '');
+          try {
+            const url = new URL(databaseUrl);
+            host = url.hostname;
+            port = parseInt(url.port) || 5432;
+            username = url.username;
+            password = url.password;
+            // Handle both path-based and socket-based URLs
+            let dbPath = url.pathname.replace('/', '');
+            if (dbPath && !dbPath.includes('.')) {
+              database = dbPath;
+            } else if (url.hostname.includes('.railway')) {
+              // Railway sometimes uses socket paths, fall back to DB_NAME env
+              database = configService.get('DB_NAME', 'railway');
+            }
+          } catch (e) {
+            // If URL parsing fails, try to use DB_NAME
+            database = configService.get('DB_NAME', 'railway');
+          }
         } else {
           // Use individual DB_* variables
           host = configService.get('DB_HOST', 'localhost');
