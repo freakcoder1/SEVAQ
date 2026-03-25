@@ -79,8 +79,9 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         let password = '';
         let database = '';
         
-        if (databaseUrl) {
+        if (databaseUrl && !databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1')) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
+          // Only use DATABASE_URL if it's not a local URL
           console.log('🔍 DATABASE_URL detected, parsing...');
           try {
             const url = new URL(databaseUrl);
@@ -104,6 +105,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
             host = configService.get('DB_HOST', 'localhost');
           }
         } else {
+          console.log('🔍 No valid DATABASE_URL found, using individual DB_* variables');
           // Use individual DB_* variables
           host = configService.get('DB_HOST', 'localhost');
           port = configService.get<number>('DB_PORT', 5432);
