@@ -19,7 +19,7 @@ class AppConfig {
 
   /// Production API URL — replace with your actual production domain.
   static const String _productionApiBaseUrl =
-      'https://api.yourdomain.com/api'; // TODO: replace with your real production URL
+      'https://sevaq-production.up.railway.app/api';
 
   /// Development API URL used when running on iOS / web / Android via USB.
   /// Use port 3000 for local backend server
