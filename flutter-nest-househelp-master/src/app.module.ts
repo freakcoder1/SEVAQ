@@ -81,6 +81,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         
         if (databaseUrl) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
+          console.log('🔍 DATABASE_URL detected, parsing...');
           try {
             const url = new URL(databaseUrl);
             host = url.hostname;
@@ -95,9 +96,12 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
               // Railway sometimes uses socket paths, fall back to DB_NAME env
               database = configService.get('DB_NAME', 'railway');
             }
+            console.log('📊 Parsed DB config:', { host, port, username, database: '***', hasPassword: !!password });
           } catch (e) {
+            console.error('❌ Failed to parse DATABASE_URL:', e.message);
             // If URL parsing fails, try to use DB_NAME
             database = configService.get('DB_NAME', 'railway');
+            host = configService.get('DB_HOST', 'localhost');
           }
         } else {
           // Use individual DB_* variables
@@ -115,6 +119,8 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         if (!database) {
           throw new Error('Missing required environment variable: DB_NAME or DATABASE_URL');
         }
+
+        console.log('🔧 Final DB config:', { host, port, username, database: '***', hasPassword: !!password });
 
         const entities = [
           User,
