@@ -176,7 +176,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     SystemStatusModule,
     HealthModule,
     MonitoringDashboardModule,
-    NotificationsModule,
+    // NotificationsModule, // Temporarily disabled for Railway deployment
     HomeModule,
     ServiceProfilesModule,
     SubscriptionsModule,
