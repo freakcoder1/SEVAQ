@@ -32,10 +32,15 @@ export class NotificationsService {
       },
     });
 
-    // Configure Twilio
+    // Configure Twilio (only if credentials are provided)
     const accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
     const authToken = this.configService.get('TWILIO_AUTH_TOKEN');
-    this.twilioClient = new Twilio(accountSid, authToken);
+    if (accountSid && authToken) {
+      this.twilioClient = new Twilio(accountSid, authToken);
+      console.log('Twilio client initialized');
+    } else {
+      console.warn('Twilio credentials not configured, SMS notifications will be skipped');
+    }
 
     // Configure Firebase Admin SDK (optional - only if credentials are provided)
     this.initializeFirebase();
