@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -9,18 +9,13 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class ServiceProfilesService implements OnModuleInit {
+export class ServiceProfilesService {
   constructor(
     @InjectRepository(ServiceProfile)
     private serviceProfileRepository: Repository<ServiceProfile>,
   ) {}
 
-  async onModuleInit() {
-    // Predefine service profiles if they don't exist
-    await this.predefinedProfiles();
-  }
-
-  private getPredefinedProfiles() {
+  getPredefinedProfiles() {
     return [
       // Cooking Profiles
       {
