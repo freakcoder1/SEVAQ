@@ -22,7 +22,8 @@ class AppConfig {
       'https://api.yourdomain.com/api'; // TODO: replace with your real production URL
 
   /// Development API URL used when running on iOS / web / Android via USB.
-  static const String _devLocalhostUrl = 'http://localhost:45357/api';
+  /// Use port 3000 for local backend server
+  static const String _devLocalhostUrl = 'http://localhost:3000/api';
 
   /// Development API URL for Android physical devices over WiFi.
   /// Override at build time: --dart-define=DEV_WIFI_IP=192.168.x.x
@@ -30,7 +31,7 @@ class AppConfig {
     'DEV_WIFI_IP',
     defaultValue: '192.168.1.38',
   );
-  static String get _devWifiUrl => 'http://$_envDevWifiIp:45357/api';
+  static String get _devWifiUrl => 'http://$_envDevWifiIp:3000/api';
 
   /// Flag to use localhost (for USB debugging with ADB reverse).
   /// In release mode this is ignored because the production URL is used.
