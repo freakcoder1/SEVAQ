@@ -79,10 +79,13 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         let password = '';
         let database = '';
         
-        if (databaseUrl && !databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1')) {
+        // Use DATABASE_URL only if it's a Railway URL (contains .railway)
+        // Otherwise fallback to individual DB_* variables (for local dev)
+        const isRailwayUrl = databaseUrl && databaseUrl.includes('.railway');
+        
+        if (isRailwayUrl) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
-          // Only use DATABASE_URL if it's not a local URL
-          console.log('🔍 DATABASE_URL detected, parsing...');
+          console.log('🔍 Railway DATABASE_URL detected, parsing...');
           try {
             const url = new URL(databaseUrl);
             host = url.hostname;
@@ -93,19 +96,19 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
             let dbPath = url.pathname.replace('/', '');
             if (dbPath && !dbPath.includes('.')) {
               database = dbPath;
-            } else if (url.hostname.includes('.railway')) {
-              // Railway sometimes uses socket paths, fall back to DB_NAME env
+            } else {
+              // Fall back to DB_NAME env or default
               database = configService.get('DB_NAME', 'railway');
             }
-            console.log('📊 Parsed DB config:', { host, port, username, database: '***', hasPassword: !!password });
+            console.log('📊 Parsed Railway DB config:', { host, port, username, database: '***', hasPassword: !!password });
           } catch (e) {
             console.error('❌ Failed to parse DATABASE_URL:', e.message);
-            // If URL parsing fails, try to use DB_NAME
+            // If URL parsing fails, use fallback
             database = configService.get('DB_NAME', 'railway');
             host = configService.get('DB_HOST', 'localhost');
           }
-        } else {
-          console.log('🔍 No valid DATABASE_URL found, using individual DB_* variables');
+        } else if (databaseUrl) {
+          console.log('🔍 Non-Railway DATABASE_URL detected, skipping (using DB_* vars)');
           // Use individual DB_* variables
           host = configService.get('DB_HOST', 'localhost');
           port = configService.get<number>('DB_PORT', 5432);
