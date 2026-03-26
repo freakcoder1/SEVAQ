@@ -436,6 +436,7 @@ export class SubscriptionAssignmentScheduler {
         
         const bookingData = {
           serviceId,
+          date: tomorrow.toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
           startTime: this.getStartTimeForTimeWindow(
             subscription.preferredTimeWindow,
             tomorrow,
@@ -492,6 +493,7 @@ export class SubscriptionAssignmentScheduler {
       // Create booking data
       const bookingData = {
         serviceId,
+        date: startDate.toISOString().split('T')[0], // Start date in YYYY-MM-DD format
         startTime: this.getStartTimeForTimeWindow(
           subscription.preferredTimeWindow,
           startDate,

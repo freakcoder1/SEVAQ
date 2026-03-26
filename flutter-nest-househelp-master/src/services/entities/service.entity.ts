@@ -19,7 +19,7 @@ export class Service {
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
 
-  @Column({ length: 100 })
+  @Column({ length: 100, nullable: true })
   name: string;
 
   @Column({ type: 'text', nullable: true })

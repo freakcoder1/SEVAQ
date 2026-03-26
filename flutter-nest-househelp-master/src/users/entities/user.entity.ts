@@ -23,16 +23,16 @@ export class User {
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public-facing UUID identifier
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   password: string;
 
-  @Column()
+  @Column({ nullable: true })
   firstName: string;
 
-  @Column()
+  @Column({ nullable: true })
   lastName: string;
 
   @Column({
@@ -44,7 +44,7 @@ export class User {
   @Column({ nullable: true })
   address: string;
 
-  @Column({ nullable: true, unique: true, length: 20 })
+  @Column({ nullable: true, length: 20 })
   @Index()
   phone: string;
 

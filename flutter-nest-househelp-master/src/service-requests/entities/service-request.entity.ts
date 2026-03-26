@@ -45,12 +45,13 @@ export class ServiceRequest {
   @Column('int', { nullable: true })
   serviceProfileId?: number;
 
-  @Column()
+  @Column({ nullable: true })
   date: Date;
 
   @Column({
     type: 'varchar',
     enum: ['morning', 'afternoon', 'evening', 'early-morning'],
+    nullable: true,
   })
   timeWindow: string;
 
