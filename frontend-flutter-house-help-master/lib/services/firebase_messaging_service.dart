@@ -6,6 +6,7 @@ import 'package:flutter_house_help/providers/booking_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../firebase_options.dart';
 
 class FirebaseMessagingService {
@@ -88,7 +89,7 @@ class FirebaseMessagingService {
 
       // Make API call to register FCM token
       final response = await http.post(
-        Uri.parse('http://localhost:3000/users/register-fcm-token'),
+        Uri.parse('${AppConfig.apiBaseUrl}/users/register-fcm-token'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',

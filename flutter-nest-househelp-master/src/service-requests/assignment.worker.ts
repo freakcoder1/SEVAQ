@@ -89,8 +89,9 @@ export class AssignmentWorker {
       }
 
       // Fallback to default service if no mapping found or invalid (0)
+      // Use ID 2 (Home Cleaning) as default - matches seeded service
       if (!serviceId || serviceId === 0) {
-        serviceId = 1; // Default to service 1 if not specified
+        serviceId = 2; // Default to Home Cleaning (ID: 2) if not specified
         this.logger.log(`Using default service ${serviceId} for assignment (original: ${serviceId})`);
       }
 

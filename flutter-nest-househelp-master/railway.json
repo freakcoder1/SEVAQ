@@ -2,12 +2,19 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "nodeVersion": "22"
+    "nodeVersion": "22",
+    "buildCommand": "npm run build"
   },
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
-    "sleepApplication": false
+    "sleepApplication": false,
+    "deployCommand": "npm run seed"
+  },
+  "env": {
+    "SYNCHRONIZE": "true",
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info"
   }
 }
