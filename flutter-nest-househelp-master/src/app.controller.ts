@@ -29,7 +29,7 @@ export class AppController {
   }
 
   @Post('seed')
-  @UseGuards(AdminGuard)
+  // @UseGuards(AdminGuard) // Removed for Railway deployment - call without auth
   async runSeed() {
     const ds = this.dataSource;
     console.log('🌱 Starting database seeding...');
