@@ -22,11 +22,13 @@ interface LocationAvailabilityDto {
 }
 
 interface WaitlistDto {
-  userId: number;
-  serviceId: number;
-  lat: number;
-  lng: number;
-  estimatedWaitTime: number;
+  userId: string;
+  serviceId: string;
+  latitude: number;
+  longitude: number;
+  requestedAt?: Date;
+  status?: string;
+  estimatedWaitTime?: number;
 }
 
 @Controller('locations')
@@ -113,7 +115,7 @@ export class LocationsController {
     );
 
     // Validate coordinates
-    this.validateCoordinates(waitlistDto.lat, waitlistDto.lng);
+    this.validateCoordinates(waitlistDto.latitude, waitlistDto.longitude);
 
     if (!waitlistDto.serviceId) {
       throw new BadRequestException('Service ID is required');
@@ -124,9 +126,9 @@ export class LocationsController {
     return this.locationService.addToWaitlist(
       userId,
       waitlistDto.serviceId,
-      waitlistDto.lat,
-      waitlistDto.lng,
-      waitlistDto.estimatedWaitTime,
+      waitlistDto.latitude,
+      waitlistDto.longitude,
+      waitlistDto.estimatedWaitTime ?? 0,
     );
   }
 
@@ -141,7 +143,7 @@ export class LocationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('waitlist/status/:userId')
-  async getWaitlistStatus(@Req() req, @Param('userId') userId: number) {
+  async getWaitlistStatus(@Req() req, @Param('userId') userId: string) {
     this.logger.debug(`Getting waitlist status for user: ${userId}`);
 
     // Allow users to only check their own waitlist status

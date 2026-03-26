@@ -250,8 +250,8 @@ export class LocationService {
 
   // Add user to waitlist
   async addToWaitlist(
-    userId: number,
-    serviceId: number,
+    userId: string,
+    serviceId: string,
     lat: number,
     lng: number,
     estimatedWaitTime: number,
@@ -284,7 +284,7 @@ export class LocationService {
   }
 
   // Get waitlist status for user
-  async getWaitlistStatus(userId: number): Promise<Waitlist[]> {
+  async getWaitlistStatus(userId: string): Promise<Waitlist[]> {
     this.logger.debug(`Getting waitlist status for user: ${userId}`);
 
     try {
@@ -307,7 +307,7 @@ export class LocationService {
   }
 
   // Cancel waitlist entry
-  async cancelWaitlist(waitlistId: number): Promise<void> {
+  async cancelWaitlist(waitlistId: string): Promise<void> {
     this.logger.log(`Cancelling waitlist entry: ${waitlistId}`);
 
     try {
@@ -323,7 +323,7 @@ export class LocationService {
   }
 
   // Remove user from waitlist
-  async removeFromWaitlist(userId: number): Promise<void> {
+  async removeFromWaitlist(userId: string): Promise<void> {
     this.logger.log(`Removing user ${userId} from waitlist`);
 
     try {

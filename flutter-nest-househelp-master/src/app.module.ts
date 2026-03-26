@@ -155,7 +155,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
           password: password,
           database: database,
           entities: entities,
-          synchronize: false, // Disable for production - use migrations
+          synchronize: process.env.SYNCHRONIZE === 'true' || false, // Enable via SYNCHRONIZE=true env var for initial setup only
           logging: ['error', 'warn'], // Reduce logging to only errors and warnings
           logger: 'advanced-console', // Use advanced console logger
         };

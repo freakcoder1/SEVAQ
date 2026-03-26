@@ -8,14 +8,14 @@ import {
 
 @Entity()
 export class Waitlist {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'int' })
-  userId: number;
+  @Column({ type: 'uuid' })
+  userId: string;
 
-  @Column({ type: 'int' })
-  serviceId: number;
+  @Column({ type: 'uuid' })
+  serviceId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })
   latitude: number;
