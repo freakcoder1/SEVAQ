@@ -167,7 +167,7 @@ export class LocationService {
     try {
       const workers = await this.workerRepository.find({
         where: { isActive: true },
-        relations: ['user'],
+        relations: ['user', 'services'],
       });
 
       this.logger.debug(`Found ${workers.length} total active workers`);
