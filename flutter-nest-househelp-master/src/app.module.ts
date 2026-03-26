@@ -81,7 +81,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
         
         // Use DATABASE_URL only if it's a Railway URL (contains .railway)
         // Otherwise fallback to individual DB_* variables (for local dev)
-        const isRailwayUrl = databaseUrl && databaseUrl.includes('.railway');
+        const isRailwayUrl = databaseUrl && (databaseUrl.includes('.railway') || databaseUrl.includes('.rlwy.net'));
         
         if (isRailwayUrl) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)

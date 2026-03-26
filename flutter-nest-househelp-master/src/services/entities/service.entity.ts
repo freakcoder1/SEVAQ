@@ -7,9 +7,11 @@ import {
   ManyToMany,
   JoinTable,
   OneToMany,
+  BeforeInsert,
 } from 'typeorm';
 import { Worker } from '../../workers/entities/worker.entity';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
+import { randomUUID } from 'crypto';
 
 @Entity('service')
 export class Service {
@@ -18,6 +20,13 @@ export class Service {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
 
   @Column({ length: 100, nullable: true })
   name: string;

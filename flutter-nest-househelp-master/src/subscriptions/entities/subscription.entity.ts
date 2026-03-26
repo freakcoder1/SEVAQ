@@ -7,10 +7,12 @@ import {
   OneToOne,
   ManyToOne,
   JoinColumn,
+  BeforeInsert,
 } from 'typeorm';
 import { ServiceProfile } from '../../service-profiles/entities/service-profile.entity';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
+import { randomUUID } from 'crypto';
 
 export enum PreferredTimeWindow {
   MORNING = 'MORNING',
@@ -35,6 +37,13 @@ export class Subscription {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string;
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
 
   @Column('uuid')
   userId: string;

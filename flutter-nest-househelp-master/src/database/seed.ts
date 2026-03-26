@@ -4,6 +4,7 @@ import { SeedServiceAreas } from './seeds/seed-service-areas';
 import { SeedGreaterNoidaAreas } from './seeds/seed-greater-noida';
 import { EnhancedWorkerSeeding } from './seeds/enhanced-worker-seeding';
 import { SeedCustomers } from './seeds/seed-customers';
+import { SeedServiceProfiles } from './seeds/seed-service-profiles';
 import { DataSource } from 'typeorm';
 
 async function bootstrap() {
@@ -17,6 +18,10 @@ async function bootstrap() {
 
   const seedGreaterNoida = new SeedGreaterNoidaAreas();
   await seedGreaterNoida.run(dataSource);
+
+  // Seed service profiles before workers
+  const seedServiceProfiles = new SeedServiceProfiles();
+  await seedServiceProfiles.run(dataSource);
 
   // Use enhanced worker seeding instead of basic worker seeding
   const seedWorkers = new EnhancedWorkerSeeding();

@@ -407,6 +407,7 @@ export class EnhancedWorkerSeeding {
       // Create user
       const hashedPassword = await bcrypt.hash(workerData.password, 10);
       const user = userRepository.create({
+        publicId: require('crypto').randomUUID(),
         email: workerData.email,
         password: hashedPassword,
         firstName: workerData.firstName,
@@ -425,6 +426,7 @@ export class EnhancedWorkerSeeding {
 
       // Create worker
       const worker = workerRepository.create({
+        publicId: require('crypto').randomUUID(),
         user: savedUser,
         bio: workerData.bio,
         rating: workerData.rating,
@@ -527,7 +529,10 @@ export class EnhancedWorkerSeeding {
     ];
 
     for (const serviceData of sampleServices) {
-      const service = serviceRepository.create(serviceData);
+      const service = serviceRepository.create({
+        ...serviceData,
+        publicId: require('crypto').randomUUID(),
+      });
       await serviceRepository.save(service);
       this.logger.log(`Created service: ${serviceData.name}`);
     }

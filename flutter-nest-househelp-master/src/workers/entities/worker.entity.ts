@@ -9,12 +9,14 @@ import {
   ManyToOne,
   ManyToMany,
   JoinTable,
+  BeforeInsert,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
 import { Service } from '../../services/entities/service.entity';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
+import { randomUUID } from 'crypto';
 
 @Entity('worker')
 export class Worker {
@@ -23,6 +25,13 @@ export class Worker {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public API ID
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
 
   @Column({ type: 'int', name: 'user_id' })
   userId: number;

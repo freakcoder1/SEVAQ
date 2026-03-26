@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  BeforeInsert,
 } from 'typeorm';
+import { randomUUID } from 'crypto';
 
 export enum ServiceType {
   COOK = 'COOK',
@@ -34,6 +36,13 @@ export class ServiceProfile {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string;
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
 
   @Column({
     type: 'varchar',

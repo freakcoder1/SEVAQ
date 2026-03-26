@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   OneToMany,
   Index,
+  BeforeInsert,
 } from 'typeorm';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
+import { randomUUID } from 'crypto';
 
 export enum UserRole {
   USER = 'user',
@@ -22,6 +24,13 @@ export class User {
 
   @Column('uuid', { unique: true, nullable: false })
   publicId: string; // Public-facing UUID identifier
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
 
   @Column({ nullable: true })
   email: string;

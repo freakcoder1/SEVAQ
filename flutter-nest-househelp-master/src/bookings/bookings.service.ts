@@ -451,6 +451,21 @@ export class BookingsService {
         ? savedBooking[0]
         : savedBooking;
 
+      // DEBUG: Log assignment state after save
+      console.log('🔍 DEBUG: Booking saved, workerId:', bookingToReturn.workerId, ', assignmentState:', bookingToReturn.assignmentState);
+
+      // FIX: Ensure assignmentState is correctly set for bookings with worker assigned
+      // If worker is assigned but assignmentState is not ASSIGNED, update it
+      if (bookingToReturn.workerId && bookingToReturn.assignmentState !== AssignmentState.ASSIGNED) {
+        console.log('🔍 FIX: Updating assignmentState from', bookingToReturn.assignmentState, 'to ASSIGNED');
+        await this.bookingsRepository.update(bookingToReturn.id, {
+          assignmentState: AssignmentState.ASSIGNED,
+          status: BookingStatus.CONFIRMED,
+        });
+        bookingToReturn.assignmentState = AssignmentState.ASSIGNED;
+        bookingToReturn.status = BookingStatus.CONFIRMED;
+      }
+
       // Load the saved booking with relations to ensure all data is returned
       const fullBooking = await this.bookingsRepository.findOne({
         where: { id: bookingToReturn.id },
