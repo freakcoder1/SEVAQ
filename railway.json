@@ -1,16 +1,17 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
+  "root": "flutter-nest-househelp-master",
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",
-    "buildCommand": "npm run build"
+    "buildCommand": "cd flutter-nest-househelp-master && npm run build"
   },
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
     "sleepApplication": false,
-    "deployCommand": "node dist/database/seed-railway.js"
+    "startCommand": "cd flutter-nest-househelp-master && node dist/main"
   },
   "env": {
     "SYNCHRONIZE": "true",
