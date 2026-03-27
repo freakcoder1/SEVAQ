@@ -172,8 +172,13 @@ export class NotificationsService {
     booking: Booking,
     reminderType: '24h' | '2h',
   ): Promise<void> {
-    // FIX: booking.userId is already a UUID (stored as uuid type in booking table)
-    // Use it directly to find the user via their publicId (which is also a UUID)
+    // FIX: booking.userId should be a UUID (stored as uuid type in booking table)
+    // Validate UUID format before querying to handle stale data with numeric userIds
+    if (!booking.userId || booking.userId.length < 36) {
+      console.warn(`Skipping booking ${booking.id} - invalid userId: ${booking.userId}`);
+      return;
+    }
+
     const user = await this.usersRepository.findOne({
       where: { publicId: booking.userId },
     });
