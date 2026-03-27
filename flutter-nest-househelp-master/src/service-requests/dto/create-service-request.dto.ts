@@ -16,7 +16,7 @@ export class CreateServiceRequestDto {
   @IsDateString()
   date: string;
 
-  @IsEnum(['morning', 'afternoon', 'evening', 'early-morning'])
+  @IsString()
   timeWindow: string;
 
   @IsNumber()
