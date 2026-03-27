@@ -22,6 +22,7 @@ export class SeedServices {
 
     const services = [
       {
+        publicId: randomUUID(),
         name: 'Home Cleaning',
         description: 'Complete home cleaning service',
         basePrice: 500,
@@ -43,6 +44,7 @@ export class SeedServices {
         workerCount: 10,
       },
       {
+        publicId: randomUUID(),
         name: 'Deep Cleaning',
         description: 'Thorough deep cleaning for your home',
         basePrice: 1500,
@@ -64,6 +66,7 @@ export class SeedServices {
         workerCount: 5,
       },
       {
+        publicId: randomUUID(),
         name: 'Kitchen Cleaning',
         description: 'Deep cleaning for kitchen appliances and surfaces',
         basePrice: 800,
@@ -85,6 +88,7 @@ export class SeedServices {
         workerCount: 8,
       },
       {
+        publicId: randomUUID(),
         name: 'Bathroom Cleaning',
         description: 'Professional bathroom sanitization',
         basePrice: 600,
@@ -106,6 +110,7 @@ export class SeedServices {
         workerCount: 8,
       },
       {
+        publicId: randomUUID(),
         name: 'Sofa Cleaning',
         description: 'Professional sofa and furniture cleaning',
         basePrice: 700,
@@ -127,6 +132,7 @@ export class SeedServices {
         workerCount: 6,
       },
       {
+        publicId: randomUUID(),
         name: 'Carpet Cleaning',
         description: 'Deep carpet cleaning service',
         basePrice: 900,
@@ -193,10 +199,7 @@ export class SeedServices {
 
     // Create services with publicId
     for (const serviceData of services) {
-      const service = serviceRepository.create({
-        ...serviceData,
-        publicId: randomUUID(),
-      });
+      const service = serviceRepository.create(serviceData);
       await serviceRepository.save(service);
     }
 
