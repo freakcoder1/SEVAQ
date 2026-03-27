@@ -174,7 +174,8 @@ export class NotificationsService {
   ): Promise<void> {
     // FIX: booking.userId should be a UUID (stored as uuid type in booking table)
     // Validate UUID format before querying to handle stale data with numeric userIds
-    if (!booking.userId || booking.userId.length < 36) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!booking.userId || !uuidRegex.test(booking.userId)) {
       console.warn(`Skipping booking ${booking.id} - invalid userId: ${booking.userId}`);
       return;
     }
