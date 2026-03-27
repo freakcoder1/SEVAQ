@@ -10,7 +10,7 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
     "sleepApplication": false,
-    "deployCommand": "npm run seed"
+    "deployCommand": "node dist/database/seed-railway.js"
   },
   "env": {
     "SYNCHRONIZE": "true",
