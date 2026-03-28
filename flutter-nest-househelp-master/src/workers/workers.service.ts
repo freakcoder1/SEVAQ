@@ -76,7 +76,7 @@ export class WorkersService {
       .createQueryBuilder('worker')
       .leftJoinAndSelect('worker.user', 'user')
       .leftJoinAndSelect('worker.services', 'services')
-      .where('services.id = :serviceId', { serviceId: actualServiceId })
+      .where('services.publicId = :serviceId', { serviceId: actualServiceId })
       .getMany();
   }
 
