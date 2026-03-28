@@ -24,6 +24,7 @@ import {
   VerifyIdTokenDto,
   GetUserByPhoneDto,
 } from './dto';
+import { CreateWorkerRegistrationDto } from './dto/create-worker-registration.dto';
 
 @Controller('auth')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -87,6 +88,24 @@ export class AuthController {
     const result = await this.authService.signup(createUserDto);
     console.log('Signup successful for user:', createUserDto.email);
     return result;
+  }
+
+  /**
+   * Worker registration - creates both user account and worker profile
+   * POST /auth/workers/register
+   */
+  @Post('workers/register')
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // Max 3 worker registrations per minute
+  async registerWorker(@Body() createWorkerDto: CreateWorkerRegistrationDto) {
+    this.logger.log(`Worker registration request received: ${createWorkerDto.email}`);
+    try {
+      const result = await this.authService.registerWorker(createWorkerDto);
+      this.logger.log(`Worker registration successful: ${createWorkerDto.email}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Worker registration failed: ${error.message}`);
+      throw error;
+    }
   }
 
   // OTP Login endpoints

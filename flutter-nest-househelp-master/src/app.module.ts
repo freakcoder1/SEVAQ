@@ -30,6 +30,7 @@ import {
 } from '@willsoto/nestjs-prometheus';
 import { DatabaseModule } from './database/database.module';
 import { ServiceProfilesModule } from './service-profiles/service-profiles.module';
+import { AdminModule } from './admin/admin.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
@@ -180,6 +181,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     HomeModule,
     ServiceProfilesModule,
     SubscriptionsModule,
+    AdminModule,
     // DatabaseModule,
   ],
   controllers: [AppController],

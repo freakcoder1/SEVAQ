@@ -108,4 +108,24 @@ export class ServicesService {
     await this.servicesRepository.delete(id);
     return { deleted: true };
   }
+
+  /**
+   * Find a service by its category name (e.g., 'CLEANING', 'COOKING', 'MAID')
+   */
+  async findByCategory(category: string): Promise<Service | null> {
+    // Map frontend category names to database categories
+    const categoryMap: Record<string, string> = {
+      'CLEANING': 'Cleaning',
+      'COOKING': 'Cooking',
+      'MAID': 'Cleaning', // Maid is part of cleaning
+      'HOME_CLEANING': 'Cleaning',
+      'COOK': 'Cooking',
+    };
+
+    const dbCategory = categoryMap[category.toUpperCase()] || category;
+    
+    return this.servicesRepository.findOne({
+      where: { category: dbCategory },
+    });
+  }
 }

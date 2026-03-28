@@ -20,6 +20,36 @@ export class SlotsService {
     return this.slotsRepository.find({ relations: ['worker'] });
   }
 
+  /**
+   * Find all available (unbooked) slots
+   */
+  async findAvailable(): Promise<Slot[]> {
+    return this.slotsRepository.find({
+      where: { isBooked: false },
+      relations: ['worker'],
+      order: { startTime: 'ASC' },
+    });
+  }
+
+  /**
+   * Find available slots for a specific date
+   */
+  async findAvailableByDate(date: Date): Promise<Slot[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return this.slotsRepository.find({
+      where: {
+        startTime: Between(startOfDay, endOfDay),
+        isBooked: false,
+      },
+      relations: ['worker'],
+      order: { startTime: 'ASC' },
+    });
+  }
+
   async findOne(id: number) {
     return this.slotsRepository.findOne({
       where: { id },

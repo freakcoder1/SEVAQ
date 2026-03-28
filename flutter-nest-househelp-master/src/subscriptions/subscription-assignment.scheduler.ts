@@ -27,6 +27,13 @@ const SERVICE_TYPE_TO_NAME: Record<ServiceType, string> = {
   [ServiceType.MAID]: 'Maid Service',
 };
 
+// Map service names to hardcoded service IDs used in workersService.findByService
+const SERVICE_NAME_TO_ID: Record<string, string> = {
+  'Cooking': '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
+  'Home Cleaning': '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b',
+  'Maid Service': '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b',
+};
+
 @Injectable()
 export class SubscriptionAssignmentScheduler {
   private readonly logger = new Logger(SubscriptionAssignmentScheduler.name);
@@ -48,32 +55,31 @@ export class SubscriptionAssignmentScheduler {
   ) {}
 
   /**
-   * Get the correct service ID for booking creation based on the service profile's serviceType
-   * This maps service profiles (COOK, CLEANING, MAID) to actual service IDs
+   * Get the correct service UUID for finding workers
+   * Returns the UUID string that workersService.findByService expects
    */
-  private async getServiceIdByProfile(
-    serviceProfile: ServiceProfile,
-  ): Promise<number> {
+  private getServiceUuidByProfile(serviceProfile: ServiceProfile): string {
     const serviceName = SERVICE_TYPE_TO_NAME[serviceProfile.serviceType];
     if (!serviceName) {
       this.logger.warn(
-        `Unknown service type: ${serviceProfile.serviceType}, using default service ID 1`,
+        `Unknown service type: ${serviceProfile.serviceType}, using default service UUID`,
       );
-      return 1;
+      return '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b'; // Home Cleaning fallback
     }
 
-    const service = await this.serviceRepository.findOne({
-      where: { name: serviceName },
-    });
-
-    if (!service) {
+    const serviceId = SERVICE_NAME_TO_ID[serviceName];
+    if (!serviceId) {
       this.logger.warn(
-        `Service not found for name: ${serviceName}, using default service ID 1`,
+        `Service UUID not found for name: ${serviceName}, using default service UUID`,
       );
-      return 1;
+      return '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b'; // Home Cleaning fallback
     }
 
-    return service.id;
+    this.logger.log(
+      `Mapped service type ${serviceProfile.serviceType} (${serviceName}) to service UUID: ${serviceId}`,
+    );
+    
+    return serviceId;
   }
 
   /**
@@ -176,18 +182,26 @@ export class SubscriptionAssignmentScheduler {
       const nowIST = this.getNowInIST();
 
       // Find subscriptions that need immediate assignment (starting today or earlier)
-      const subscriptionsToAssign =
-        await this.subscriptionRepository.find({
-          where: {
-            status: SubscriptionStatus.ACTIVE,
-            startDate: Between(new Date(0), nowIST), // Start date is today or in the past
-          },
-          relations: ['serviceProfile', 'user'],
-        });
+      const subscriptionsToAssign = await this.subscriptionRepository.find({
+        where: {
+          status: SubscriptionStatus.ACTIVE,
+          startDate: Between(new Date(0), nowIST), // Start date is today or in the past
+        },
+        relations: ['serviceProfile', 'user', 'assignedWorker', 'assignedWorker.user'],
+      });
 
       this.logger.log(
         `Found ${subscriptionsToAssign.length} subscriptions needing immediate assignment (starting today)`,
       );
+
+      // Log subscription details for debugging
+      for (const sub of subscriptionsToAssign) {
+        this.logger.log(
+          `  Sub ${sub.id}: status=${sub.status}, startDate=${sub.startDate}, ` +
+          `assignedWorkerId=${sub.assignedWorkerId}, location=${JSON.stringify(sub.location)}, ` +
+          `user.preferredLat=${sub.user?.preferredLat}, user.preferredLng=${sub.user?.preferredLng}`,
+        );
+      }
 
       // Process each subscription
       for (const subscription of subscriptionsToAssign) {
@@ -347,8 +361,9 @@ export class SubscriptionAssignmentScheduler {
         };
       }
 
-      // Get the service ID from the service profile
-      const serviceId = await this.getServiceIdByProfile(subscription.serviceProfile);
+      // Get the service UUID from the service profile for finding workers
+      const serviceUuid = this.getServiceUuidByProfile(subscription.serviceProfile);
+      const serviceId = serviceUuid; // Pass the UUID string to findByService
 
       // Get user's location from subscription - prioritize subscription location,
       // then user's preferred location, then user's regular location
@@ -556,7 +571,7 @@ export class SubscriptionAssignmentScheduler {
   async directlyAssignWorker(
     booking: Booking,
     location: { lat: number; lng: number },
-    serviceId: number,
+    serviceId: string,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
       this.logger.log(`Starting direct worker assignment for booking ${booking.id}`);
@@ -620,7 +635,7 @@ export class SubscriptionAssignmentScheduler {
    */
   async directlyAssignWorkerWithoutBooking(
     location: { lat: number; lng: number },
-    serviceId: number,
+    serviceId: string,
     subscriptionId: number,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {

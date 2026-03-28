@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { SlotsService } from './slots.service';
 import { DailySlotGenerationScheduler } from './daily-slot-generation.scheduler';
 
@@ -12,6 +12,14 @@ export class SlotsController {
   @Get()
   findAll() {
     return this.slotsService.findAll();
+  }
+
+  @Get('available')
+  async findAvailable(@Query('date') date?: string) {
+    if (date) {
+      return this.slotsService.findAvailableByDate(new Date(date));
+    }
+    return this.slotsService.findAvailable();
   }
 
   @Get('admin/generate-slots/:daysAhead')

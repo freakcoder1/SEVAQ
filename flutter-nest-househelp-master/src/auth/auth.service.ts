@@ -1,9 +1,13 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger, ConflictException, Inject } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { WorkersService } from '../workers/workers.service';
+import { ServicesService } from '../services/services.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { CreateWorkerRegistrationDto } from './dto/create-worker-registration.dto';
+import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +15,8 @@ export class AuthService {
 
   constructor(
     private usersService: UsersService,
+    private workersService: WorkersService,
+    private servicesService: ServicesService,
     private jwtService: JwtService,
   ) {}
 
@@ -64,5 +70,64 @@ export class AuthService {
 
   async updateProfile(userId: string, updateUserDto: UpdateUserDto) {
     return this.usersService.update(userId, updateUserDto);
+  }
+
+  /**
+   * Register a new worker (creates both user account and worker profile)
+   */
+  async registerWorker(dto: CreateWorkerRegistrationDto) {
+    this.logger.log(`Registering new worker: ${dto.email}, phone: ${dto.phone}`);
+
+    // Check if email already exists
+    const existingUser = await this.usersService.findOneByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // Check if phone already exists
+    const existingPhone = await this.usersService.findOneByPhone(dto.phone);
+    if (existingPhone) {
+      throw new ConflictException('Phone number already registered');
+    }
+
+    // Create user first
+    const createUserDto: CreateUserDto = {
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: dto.phone,
+      address: dto.address,
+      role: UserRole.WORKER,
+      latitude: dto.serviceArea?.latitude,
+      longitude: dto.serviceArea?.longitude,
+    };
+
+    const user = await this.usersService.create(createUserDto);
+    this.logger.log(`User created with ID: ${user.id}`);
+
+    // Map service categories to service IDs
+    const serviceIds: number[] = [];
+    if (dto.serviceCategories && dto.serviceCategories.length > 0) {
+      for (const category of dto.serviceCategories) {
+        const service = await this.servicesService.findByCategory(category);
+        if (service) {
+          serviceIds.push(service.id);
+        }
+      }
+    }
+
+    // Create worker profile
+    const worker = await this.workersService.create(
+      user.id.toString(),
+      dto.bio || '',
+      serviceIds,
+      dto.serviceArea?.latitude || 0,
+      dto.serviceArea?.longitude || 0,
+    );
+    this.logger.log(`Worker profile created with ID: ${worker.id}`);
+
+    // Return login response with worker info
+    return this.login(user);
   }
 }

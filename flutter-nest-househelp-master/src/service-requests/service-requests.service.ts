@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -8,6 +8,7 @@ import { ServiceRequest } from './entities/service-request.entity';
 import { AssignmentWorker } from './assignment.worker';
 import { Worker } from '../workers/entities/worker.entity';
 import { User } from '../users/entities/user.entity';
+import { Service } from '../services/entities/service.entity';
 
 @Injectable()
 export class ServiceRequestsService {
@@ -22,6 +23,8 @@ export class ServiceRequestsService {
     private workersRepository: Repository<Worker>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Service)
+    private servicesRepository: Repository<Service>,
   ) {}
 
   async create(
@@ -57,6 +60,23 @@ export class ServiceRequestsService {
       if (isNaN(numericUserId)) {
         throw new BadRequestException('Invalid user ID format');
       }
+    }
+
+    // Validate serviceId if provided - check it exists in the database
+    if (createDto.serviceId) {
+      const service = await this.servicesRepository.findOne({
+        where: { id: createDto.serviceId },
+      });
+      if (!service) {
+        // Get available services to help the client
+        const availableServices = await this.servicesRepository.find({ take: 10 });
+        const serviceIds = availableServices.map(s => `${s.id} (${s.name})`).join(', ');
+        this.logger.warn(`Service ID ${createDto.serviceId} not found. Available services: ${serviceIds}`);
+        throw new BadRequestException(
+          `Service with ID ${createDto.serviceId} not found. Available service IDs: ${serviceIds}`
+        );
+      }
+      this.logger.debug(`Validated serviceId ${createDto.serviceId} -> ${service.name}`);
     }
 
     const serviceRequestData: any = {
