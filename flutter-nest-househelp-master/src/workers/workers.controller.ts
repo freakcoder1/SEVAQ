@@ -54,7 +54,9 @@ export class WorkersController {
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req) {
     try {
+      console.log('[WorkersController] getMyProfile - user:', req.user);
       const worker = await this.workersService.findByUserId(req.user.userId);
+      console.log('[WorkersController] findByUserId result:', worker ? 'found' : 'not found');
       if (!worker) {
         // Return a 200 response with null worker instead of error
         // This indicates the user hasn't created a worker profile yet
@@ -67,6 +69,8 @@ export class WorkersController {
       return worker;
     } catch (error) {
       this.logger.error(`Error fetching worker profile: ${error.message}`, error.stack);
+      console.error('[WorkersController] getMyProfile error:', error);
+      // Return 200 with error info for debugging
       return { 
         message: 'Error fetching worker profile', 
         error: error.message, 
