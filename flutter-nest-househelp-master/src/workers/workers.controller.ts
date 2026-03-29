@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Post, Body, Request, UseGuards, Patch, Logger } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, Request, UseGuards, Patch, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { WorkersService } from './workers.service';
 import { CreateWorkerDto } from './dto/create-worker.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -123,11 +123,19 @@ export class WorkersController {
   @Post('bookings/:id/accept')
   @UseGuards(JwtAuthGuard)
   async acceptBooking(@Request() req, @Param('id') id: string) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      throw new Error('Worker profile not found');
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      }
+      return await this.workersService.acceptBooking(id, worker.id);
+    } catch (error) {
+      this.logger.error(`Error accepting booking ${id}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message);
     }
-    return this.workersService.acceptBooking(id, worker.id);
   }
 
   /**
@@ -141,11 +149,19 @@ export class WorkersController {
     @Param('id') id: string,
     @Body('reason') reason?: string,
   ) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      throw new Error('Worker profile not found');
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      }
+      return await this.workersService.rejectBooking(id, worker.id, reason);
+    } catch (error) {
+      this.logger.error(`Error rejecting booking ${id}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message);
     }
-    return this.workersService.rejectBooking(id, worker.id, reason);
   }
 
   /**
@@ -155,11 +171,19 @@ export class WorkersController {
   @Post('bookings/:id/start')
   @UseGuards(JwtAuthGuard)
   async startBooking(@Request() req, @Param('id') id: string) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      throw new Error('Worker profile not found');
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      }
+      return await this.workersService.startBooking(id, worker.id);
+    } catch (error) {
+      this.logger.error(`Error starting booking ${id}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message);
     }
-    return this.workersService.startBooking(id, worker.id);
   }
 
   /**
@@ -169,11 +193,19 @@ export class WorkersController {
   @Post('bookings/:id/complete')
   @UseGuards(JwtAuthGuard)
   async completeBooking(@Request() req, @Param('id') id: string) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      throw new Error('Worker profile not found');
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      }
+      return await this.workersService.completeBooking(id, worker.id);
+    } catch (error) {
+      this.logger.error(`Error completing booking ${id}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message);
     }
-    return this.workersService.completeBooking(id, worker.id);
   }
 
   /**
@@ -183,11 +215,19 @@ export class WorkersController {
   @Patch('me/availability')
   @UseGuards(JwtAuthGuard)
   async updateMyAvailability(@Request() req, @Body('isAvailable') isAvailable: boolean) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      throw new Error('Worker profile not found');
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      }
+      return await this.workersService.updateWorkerAvailability(worker.id, isAvailable);
+    } catch (error) {
+      this.logger.error(`Error updating availability: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message);
     }
-    return this.workersService.updateWorkerAvailability(worker.id, isAvailable);
   }
 
   /**

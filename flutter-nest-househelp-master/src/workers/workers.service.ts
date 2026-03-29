@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Worker } from './entities/worker.entity';
@@ -105,12 +105,12 @@ export class WorkersService {
   async updateWorkerAvailability(id: number, isAvailable: boolean) {
     const worker = await this.workersRepository.findOne({ where: { id } });
     if (!worker) {
-      throw new Error('Worker not found');
+      throw new NotFoundException('Worker not found');
     }
 
     // Validate location data before allowing worker to be marked as available
     if (isAvailable && (!worker.latitude || !worker.longitude)) {
-      throw new Error('Cannot mark worker as available without location data');
+      throw new BadRequestException('Cannot mark worker as available without location data');
     }
 
     await this.workersRepository.update(id, { isAvailable });
@@ -270,13 +270,13 @@ export class WorkersService {
   async acceptBooking(bookingId: string, workerId: number): Promise<Booking> {
     const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
     if (!booking) {
-      throw new Error('Booking not found');
+      throw new NotFoundException('Booking not found');
     }
     if (booking.workerId !== workerId) {
-      throw new Error('Booking is not assigned to this worker');
+      throw new BadRequestException('Booking is not assigned to this worker');
     }
     if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
-      throw new Error('Booking cannot be accepted in current status');
+      throw new BadRequestException('Booking cannot be accepted in current status');
     }
 
     booking.status = BookingStatus.CONFIRMED;
@@ -289,13 +289,13 @@ export class WorkersService {
   async rejectBooking(bookingId: string, workerId: number, reason?: string): Promise<Booking> {
     const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
     if (!booking) {
-      throw new Error('Booking not found');
+      throw new NotFoundException('Booking not found');
     }
     if (booking.workerId !== workerId) {
-      throw new Error('Booking is not assigned to this worker');
+      throw new BadRequestException('Booking is not assigned to this worker');
     }
     if (booking.status !== BookingStatus.PENDING) {
-      throw new Error('Booking cannot be rejected in current status');
+      throw new BadRequestException('Booking cannot be rejected in current status');
     }
 
     // For reject, just mark as cancelled but keep the workerId
@@ -310,13 +310,13 @@ export class WorkersService {
   async startBooking(bookingId: string, workerId: number): Promise<Booking> {
     const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
     if (!booking) {
-      throw new Error('Booking not found');
+      throw new NotFoundException('Booking not found');
     }
     if (booking.workerId !== workerId) {
-      throw new Error('Booking is not assigned to this worker');
+      throw new BadRequestException('Booking is not assigned to this worker');
     }
     if (booking.status !== BookingStatus.CONFIRMED) {
-      throw new Error('Booking must be confirmed before starting');
+      throw new BadRequestException('Booking must be confirmed before starting');
     }
 
     booking.status = BookingStatus.IN_PROGRESS;
@@ -329,13 +329,13 @@ export class WorkersService {
   async completeBooking(bookingId: string, workerId: number): Promise<Booking> {
     const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
     if (!booking) {
-      throw new Error('Booking not found');
+      throw new NotFoundException('Booking not found');
     }
     if (booking.workerId !== workerId) {
-      throw new Error('Booking is not assigned to this worker');
+      throw new BadRequestException('Booking is not assigned to this worker');
     }
     if (booking.status !== BookingStatus.IN_PROGRESS) {
-      throw new Error('Booking must be in progress to complete');
+      throw new BadRequestException('Booking must be in progress to complete');
     }
 
     booking.status = BookingStatus.COMPLETED;
