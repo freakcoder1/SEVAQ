@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Worker } from './entities/worker.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { Service } from '../services/entities/service.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class WorkersService {
@@ -12,6 +13,8 @@ export class WorkersService {
     private workersRepository: Repository<Worker>,
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async findAll() {
@@ -122,10 +125,22 @@ export class WorkersService {
    * Get worker profile by user ID (from JWT token)
    */
   async findByUserId(userId: string): Promise<Worker | null> {
-    // Try to find by publicId first (UUID format)
+    // Try to find by publicId first (UUID format) - this is the user's publicId from JWT
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
     
     if (isUUID) {
+      // First find the user by their publicId, then find the worker
+      const user = await this.usersRepository.findOne({
+        where: { publicId: userId },
+      });
+      if (user) {
+        return this.workersRepository.findOne({
+          where: { userId: user.id },
+          relations: ['user', 'services'],
+        });
+      }
+      
+      // Also try finding worker directly by publicId (for backward compatibility)
       return this.workersRepository.findOne({
         where: { publicId: userId },
         relations: ['user', 'services'],
