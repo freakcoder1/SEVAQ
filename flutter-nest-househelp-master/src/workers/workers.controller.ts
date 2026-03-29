@@ -32,16 +32,6 @@ export class WorkersController {
     );
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.workersService.findOne(id);
-  }
-
-  @Get('service/:serviceId')
-  async findByService(@Param('serviceId') serviceId: string) {
-    return this.workersService.findByService(serviceId);
-  }
-
   // ============================================
   // NEW: Worker-specific endpoints for Worker App
   // ============================================
@@ -87,6 +77,15 @@ export class WorkersController {
         worker: null 
       };
     }
+  }
+
+  /**
+   * Get worker by numeric ID
+   * GET /workers/:id
+   */
+  @Get(':id')
+  findOne(@Param('id') id: number) {
+    return this.workersService.findOne(id);
   }
 
   /**
