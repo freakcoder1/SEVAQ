@@ -1,10 +1,12 @@
-import { Controller, Get, Param, Query, Post, Body, Request, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, Request, UseGuards, Patch, Logger } from '@nestjs/common';
 import { WorkersService } from './workers.service';
 import { CreateWorkerDto } from './dto/create-worker.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('workers')
 export class WorkersController {
+  private readonly logger = new Logger(WorkersController.name);
+  
   constructor(private readonly workersService: WorkersService) {}
 
   @Get()
@@ -51,11 +53,16 @@ export class WorkersController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req) {
-    const worker = await this.workersService.findByUserId(req.user.userId);
-    if (!worker) {
-      return { message: 'Worker profile not found', worker: null };
+    try {
+      const worker = await this.workersService.findByUserId(req.user.userId);
+      if (!worker) {
+        return { message: 'Worker profile not found', worker: null };
+      }
+      return worker;
+    } catch (error) {
+      this.logger.error(`Error fetching worker profile: ${error.message}`, error.stack);
+      return { message: 'Error fetching worker profile', error: error.message, worker: null };
     }
-    return worker;
   }
 
   /**
