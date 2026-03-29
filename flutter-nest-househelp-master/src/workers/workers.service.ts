@@ -125,38 +125,44 @@ export class WorkersService {
    * Get worker profile by user ID (from JWT token)
    */
   async findByUserId(userId: string): Promise<Worker | null> {
-    // Try to find by publicId first (UUID format) - this is the user's publicId from JWT
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    
-    if (isUUID) {
-      // First find the user by their publicId, then find the worker
-      const user = await this.usersRepository.findOne({
-        where: { publicId: userId },
-      });
-      if (user) {
+    try {
+      // Try to find by publicId first (UUID format) - this is the user's publicId from JWT
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      
+      if (isUUID) {
+        // First find the user by their publicId, then find the worker
+        const user = await this.usersRepository.findOne({
+          where: { publicId: userId },
+        });
+        if (user) {
+          const worker = await this.workersRepository.findOne({
+            where: { userId: user.id },
+            relations: ['user', 'services'],
+          });
+          if (worker) return worker;
+        }
+        
+        // Also try finding worker directly by publicId (for backward compatibility)
         return this.workersRepository.findOne({
-          where: { userId: user.id },
+          where: { publicId: userId },
           relations: ['user', 'services'],
         });
       }
       
-      // Also try finding worker directly by publicId (for backward compatibility)
-      return this.workersRepository.findOne({
-        where: { publicId: userId },
-        relations: ['user', 'services'],
-      });
+      // Fall back to finding by user.id (numeric)
+      const userIdNum = parseInt(userId, 10);
+      if (!isNaN(userIdNum)) {
+        return this.workersRepository.findOne({
+          where: { userId: userIdNum },
+          relations: ['user', 'services'],
+        });
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error in findByUserId:', error);
+      return null;
     }
-    
-    // Fall back to finding by user.id (numeric)
-    const userIdNum = parseInt(userId, 10);
-    if (!isNaN(userIdNum)) {
-      return this.workersRepository.findOne({
-        where: { userId: userIdNum },
-        relations: ['user', 'services'],
-      });
-    }
-    
-    return null;
   }
 
   /**
