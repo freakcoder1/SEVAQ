@@ -126,6 +126,12 @@ export class WorkersService {
    */
   async findByUserId(userId: string): Promise<Worker | null> {
     try {
+      // DEFENSIVE: Handle null/undefined/empty userId to prevent NaN errors
+      if (!userId || typeof userId !== 'string' || userId === 'null' || userId === 'undefined') {
+        console.warn('findByUserId called with invalid userId:', userId);
+        return null;
+      }
+
       // Try to find by publicId first (UUID format) - this is the user's publicId from JWT
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       
