@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../models/service.dart';
+import '../models/booking.dart';
 import '../models/category_availability.dart';
 import '../models/worker.dart';
 import '../models/user.dart';
@@ -21,6 +22,8 @@ import '../widgets/trust_first_suggestions.dart';
 import '../widgets/support_signal.dart';
 import '../widgets/location_picker_dialog.dart';
 import '../widgets/pre_service_reminder_banner.dart';
+import '../widgets/booking_status_timeline.dart';
+import '../widgets/compact_booking_status_indicator.dart';
 import '../widgets/subscription_reminder_banner.dart';
 import '../providers/booking_provider.dart';
 import 'service_details_screen.dart';
@@ -471,6 +474,13 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
             TrustFirstHeader(
               location: _locationText,
               systemMessage: _systemMessage,
+            ),
+
+            SizedBox(height: 16),
+
+            // Compact booking status indicator - shows active booking progress
+            CompactBookingStatusIndicator(
+              currentState: BookingAssignmentState.confirmed,
             ),
 
             SizedBox(height: 16),

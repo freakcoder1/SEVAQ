@@ -22,6 +22,8 @@ import 'screens/service_details_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/location_first_splash_screen.dart';
+import 'screens/admin/admin_login_screen.dart';
+import 'screens/admin/admin_main_screen.dart';
 import 'services/firebase_messaging_service.dart';
 import 'services/navigation_service.dart';
 
@@ -49,7 +51,15 @@ class SevaqApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) {
+            final authProvider = AuthProvider();
+            // Set static instance so screens can access AuthProvider.instance directly
+            AuthProvider.instance = authProvider;
+            debugPrint('main.dart: AuthProvider static instance set');
+            return authProvider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
@@ -90,6 +100,9 @@ class SevaqAppMaterial extends StatelessWidget {
         '/splash': (_) => const SplashScreen(),
         '/login': (_) => LoginScreen(),
         '/location-setup': (_) => LocationFirstSplashScreen(),
+        // Admin Routes
+        '/admin/login': (_) => const AdminLoginScreen(),
+        '/admin/home': (_) => const AdminMainScreen(),
       },
     );
   }

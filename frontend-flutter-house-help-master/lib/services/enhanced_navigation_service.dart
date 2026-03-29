@@ -151,14 +151,22 @@ class EnhancedNavigationService {
       amount: amount,
     );
 
+    // Get AuthProvider from context before navigation
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     await navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (context) => ProfessionalAssignedScreen(
-          worker: worker,
-          service: service,
-          startTime: startTime,
-          endTime: endTime,
-          amount: amount,
+        builder: (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+          ],
+          child: ProfessionalAssignedScreen(
+            worker: worker,
+            service: service,
+            startTime: startTime,
+            endTime: endTime,
+            amount: amount,
+          ),
         ),
         settings: RouteSettings(name: '/professional-assigned'),
       ),

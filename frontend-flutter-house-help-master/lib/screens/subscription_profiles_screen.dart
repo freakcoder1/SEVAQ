@@ -55,26 +55,60 @@ class _SubscriptionProfilesScreenState
         .getServiceProfiles(widget.serviceType)
         .then((response) {
           try {
-            if (response != null && response is List) {
-              List<ServiceProfile> profiles = response
-                  .map((json) => ServiceProfile.fromJson(json))
-                  .where((profile) => profile.isActive)
-                  .toList();
+            print('🔍 DEBUG: Raw response: $response');
+            print('🔍 DEBUG: Response type: ${response.runtimeType}');
 
-              setState(() {
-                _profiles = profiles;
-                if (profiles.isNotEmpty) {
-                  // Default to first profile or standard plan if available
-                  _selectedProfile = profiles.firstWhere(
-                    (p) => p.publicId.toLowerCase().contains('standard'),
-                    orElse: () => profiles.first,
-                  );
-                }
-                _isLoading = false;
-              });
-            } else {
-              throw Exception('Invalid response format');
+            // Handle both List response and Map with 'data' key
+            List items = [];
+
+            if (response is List) {
+              items = response;
+              print('🔍 DEBUG: Response is a List with ${items.length} items');
+            } else if (response is Map) {
+              print('🔍 DEBUG: Response is a Map with keys: ${response.keys}');
+              if (response.containsKey('data') && response['data'] is List) {
+                items = response['data'] as List;
+                print(
+                  '🔍 DEBUG: Extracted data list with ${items.length} items',
+                );
+              }
             }
+
+            if (items.isEmpty) {
+              throw Exception('No service profiles found');
+            }
+
+            // More robust parsing with individual try-catch per item
+            List<ServiceProfile> profiles = [];
+            for (var i = 0; i < items.length; i++) {
+              try {
+                print('🔍 DEBUG: Parsing item $i: ${items[i]}');
+                final profile = ServiceProfile.fromJson(
+                  items[i] as Map<String, dynamic>,
+                );
+                print(
+                  '🔍 DEBUG: Parsed profile: ${profile.profileName}, isActive: ${profile.isActive}',
+                );
+                if (profile.isActive) {
+                  profiles.add(profile);
+                }
+              } catch (e, stack) {
+                print('🔍 DEBUG: Error parsing profile at index $i: $e');
+                print('🔍 DEBUG: Stack: $stack');
+              }
+            }
+
+            setState(() {
+              _profiles = profiles;
+              if (profiles.isNotEmpty) {
+                // Default to first profile or standard plan if available
+                _selectedProfile = profiles.firstWhere(
+                  (p) => p.publicId.toLowerCase().contains('standard'),
+                  orElse: () => profiles.first,
+                );
+              }
+              _isLoading = false;
+            });
           } catch (e) {
             setState(() {
               _errorMessage = 'Failed to load service profiles';

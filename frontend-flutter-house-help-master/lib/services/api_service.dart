@@ -447,10 +447,17 @@ extension ServiceProfileApi on ApiService {
     }
     debugPrint('🔍 DEBUG: Mapping service type $serviceType to $mappedType');
     final response = await get('service-profiles?serviceType=$mappedType');
-    debugPrint('🔍 DEBUG: Service profiles response: $response');
+    debugPrint('🔍 DEBUG: Service profiles response: ${response.toString()}');
+    debugPrint('🔍 DEBUG: Response type: ${response.runtimeType}');
     // Extract data from backend response format { success: true, data: [] }
-    if (response is Map && response.containsKey('data')) {
-      return response['data'];
+    if (response is Map) {
+      debugPrint('🔍 DEBUG: Response keys: ${response.keys.toList()}');
+      if (response.containsKey('data')) {
+        debugPrint(
+          '🔍 DEBUG: Data key found, value type: ${response['data'].runtimeType}',
+        );
+        return response['data'];
+      }
     }
     return response;
   }
@@ -583,5 +590,227 @@ extension SubscriptionApi on ApiService {
     return await patch('subscriptions/$subscriptionId/status', {
       'status': 'CANCELLED',
     });
+  }
+}
+
+// Worker API methods for Worker App
+extension WorkerApi on ApiService {
+  /**
+   * Get current worker's profile (from JWT token)
+   * GET /workers/me
+   */
+  Future<dynamic> getMyWorkerProfile() async {
+    return await get('workers/me');
+  }
+
+  /**
+   * Get current worker's bookings
+   * GET /workers/me/bookings
+   */
+  Future<dynamic> getMyWorkerBookings({String? status}) async {
+    if (status != null && status.isNotEmpty) {
+      return await get('workers/me/bookings?status=$status');
+    }
+    return await get('workers/me/bookings');
+  }
+
+  /**
+   * Get current worker's earnings summary
+   * GET /workers/me/earnings
+   */
+  Future<dynamic> getMyWorkerEarnings() async {
+    return await get('workers/me/earnings');
+  }
+
+  /**
+   * Update worker availability
+   * PATCH /workers/me/availability
+   */
+  Future<dynamic> updateMyWorkerAvailability(bool isAvailable) async {
+    return await patch('workers/me/availability', {'isAvailable': isAvailable});
+  }
+
+  /**
+   * Accept a booking
+   * POST /workers/bookings/:id/accept
+   */
+  Future<dynamic> acceptWorkerBooking(String bookingId) async {
+    return await post('workers/bookings/$bookingId/accept', {});
+  }
+
+  /**
+   * Reject a booking
+   * POST /workers/bookings/:id/reject
+   */
+  Future<dynamic> rejectWorkerBooking(
+    String bookingId, {
+    String? reason,
+  }) async {
+    return await post('workers/bookings/$bookingId/reject', {
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  /**
+   * Start a job (mark as in progress)
+   * POST /workers/bookings/:id/start
+   */
+  Future<dynamic> startWorkerBooking(String bookingId) async {
+    return await post('workers/bookings/$bookingId/start', {});
+  }
+
+  /**
+   * Complete a job
+   * POST /workers/bookings/:id/complete
+   */
+  Future<dynamic> completeWorkerBooking(String bookingId) async {
+    return await post('workers/bookings/$bookingId/complete', {});
+  }
+}
+
+// Admin API methods for Admin Dashboard
+extension AdminApi on ApiService {
+  /**
+   * Get dashboard statistics
+   * GET /admin/dashboard
+   */
+  Future<dynamic> getAdminDashboard() async {
+    return await get('admin/dashboard');
+  }
+
+  /**
+   * Get all workers with filters
+   * GET /admin/workers
+   */
+  Future<dynamic> getAdminWorkers({
+    bool? isAvailable,
+    double? minRating,
+    String? serviceId,
+  }) async {
+    final queryParams = <String>[];
+    if (isAvailable != null) queryParams.add('isAvailable=$isAvailable');
+    if (minRating != null) queryParams.add('minRating=$minRating');
+    if (serviceId != null) queryParams.add('serviceId=$serviceId');
+
+    final query = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return await get('admin/workers$query');
+  }
+
+  /**
+   * Get worker by ID
+   * GET /admin/workers/:id
+   */
+  Future<dynamic> getAdminWorkerById(int workerId) async {
+    return await get('admin/workers/$workerId');
+  }
+
+  /**
+   * Update worker details
+   * PUT /admin/workers/:id
+   */
+  Future<dynamic> updateAdminWorker(
+    int workerId,
+    Map<String, dynamic> updates,
+  ) async {
+    return await post('admin/workers/$workerId', updates);
+  }
+
+  /**
+   * Toggle worker availability
+   * PATCH /admin/workers/:id/availability
+   */
+  Future<dynamic> toggleAdminWorkerAvailability(
+    int workerId,
+    bool isAvailable,
+  ) async {
+    return await patch('admin/workers/$workerId/availability', {
+      'isAvailable': isAvailable,
+    });
+  }
+
+  /**
+   * Get all bookings with filters
+   * GET /admin/bookings
+   */
+  Future<dynamic> getAdminBookings({
+    String? status,
+    String? startDate,
+    String? endDate,
+    int? workerId,
+    String? userId,
+  }) async {
+    final queryParams = <String>[];
+    if (status != null) queryParams.add('status=$status');
+    if (startDate != null) queryParams.add('startDate=$startDate');
+    if (endDate != null) queryParams.add('endDate=$endDate');
+    if (workerId != null) queryParams.add('workerId=$workerId');
+    if (userId != null) queryParams.add('userId=$userId');
+
+    final query = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    return await get('admin/bookings$query');
+  }
+
+  /**
+   * Get booking by ID
+   * GET /admin/bookings/:id
+   */
+  Future<dynamic> getAdminBookingById(String bookingId) async {
+    return await get('admin/bookings/$bookingId');
+  }
+
+  /**
+   * Update booking status
+   * PATCH /admin/bookings/:id/status
+   */
+  Future<dynamic> updateAdminBookingStatus(
+    String bookingId,
+    String status,
+  ) async {
+    return await patch('admin/bookings/$bookingId/status', {'status': status});
+  }
+
+  /**
+   * Cancel a booking
+   * POST /admin/bookings/:id/cancel
+   */
+  Future<dynamic> cancelAdminBooking(String bookingId, {String? reason}) async {
+    return await post('admin/bookings/$bookingId/cancel', {
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  /**
+   * Get revenue analytics
+   * GET /admin/analytics/revenue
+   */
+  Future<dynamic> getAdminRevenueAnalytics({String? period}) async {
+    if (period != null) {
+      return await get('admin/analytics/revenue?period=$period');
+    }
+    return await get('admin/analytics/revenue');
+  }
+
+  /**
+   * Get booking analytics
+   * GET /admin/analytics/bookings
+   */
+  Future<dynamic> getAdminBookingAnalytics() async {
+    return await get('admin/analytics/bookings');
+  }
+
+  /**
+   * Get all users
+   * GET /admin/users
+   */
+  Future<dynamic> getAdminUsers() async {
+    return await get('admin/users');
+  }
+
+  /**
+   * Get user by ID
+   * GET /admin/users/:id
+   */
+  Future<dynamic> getAdminUserById(String userId) async {
+    return await get('admin/users/$userId');
   }
 }

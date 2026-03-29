@@ -6,37 +6,23 @@ import '../models/worker.dart';
 
 class ServiceMapper {
   // Backend numeric service IDs from the database
-  static const int homeCleaningId = 1;
-  static const int cookingId = 3;
-  static const int driverId = 5;
-  static const int errandsId = 6;
-  static const int laundryId = 7;
-  static const int babysittingId = 8;
-  static const int gardeningId = 9;
-  static const int seniorCareId = 10;
-  static const int shoppingId = 12;
+  // Current Railway database IDs: 2, 3, 4, 5, 12
+  static const int homeCleaningId = 2; // ID 2 = Home Cleaning
+  static const int deepCleaningId = 3; // ID 3 = Deep Cleaning
+  static const int cookingId = 4; // ID 4 = Cooking
+  static const int mealPreparationId = 5; // ID 5 = Meal Preparation
+  static const int healthyMealsId = 12; // ID 12 = Healthy Meals
 
   /// Map frontend service option ID to backend service ID
   static String mapToFrontendId(int backendId) {
     switch (backendId) {
       case homeCleaningId:
+      case deepCleaningId:
         return 'cleaning';
       case cookingId:
+      case mealPreparationId:
+      case healthyMealsId:
         return 'cooking';
-      case driverId:
-        return 'driver';
-      case errandsId:
-        return 'errands';
-      case laundryId:
-        return 'laundry';
-      case babysittingId:
-        return 'babysitting';
-      case gardeningId:
-        return 'gardening';
-      case seniorCareId:
-        return 'senior_care';
-      case shoppingId:
-        return 'shopping';
       default:
         return 'cleaning'; // Default fallback
     }
@@ -46,28 +32,24 @@ class ServiceMapper {
   static List<int> mapToBackendIds(String frontendId) {
     switch (frontendId) {
       case 'maid':
-        // Maid service can use any cleaning or cooking service
-        return [homeCleaningId, cookingId];
       case 'cleaning':
+        // Use ID 2 (Home Cleaning) which exists in database
         return [homeCleaningId];
       case 'cooking':
+        // Use ID 4 (Cooking) which exists in database
         return [cookingId];
-      case 'driver':
-        return [driverId];
-      case 'errands':
-        return [errandsId];
-      case 'laundry':
-        return [laundryId];
-      case 'babysitting':
-        return [babysittingId];
-      case 'gardening':
-        return [gardeningId];
-      case 'senior_care':
-        return [seniorCareId];
-      case 'shopping':
-        return [shoppingId];
+      case 'deep_cleaning':
+        // Use ID 3 (Deep Cleaning) which exists in database
+        return [deepCleaningId];
+      case 'meal_prep':
+        // Use ID 5 (Meal Preparation) which exists in database
+        return [mealPreparationId];
+      case 'healthy_meals':
+        // Use ID 12 (Healthy Meals) which exists in database
+        return [healthyMealsId];
       default:
-        return [homeCleaningId, cookingId];
+        // Default to home cleaning (ID 2) as fallback
+        return [homeCleaningId];
     }
   }
 

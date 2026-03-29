@@ -36,6 +36,46 @@ class AuthProvider with ChangeNotifier {
   // This is set by main.dart before providers are created
   static SharedPreferences? prefsInstance;
 
+  // Static instance for direct access (permanent fix for provider scope issues)
+  // This allows screens to access AuthProvider without needing Provider.of(context)
+  static AuthProvider? _instance;
+
+  /// Set the static instance from main.dart - public setter
+  static set instance(AuthProvider provider) {
+    _instance = provider;
+    debugPrint('AuthProvider.instance: Static instance set from main.dart');
+  }
+
+  static AuthProvider get instance {
+    if (_instance == null) {
+      debugPrint(
+        'AuthProvider.instance: Instance not set from main.dart, checking static cache',
+      );
+      // If instance not set, check if we have cached auth state
+      // This handles the case where screens access AuthProvider before it's fully initialized
+      if (_cachedUserId != null || _cachedToken != null) {
+        // We have cached auth data, create instance that will restore it
+        _instance = AuthProvider._internal();
+        debugPrint(
+          'AuthProvider.instance: Created instance with cached auth state',
+        );
+      } else {
+        debugPrint(
+          'AuthProvider.instance: No cached auth, creating empty instance',
+        );
+        _instance = AuthProvider._internal();
+      }
+    }
+    return _instance!;
+  }
+
+  // Private named constructor for static instance
+  AuthProvider._internal() : super() {
+    debugPrint('AuthProvider: _internal constructor called');
+    // Restore auth state synchronously like the main constructor
+    _restoreAuthStateSync();
+  }
+
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;

@@ -35,7 +35,12 @@ class AppConfig {
 
   /// Flag to use localhost (for USB debugging with ADB reverse).
   /// In release mode this is ignored because the production URL is used.
-  static const bool useLocalhostForUSB = true;
+  /// Set to FALSE to use PRODUCTION URL for testing on physical device.
+  static const bool useLocalhostForUSB = false;
+
+  /// Set to FALSE to use production URL even in debug mode.
+  /// When FALSE, overrides WiFi IP to use production URL instead.
+  static const bool useProductionForDebug = true;
 
   /// Returns the appropriate API base URL for the current build mode and
   /// platform.
@@ -68,6 +73,10 @@ class AppConfig {
         debugPrint(
           'AppConfig: apiBaseUrl = $url (Android USB debugging — localhost)',
         );
+      } else if (useProductionForDebug) {
+        // Force production URL for physical device testing
+        url = _productionApiBaseUrl;
+        debugPrint('AppConfig: apiBaseUrl = $url (Production for debug)');
       } else {
         url = _devWifiUrl;
         debugPrint('AppConfig: apiBaseUrl = $url (Android WiFi — IP address)');

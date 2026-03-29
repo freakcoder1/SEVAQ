@@ -51,7 +51,10 @@ class _AvailabilityAdjustmentScreenState
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // PERMANENT FIX: Use static instance instead of Provider.of(context)
+    _authProvider = AuthProvider.instance;
+    debugPrint('AvailabilityAdjustmentScreen: Using AuthProvider.instance');
+
     _fetchAlternativeSlots();
   }
 

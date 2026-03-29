@@ -8,6 +8,7 @@ import '../models/booking.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/booking_status_timeline.dart';
 import 'booking_confirmation_screen.dart';
 import '../config/app_config.dart';
 
@@ -47,7 +48,11 @@ class _ProfessionalAssignedScreenState
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // PERMANENT FIX: Use static instance instead of Provider.of(context)
+    // This avoids "Provider not found" errors when context doesn't have provider in scope
+    _authProvider = AuthProvider.instance;
+    debugPrint('ProfessionalAssignedScreen: Using AuthProvider.instance');
+
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
@@ -441,6 +446,14 @@ class _ProfessionalAssignedScreenState
                       ),
                   ],
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Add booking status timeline - shows user where they are in the booking process
+              BookingStatusTimeline(
+                currentState: BookingAssignmentState.assigned,
+                showLabels: true,
               ),
 
               const SizedBox(height: 24),

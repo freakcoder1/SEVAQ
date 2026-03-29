@@ -12,6 +12,7 @@
 /// Changes to this widget must comply with these principles and require
 /// architectural review.
 import 'package:flutter/material.dart';
+import '../models/worker.dart';
 import '../providers/booking_provider.dart';
 import '../screens/history_screen.dart';
 import '../providers/auth_provider.dart';
@@ -114,12 +115,33 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
       // Listen for changes in bookings
       return Consumer<BookingProvider>(
         builder: (context, bookingProvider, child) {
+          // DEBUG: Log all bookings for debugging
+          debugPrint('=== PreServiceReminderBanner DEBUG ===');
+          debugPrint('All bookings count: ${bookingProvider.bookings.length}');
+          debugPrint(
+            'Bookings: ${bookingProvider.bookings.map((b) => 'ID:${b.id} status:${b.status} start:${b.startTime}').join(', ')}',
+          );
+
           final upcomingBooking = bookingProvider.upcomingBooking;
+          debugPrint(
+            'Upcoming booking: ${upcomingBooking?.id}, status: ${upcomingBooking?.status}, startTime: ${upcomingBooking?.startTime}',
+          );
 
           if (upcomingBooking == null) {
             debugPrint(
-              'PreServiceReminderBanner: No upcoming booking available',
+              'PreServiceReminderBanner: No upcoming booking available - checking why...',
             );
+            // Check if there are bookings at all
+            if (bookingProvider.bookings.isEmpty) {
+              debugPrint('DEBUG: No bookings found in provider at all!');
+            } else {
+              // Check booking statuses
+              for (var b in bookingProvider.bookings) {
+                debugPrint(
+                  'DEBUG: Booking ${b.id} - status: ${b.status}, startTime: ${b.startTime}, isAfterNow: ${b.startTime.isAfter(DateTime.now())}',
+                );
+              }
+            }
             return const SizedBox.shrink();
           }
 
@@ -128,28 +150,45 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
 
           // Calculate time difference
           final timeUntilBooking = bookingDateTime.difference(now);
+          debugPrint(
+            'DEBUG: Time until booking: ${timeUntilBooking.inMinutes} minutes (${timeUntilBooking.inHours} hours)',
+          );
 
           // Determine if reminder should be shown (T-24h, T-2h, or T-30 minutes)
           if (timeUntilBooking.inHours >= 23 &&
               timeUntilBooking.inHours <= 25) {
+            debugPrint('DEBUG: Showing tomorrow reminder');
             return _buildBanner(
               context,
               'Your SEVAQ service is scheduled for tomorrow at ${_formatTime(bookingDateTime)}. We’ll take care of everything.',
             );
           } else if (timeUntilBooking.inHours >= 1 &&
               timeUntilBooking.inHours <= 3) {
+            debugPrint('DEBUG: Showing starting soon reminder');
             return _buildBanner(
               context,
-              'Your SEVAQ service starts at ${_formatTime(bookingDateTime)}. Everything is on track.',
+              _buildWorkerMessage(
+                bookingDateTime,
+                upcomingBooking.worker,
+                'soon',
+              ),
             );
           } else if (timeUntilBooking.inMinutes >= 20 &&
               timeUntilBooking.inMinutes <= 40) {
+            debugPrint('DEBUG: Showing immediate reminder');
             return _buildBanner(
               context,
-              'Your SEVAQ service is starting soon at ${_formatTime(bookingDateTime)}. We\'re preparing for your service.',
+              _buildWorkerMessage(
+                bookingDateTime,
+                upcomingBooking.worker,
+                'immediate',
+              ),
             );
           }
 
+          debugPrint(
+            'DEBUG: Booking exists but NOT in display time window. Time until: ${timeUntilBooking.inMinutes} min',
+          );
           return const SizedBox.shrink();
         },
       );
@@ -209,5 +248,43 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
     final displayHour = hour % 12 == 0 ? 12 : hour % 12;
     final displayMinute = minute.toString().padLeft(2, '0');
     return '$displayHour:$displayMinute $period';
+  }
+
+  /// Builds a message that includes worker details for the reminder banner
+  String _buildWorkerMessage(
+    DateTime bookingDateTime,
+    Worker worker,
+    String reminderType,
+  ) {
+    // Get worker name from user object
+    final workerName = worker.user.firstName.isNotEmpty
+        ? worker.user.firstName
+        : (worker.user.lastName.isNotEmpty
+              ? worker.user.lastName
+              : 'Your professional');
+
+    // Get worker rating if available
+    final rating = worker.rating > 0
+        ? '⭐${worker.rating.toStringAsFixed(1)}'
+        : '';
+
+    // Build message based on reminder type
+    switch (reminderType) {
+      case 'tomorrow':
+        return 'Your SEVAQ service is scheduled for tomorrow at ${_formatTime(bookingDateTime)}'
+            '${rating.isNotEmpty ? ' with $workerName ($rating)' : ' with $workerName'}.'
+            ' We\'ll take care of everything.';
+      case 'soon':
+        return 'Your SEVAQ service starts at ${_formatTime(bookingDateTime)}'
+            '${rating.isNotEmpty ? ' with $workerName ($rating)' : ' with $workerName'}.'
+            ' Everything is on track.';
+      case 'immediate':
+        return 'Your SEVAQ service is starting soon at ${_formatTime(bookingDateTime)}'
+            '${rating.isNotEmpty ? ' with $workerName ($rating)' : ' with $workerName'}.'
+            ' We\'re preparing for your service.';
+      default:
+        return 'Your SEVAQ service is scheduled at ${_formatTime(bookingDateTime)}.'
+            ' We\'ll take care of everything.';
+    }
   }
 }

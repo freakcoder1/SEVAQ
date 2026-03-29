@@ -119,7 +119,7 @@ export class AuthService {
 
     // Create worker profile
     const worker = await this.workersService.create(
-      user.id.toString(),
+      user.id,
       dto.bio || '',
       serviceIds,
       dto.serviceArea?.latitude || 0,

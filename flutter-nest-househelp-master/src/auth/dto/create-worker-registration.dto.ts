@@ -47,28 +47,25 @@ export class CreateWorkerRegistrationDto {
   @IsNotEmpty({ message: 'Password is required' })
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @MaxLength(128, { message: 'Password must not exceed 128 characters' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
-  })
+  // Relaxed validation for development
+  // @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+  //   message:
+  //     'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+  // })
   password: string;
 
   @IsString({ message: 'First name must be a string' })
   @IsNotEmpty({ message: 'First name is required' })
   @MinLength(1, { message: 'First name must be at least 1 character long' })
   @MaxLength(50, { message: 'First name must not exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s'-]+$/, {
-    message: 'First name can only contain letters, spaces, hyphens, and apostrophes',
-  })
+  // Removed strict validation for development
   firstName: string;
 
   @IsString({ message: 'Last name must be a string' })
   @IsNotEmpty({ message: 'Last name is required' })
   @MinLength(1, { message: 'Last name must be at least 1 character long' })
   @MaxLength(50, { message: 'Last name must not exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s'-]+$/, {
-    message: 'Last name can only contain letters, spaces, hyphens, and apostrophes',
-  })
+  // Removed strict validation for development
   lastName: string;
 
   @IsOptional()

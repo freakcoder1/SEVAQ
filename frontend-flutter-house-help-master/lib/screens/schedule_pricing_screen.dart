@@ -235,25 +235,33 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
         );
 
         // Intent captured successfully - navigate to Service Request In Progress
+        // Get AuthProvider before navigation
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ServiceRequestInProgressScreen(
-              serviceRequestId: serviceRequestResponse['requestId'],
-              service: service,
-              startTime: DateTime(
-                _selectedDate!.year,
-                _selectedDate!.month,
-                _selectedDate!.day,
-                _selectedTimeWindow!.startTime,
+            builder: (context) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+              ],
+              child: ServiceRequestInProgressScreen(
+                serviceRequestId: serviceRequestResponse['requestId'],
+                service: service,
+                startTime: DateTime(
+                  _selectedDate!.year,
+                  _selectedDate!.month,
+                  _selectedDate!.day,
+                  _selectedTimeWindow!.startTime,
+                ),
+                endTime: DateTime(
+                  _selectedDate!.year,
+                  _selectedDate!.month,
+                  _selectedDate!.day,
+                  _selectedTimeWindow!.endTime,
+                ),
+                amount: _calculatedPrice!,
               ),
-              endTime: DateTime(
-                _selectedDate!.year,
-                _selectedDate!.month,
-                _selectedDate!.day,
-                _selectedTimeWindow!.endTime,
-              ),
-              amount: _calculatedPrice!,
             ),
           ),
         );

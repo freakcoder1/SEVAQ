@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "787166049871",
+    "project_id": "sevaq-6fcc4",
+    "storage_bucket": "sevaq-6fcc4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787166049871:android:5374c26588514b0ac81c3a",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvqqcSlnym-IQIrZQsp2Zkk1iDenO-oQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787166049871:android:b2ef7882056f0f2cc81c3a",
+        "android_client_info": {
+          "package_name": "com.sevaq.worker_app_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvqqcSlnym-IQIrZQsp2Zkk1iDenO-oQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

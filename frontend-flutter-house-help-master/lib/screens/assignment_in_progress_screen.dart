@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/worker.dart';
 import '../models/service.dart';
+import '../models/booking.dart';
 import 'package:flutter_house_help/models/location.dart';
 import '../providers/auth_provider.dart';
 import '../providers/location_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/booking_status_timeline.dart';
 import 'assignment_confirmed_screen.dart';
 import 'assignment_delayed_screen.dart';
 import 'professional_assigned_screen.dart';
@@ -52,7 +54,9 @@ class _AssignmentInProgressScreenState
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // PERMANENT FIX: Use static instance instead of Provider.of(context)
+    _authProvider = AuthProvider.instance;
+    debugPrint('AssignmentInProgressScreen: Using AuthProvider.instance');
 
     // Start timeout timer
     _startTimeoutTimer();
@@ -105,10 +109,11 @@ class _AssignmentInProgressScreenState
           // Navigate to professional assigned screen
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) {
+              // Use AuthProvider.instance directly - no need to pass via Provider
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ProfessionalAssignedScreen(
+                  builder: (context) => ProfessionalAssignedScreen(
                     worker: widget.worker,
                     service: widget.service,
                     startTime: widget.startTime,
@@ -234,7 +239,17 @@ class _AssignmentInProgressScreenState
 
               const SizedBox(height: 24),
 
-              // C. Service Summary Card
+              // C. Booking Status Timeline (Visual Progress)
+              BookingStatusTimeline(
+                currentState: _isAssigned
+                    ? BookingAssignmentState.assigned
+                    : BookingAssignmentState.pending,
+                showLabels: true,
+              ),
+
+              const SizedBox(height: 24),
+
+              // D. Service Summary Card
               ServiceSummaryCard(
                 service: widget.service,
                 startTime: widget.startTime,

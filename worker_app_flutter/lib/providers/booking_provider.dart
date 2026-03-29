@@ -29,12 +29,28 @@ class BookingProvider extends ChangeNotifier {
 
     try {
       final response = await _apiService.get('workers/me/bookings');
-      if (response != null && response['bookings'] != null) {
-        _bookings = (response['bookings'] as List)
-            .map((b) => Booking.fromJson(b))
-            .toList();
+      debugPrint('Bookings response: $response');
+
+      // Handle different response formats
+      if (response == null) {
+        _bookings = [];
       } else if (response is List) {
-        _bookings = response.map((b) => Booking.fromJson(b)).toList();
+        // Response is directly a list
+        _bookings = response
+            .map((b) => Booking.fromJson(b as Map<String, dynamic>))
+            .toList();
+      } else if (response is Map<String, dynamic>) {
+        // Response is a map - check for 'bookings' key
+        if (response['bookings'] != null) {
+          _bookings = (response['bookings'] as List)
+              .map((b) => Booking.fromJson(b as Map<String, dynamic>))
+              .toList();
+        } else {
+          // Empty response or other format
+          _bookings = [];
+        }
+      } else {
+        _bookings = [];
       }
     } catch (e) {
       _error = e.toString();

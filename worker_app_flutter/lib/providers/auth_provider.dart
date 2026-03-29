@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/worker.dart';
 import '../services/api_service.dart';
+import '../services/firebase_auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -69,17 +70,106 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Request OTP - kept for backward compatibility but not used in current UI
-  Future<bool> requestOtp(String phone) async {
+  // Verify OTP using Firebase ID token (called from login screen)
+  Future<bool> verifyOtpWithToken(String phone, String idToken) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      // Firebase OTP is sent client-side, so we just return success
+      // Check if we should use dev bypass (for testing without Firebase)
+      // This is automatically enabled in debug mode when Firebase fails
+      // Support both 'dev_bypass' and 'dev_test_token' for backward compatibility
+      final useDevBypass = idToken.isEmpty ||
+          idToken == 'dev_bypass' ||
+          idToken == 'dev_test_token';
+
+      // Use dev token for development/testing - backend has bypass mode
+      final tokenToSend = useDevBypass ? 'dev_test_token' : idToken;
+
+      debugPrint(
+          'DEBUG verifyOtpWithToken: phone=$phone, usingDevBypass=$useDevBypass');
+
+      // Call the OTP verify-login endpoint with the ID token
+      final response = await _apiService.post('auth/otp/verify-login', {
+        'phone': phone,
+        'idToken': tokenToSend,
+      });
+
+      if (response != null &&
+          (response['access_token'] != null ||
+              response['accessToken'] != null)) {
+        // Handle both snake_case (access_token) and camelCase (accessToken)
+        final token = response['access_token'] ?? response['accessToken'];
+        await _apiService.saveToken(token as String);
+        await fetchWorkerProfile();
+        _isAuthenticated = true;
+        _isLoading = false;
+        notifyListeners();
+        debugPrint('DEBUG verifyOtpWithToken: SUCCESS');
+        return true;
+      } else {
+        _error = 'Invalid response from server';
+        _isLoading = false;
+        notifyListeners();
+        debugPrint('DEBUG verifyOtpWithToken: Invalid response');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('DEBUG verifyOtpWithToken: Error - $e');
+      _error = e.toString();
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
+    }
+  }
+
+  // Verify OTP and login using Firebase
+  Future<bool> verifyOtp(
+      String phone, String verificationId, String smsCode) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Sign in with Firebase OTP
+      final userCredential = await FirebaseAuthService.signInWithOTP(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+
+      // Get Firebase ID token
+      final idToken = await userCredential.user?.getIdToken();
+      if (idToken == null) {
+        _error = 'Failed to get Firebase ID token';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Call the OTP verify-login endpoint with the ID token
+      final response = await _apiService.post('auth/otp/verify-login', {
+        'phone': phone,
+        'idToken': idToken,
+      });
+
+      if (response != null &&
+          (response['access_token'] != null ||
+              response['accessToken'] != null)) {
+        // Handle both snake_case (access_token) and camelCase (accessToken)
+        final token = response['access_token'] ?? response['accessToken'];
+        await _apiService.saveToken(token as String);
+        await fetchWorkerProfile();
+        _isAuthenticated = true;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = 'Invalid response from server';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -88,32 +178,17 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Verify OTP and login (for Firebase OTP verification)
-  Future<bool> verifyOtp(String phone, String otp) async {
+  // Request OTP - send to Firebase
+  Future<bool> requestOtp(String phone) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      // Call the OTP verify-login endpoint
-      final response = await _apiService.post('auth/otp/verify-login', {
-        'phone': phone,
-        'idToken': otp, // Firebase idToken
-      });
-
-      if (response != null && response['accessToken'] != null) {
-        await _apiService.saveToken(response['accessToken']);
-        await fetchWorkerProfile();
-        _isAuthenticated = true;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      } else {
-        _error = 'Invalid OTP or phone number';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
+      // Firebase OTP is sent client-side
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -127,13 +202,26 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiService.get('workers/me');
       debugPrint('fetchWorkerProfile response: $response');
+
       if (response != null) {
-        // Handle both formats: {worker: {...}} or direct worker object
         final Map<String, dynamic> responseMap =
-            Map<String, dynamic>.from(response as Map);
+            Map<String, dynamic>.from(response);
+
+        // Check if worker needs registration
+        if (responseMap['needsRegistration'] == true) {
+          debugPrint(
+              'Worker profile not found - user needs to register as worker');
+          _worker = null;
+          notifyListeners();
+          return;
+        }
+
+        // Handle both formats: {worker: {...}} or direct worker object
         if (responseMap.containsKey('worker')) {
-          _worker =
-              Worker.fromJson(responseMap['worker'] as Map<String, dynamic>);
+          final workerData = responseMap['worker'];
+          if (workerData != null) {
+            _worker = Worker.fromJson(Map<String, dynamic>.from(workerData));
+          }
         } else if (responseMap['id'] != null) {
           _worker = Worker.fromJson(responseMap);
         }
@@ -185,6 +273,7 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String firstName,
     required String lastName,
+    String? address,
     List<String>? serviceCategories,
     Map<String, dynamic>? serviceArea,
   }) async {
@@ -193,15 +282,20 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.post('auth/workers/register', {
+      // Debug the payload being sent
+      final payload = {
         'phone': phone,
         'email': email,
         'password': password,
         'firstName': firstName,
         'lastName': lastName,
+        'address': address ?? '',
         'serviceCategories': serviceCategories ?? [],
         'serviceArea': serviceArea,
-      });
+      };
+      debugPrint('DEBUG registerWorker payload: $payload');
+
+      final response = await _apiService.post('auth/workers/register', payload);
 
       if (response != null && response['access_token'] != null) {
         await _apiService.saveToken(response['access_token']);

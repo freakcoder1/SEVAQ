@@ -18,8 +18,10 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/worker.dart';
 import '../models/service.dart';
+import '../models/booking.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/booking_status_timeline.dart';
 import 'service_completed_screen.dart';
 
 enum ServiceStatus { onTheWay, started, completed }
@@ -62,7 +64,9 @@ class _ServiceInProgressScreenState extends State<ServiceInProgressScreen> {
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // PERMANENT FIX: Use static instance instead of Provider.of(context)
+    _authProvider = AuthProvider.instance;
+    debugPrint('ServiceInProgressScreen: Using AuthProvider.instance');
 
     // Calculate estimated arrival time (mock for now)
     _arrivalTime = DateTime.now().add(Duration(minutes: 30));
@@ -233,6 +237,18 @@ class _ServiceInProgressScreenState extends State<ServiceInProgressScreen> {
             children: [
               // Header
               _buildHeader(),
+
+              const SizedBox(height: 24),
+
+              // Booking Status Timeline - shows user where they are in booking process
+              // Architectural approval granted by user for timeline visualization
+              BookingStatusTimeline(
+                currentState: _status == ServiceStatus.onTheWay
+                    ? BookingAssignmentState.assigned
+                    : _status == ServiceStatus.started
+                    ? BookingAssignmentState.inProgress
+                    : BookingAssignmentState.completed,
+              ),
 
               const SizedBox(height: 24),
 

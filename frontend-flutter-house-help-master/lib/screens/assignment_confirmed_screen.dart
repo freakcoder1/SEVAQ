@@ -48,7 +48,10 @@ class _AssignmentConfirmedScreenState extends State<AssignmentConfirmedScreen> {
   void initState() {
     super.initState();
     _apiService = ApiService();
-    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // PERMANENT FIX: Use static instance instead of Provider.of(context)
+    _authProvider = AuthProvider.instance;
+    debugPrint('AssignmentConfirmedScreen: Using AuthProvider.instance');
+
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);

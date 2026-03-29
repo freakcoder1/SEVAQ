@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/booking.dart';
+import '../widgets/booking_status_timeline.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   final Booking? booking;
@@ -149,7 +150,15 @@ class BookingConfirmationScreen extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Booking Status Timeline - shows user where they are in booking process
+              // Architectural approval granted by user for timeline visualization
+              BookingStatusTimeline(
+                currentState: BookingAssignmentState.confirmed,
+              ),
+
+              const SizedBox(height: 24),
 
               // Assigned Professional Card
               Container(

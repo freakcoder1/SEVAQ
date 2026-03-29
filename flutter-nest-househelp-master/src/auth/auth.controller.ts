@@ -98,12 +98,14 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 3 } }) // Max 3 worker registrations per minute
   async registerWorker(@Body() createWorkerDto: CreateWorkerRegistrationDto) {
     this.logger.log(`Worker registration request received: ${createWorkerDto.email}`);
+    this.logger.log(`Worker registration DTO: ${JSON.stringify(createWorkerDto)}`);
     try {
       const result = await this.authService.registerWorker(createWorkerDto);
       this.logger.log(`Worker registration successful: ${createWorkerDto.email}`);
       return result;
     } catch (error) {
       this.logger.error(`Worker registration failed: ${error.message}`);
+      this.logger.error(`Error details: ${JSON.stringify(error)}`);
       throw error;
     }
   }

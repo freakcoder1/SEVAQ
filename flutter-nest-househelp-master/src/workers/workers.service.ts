@@ -22,7 +22,7 @@ export class WorkersService {
   }
 
   async create(
-    userId: string,
+    userId: number | string,
     bio: string,
     serviceIds: number[],
     latitude: number,

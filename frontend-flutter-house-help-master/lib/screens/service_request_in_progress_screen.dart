@@ -204,18 +204,26 @@ class _ServiceRequestInProgressScreenState
       _assignedWorker = Worker.fromJson(response['assignedWorker']);
     });
 
+    // Capture AuthProvider BEFORE the Future.delayed (while context is still valid)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     // Navigate to professional assigned screen
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ProfessionalAssignedScreen(
-              worker: _assignedWorker!,
-              service: widget.service,
-              startTime: widget.startTime,
-              endTime: widget.endTime,
-              amount: widget.amount,
+            builder: (context) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+              ],
+              child: ProfessionalAssignedScreen(
+                worker: _assignedWorker!,
+                service: widget.service,
+                startTime: widget.startTime,
+                endTime: widget.endTime,
+                amount: widget.amount,
+              ),
             ),
           ),
         );

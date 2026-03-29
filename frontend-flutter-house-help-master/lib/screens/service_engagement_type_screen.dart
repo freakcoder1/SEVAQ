@@ -7,6 +7,7 @@ import 'package:flutter_house_help/providers/auth_provider.dart';
 import 'package:flutter_house_help/providers/location_provider.dart';
 import 'package:flutter_house_help/screens/schedule_pricing_screen.dart';
 import 'package:flutter_house_help/screens/subscription_profiles_screen.dart';
+import 'package:flutter_house_help/utils/service_mapper.dart';
 
 /// Service Engagement Type Screen
 /// Purpose: Explicitly separate monthly subscription vs one-time service selection
@@ -413,39 +414,22 @@ class _ServiceEngagementTypeScreenState
 
   Service? _convertServiceOptionToService(ServiceOption serviceOption) {
     // Map frontend service option IDs to backend numeric service IDs
+    // IMPORTANT: This method should use ServiceMapper for consistency
     int backendServiceId;
-    switch (serviceOption.id) {
-      case 'cleaning':
-        backendServiceId = 1; // homeCleaningId
-        break;
-      case 'cooking':
-        backendServiceId = 3; // cookingId
-        break;
-      case 'driver':
-        backendServiceId = 5; // driverId
-        break;
-      case 'errands':
-        backendServiceId = 6; // errandsId
-        break;
-      case 'laundry':
-        backendServiceId = 7; // laundryId
-        break;
-      case 'babysitting':
-        backendServiceId = 8; // babysittingId
-        break;
-      case 'gardening':
-        backendServiceId = 9; // gardeningId
-        break;
-      case 'senior_care':
-        backendServiceId = 10; // seniorCareId
-        break;
-      case 'shopping':
-        backendServiceId = 12; // shoppingId
-        break;
-      case 'maid':
-      default:
-        backendServiceId = 1; // Default to home cleaning
-    }
+
+    // DEBUG: Log the service option being converted
+    debugPrint(
+      '[ServiceConversion] Converting ServiceOption: id=${serviceOption.id}, name=${serviceOption.name}',
+    );
+
+    // Use ServiceMapper to get correct backend IDs (matching Railway database: 2, 3, 4, 5, 12)
+    backendServiceId = ServiceMapper.getRepresentativeBackendId(
+      serviceOption.id,
+    );
+
+    debugPrint(
+      '[ServiceConversion] Mapped to backendServiceId: $backendServiceId',
+    );
 
     return Service(
       id: backendServiceId,

@@ -14,8 +14,52 @@ enum BookingStatus {
 
 enum BookingType { onDemand, scheduled, subscription }
 
+/// Assignment state for tracking worker assignment progress
+enum BookingAssignmentState {
+  pending, // Worker assignment in progress
+  assigned, // Worker has been assigned
+  confirmed, // Worker confirmed the booking
+  enRoute, // Worker is on the way
+  arrived, // Worker has arrived
+  inProgress, // Service is in progress
+  completed, // Service completed
+  cancelled, // Booking cancelled
+}
+
+/// Maps backend assignmentState string to BookingAssignmentState enum
+BookingAssignmentState _mapAssignmentState(String? state) {
+  if (state == null) return BookingAssignmentState.pending;
+
+  final normalized = state.toLowerCase().trim();
+
+  switch (normalized) {
+    case 'pending':
+    case 'assignment_pending':
+      return BookingAssignmentState.pending;
+    case 'assigned':
+      return BookingAssignmentState.assigned;
+    case 'confirmed':
+      return BookingAssignmentState.confirmed;
+    case 'en_route':
+    case 'enroute':
+      return BookingAssignmentState.enRoute;
+    case 'arrived':
+      return BookingAssignmentState.arrived;
+    case 'in_progress':
+    case 'inprogress':
+      return BookingAssignmentState.inProgress;
+    case 'completed':
+      return BookingAssignmentState.completed;
+    case 'cancelled':
+      return BookingAssignmentState.cancelled;
+    default:
+      return BookingAssignmentState.pending;
+  }
+}
+
 class Booking {
-  final int id; // Internal ID
+  // Backend uses UUID (String) for id, but we support both int and String for compatibility
+  final dynamic id; // Internal ID
   final String publicId; // Public API ID
   final String? serviceRequestId;
   final User user;
@@ -27,6 +71,7 @@ class Booking {
   final bool isPaid;
   final double? amount;
   final BookingType? bookingType;
+  final BookingAssignmentState? assignmentState; // Worker assignment state
 
   Booking({
     required this.id,
@@ -41,6 +86,7 @@ class Booking {
     required this.isPaid,
     this.amount,
     this.bookingType,
+    this.assignmentState,
   });
 
   // Helper methods to check booking type
@@ -290,11 +336,12 @@ class Booking {
         isPaid: false,
         amount: null,
         bookingType: null,
+        assignmentState: null,
       );
     }
 
     return Booking(
-      id: json['id'] ?? 0,
+      id: _parseId(json['id']),
       publicId: json['publicId'] ?? '',
       serviceRequestId: json['serviceRequestId'],
       user: json['user'] != null
@@ -356,6 +403,15 @@ class Booking {
                       : json['totalAmount']?.toDouble())
                 : 0.0),
       bookingType: _mapType(json['type']),
+      assignmentState: _mapAssignmentState(json['assignmentState']),
     );
+  }
+
+  /// Helper to parse id from various types (int or String UUID)
+  static dynamic _parseId(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return value;
+    return 0;
   }
 }

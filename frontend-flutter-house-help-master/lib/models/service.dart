@@ -1,5 +1,6 @@
 class Service {
-  final int id;
+  // Backend uses UUID (String) for id, but we support both int and String for compatibility
+  final dynamic id;
   final String publicId;
   final String name;
   final String description;
@@ -27,7 +28,7 @@ class Service {
 
   factory Service.fromJson(Map<String, dynamic> json) {
     return Service(
-      id: json['id'] as int? ?? 0,
+      id: _parseId(json['id']),
       publicId: json['publicId'] ?? '',
       name: json['name']?.toString() ?? 'Unknown Service',
       description:
@@ -44,5 +45,13 @@ class Service {
           ? int.tryParse(json['workerCount'].toString())
           : null,
     );
+  }
+
+  /// Helper to parse id from various types (int or String UUID)
+  static dynamic _parseId(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return value;
+    return 0;
   }
 }
