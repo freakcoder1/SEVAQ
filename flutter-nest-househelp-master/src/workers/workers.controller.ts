@@ -56,12 +56,22 @@ export class WorkersController {
     try {
       const worker = await this.workersService.findByUserId(req.user.userId);
       if (!worker) {
-        return { message: 'Worker profile not found', worker: null };
+        // Return a 200 response with null worker instead of error
+        // This indicates the user hasn't created a worker profile yet
+        return { 
+          message: 'Worker profile not found. Please complete your worker registration.', 
+          worker: null,
+          needsRegistration: true 
+        };
       }
       return worker;
     } catch (error) {
       this.logger.error(`Error fetching worker profile: ${error.message}`, error.stack);
-      return { message: 'Error fetching worker profile', error: error.message, worker: null };
+      return { 
+        message: 'Error fetching worker profile', 
+        error: error.message, 
+        worker: null 
+      };
     }
   }
 
