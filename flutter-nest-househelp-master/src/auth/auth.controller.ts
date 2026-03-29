@@ -15,6 +15,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { FirebaseAuthService } from './firebase-auth.service';
+import { WorkersService } from '../workers/workers.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -34,6 +35,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly firebaseAuthService: FirebaseAuthService,
+    private readonly workersService: WorkersService,
   ) {}
 
   @Post('login')
@@ -106,6 +108,51 @@ export class AuthController {
     } catch (error) {
       this.logger.error(`Worker registration failed: ${error.message}`);
       this.logger.error(`Error details: ${JSON.stringify(error)}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Create worker profile for logged-in user (authenticated)
+   * POST /auth/workers/register-authenticated
+   * This endpoint is for existing users who want to become workers
+   * Uses JWT auth - requires Bearer token
+   */
+  @Post('workers/register-authenticated')
+  @UseGuards(JwtAuthGuard)
+  async registerWorkerProfile(@Request() req, @Body() body: { name?: string; bio?: string; serviceIds?: string[]; latitude?: number; longitude?: number }) {
+    this.logger.log(`Worker profile creation request from user: ${req.user.userId}`);
+    this.logger.log(`Request body: ${JSON.stringify(body)}`);
+    
+    try {
+      // Check if user already has a worker profile
+      const existingWorker = await this.workersService.findByUserId(req.user.userId);
+      if (existingWorker) {
+        return {
+          worker: existingWorker,
+          message: 'Worker profile already exists',
+          needsApproval: false
+        };
+      }
+      
+      // Create worker profile
+      const worker = await this.workersService.createWorkerProfile(
+        req.user.userId,
+        body.bio || '',
+        body.serviceIds || [],
+        body.latitude || 28.5804579,
+        body.longitude || 77.4392951,
+      );
+      
+      this.logger.log(`Worker profile created for user: ${req.user.userId}`);
+      
+      return {
+        worker: worker,
+        message: 'Worker registered successfully. Pending admin approval.',
+        needsApproval: true
+      };
+    } catch (error) {
+      this.logger.error(`Worker profile creation failed: ${error.message}`, error.stack);
       throw error;
     }
   }

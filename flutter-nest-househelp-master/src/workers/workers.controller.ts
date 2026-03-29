@@ -221,4 +221,50 @@ export class WorkersController {
     }
     return this.workersService.updateWorkerServiceArea(worker.id, serviceArea);
   }
+
+  /**
+   * Create worker profile for logged-in user
+   * POST /workers/me/register
+   * Protected by JWT - user must already be logged in
+   * 
+   * This endpoint is used when a user with an existing account wants to
+   * become a worker by creating a worker profile.
+   */
+  @Post('me/register')
+  @UseGuards(JwtAuthGuard)
+  async registerWorker(@Request() req, @Body() body: { name?: string; bio?: string; serviceIds?: string[]; latitude?: number; longitude?: number }) {
+    try {
+      this.logger.log(`Worker registration request from user: ${req.user.userId}`);
+      
+      // Check if user already has a worker profile
+      const existingWorker = await this.workersService.findByUserId(req.user.userId);
+      if (existingWorker) {
+        return {
+          worker: existingWorker,
+          message: 'Worker profile already exists',
+          needsApproval: false
+        };
+      }
+      
+      // Create worker profile for this user
+      const worker = await this.workersService.createWorkerProfile(
+        req.user.userId,
+        body.bio || '',
+        body.serviceIds || [],
+        body.latitude || 28.5804579,
+        body.longitude || 77.4392951,
+      );
+      
+      this.logger.log(`Worker profile created for user: ${req.user.userId}`);
+      
+      return {
+        worker: worker,
+        message: 'Worker registered successfully. Pending admin approval.',
+        needsApproval: true
+      };
+    } catch (error) {
+      this.logger.error(`Worker registration failed: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 }

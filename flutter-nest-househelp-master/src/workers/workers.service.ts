@@ -417,4 +417,71 @@ export class WorkersService {
 
     return this.workersRepository.save(worker);
   }
+
+  /**
+   * Create a worker profile for a logged-in user
+   * This is used when an existing user wants to become a worker
+   * 
+   * @param userPublicId - The user's publicId (UUID) from JWT token
+   * @param bio - Worker bio/description
+   * @param serviceIds - Array of service IDs (UUIDs)
+   * @param latitude - Worker's location latitude
+   * @param longitude - Worker's location longitude
+   */
+  async createWorkerProfile(
+    userPublicId: string,
+    bio: string,
+    serviceIds: string[],
+    latitude: number,
+    longitude: number,
+  ): Promise<Worker> {
+    console.log(`Creating worker profile for user: ${userPublicId}`);
+    
+    // Find the user by their publicId
+    const user = await this.usersRepository.findOne({
+      where: { publicId: userPublicId },
+    });
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    console.log(`Found user: ${user.id} (${user.email})`);
+    
+    // Load services if provided
+    let services: Service[] = [];
+    if (serviceIds && serviceIds.length > 0) {
+      const serviceRepo = this.workersRepository.manager.getRepository(Service);
+      for (const serviceId of serviceIds) {
+        const service = await serviceRepo.findOne({ 
+          where: { publicId: serviceId } 
+        });
+        if (service) {
+          services.push(service);
+        }
+      }
+      console.log(`Loaded ${services.length} services for worker`);
+    }
+    
+    // Create the worker profile
+    const worker = this.workersRepository.create({
+      user: { id: user.id },
+      bio: bio || '',
+      services: services,
+      latitude: latitude || 28.5804579,
+      longitude: longitude || 77.4392951,
+      currentLat: latitude || 28.5804579,
+      currentLng: longitude || 77.4392951,
+      isAvailable: true,
+    });
+    
+    const savedWorker = await this.workersRepository.save(worker);
+    console.log(`Worker profile created with ID: ${savedWorker.id}`);
+    
+    // Reload with relations
+    return this.workersRepository.findOne({
+      where: { id: savedWorker.id },
+      relations: ['user', 'services'],
+    }) as Promise<Worker>;
+  }
 }
