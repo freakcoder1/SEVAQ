@@ -3,7 +3,6 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { UsersModule } from '../users/users.module';
-import { WorkersModule } from '../workers/workers.module';
 import { ServicesModule } from '../services/services.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
@@ -14,7 +13,6 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 @Module({
   imports: [
     UsersModule,
-    WorkersModule,
     ServicesModule,
     PassportModule,
     JwtModule.registerAsync({
