@@ -55,6 +55,16 @@ export class WorkersController {
   async getMyProfile(@Request() req) {
     try {
       console.log('[WorkersController] getMyProfile - user:', req.user);
+      
+      // Safe check - if no user object from auth guard
+      if (!req.user || !req.user.userId) {
+        console.error('[WorkersController] No user in request - auth guard may have failed');
+        return { 
+          message: 'Authentication required',
+          needsRegistration: false 
+        };
+      }
+      
       const worker = await this.workersService.findByUserId(req.user.userId);
       console.log('[WorkersController] findByUserId result:', worker ? 'found' : 'not found');
       if (!worker) {
