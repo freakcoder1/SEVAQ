@@ -177,4 +177,23 @@ export class AdminController {
   async getUserById(@Param('id') id: string) {
     return this.adminService.getUserById(id);
   }
+
+  // ============================================
+  // Worker Profile Management
+  // ============================================
+
+  /**
+   * Create worker profile for existing user
+   * POST /admin/workers/by-email
+   */
+  @Post('workers/by-email')
+  async createWorkerProfileByEmail(@Body() body: { email: string; bio?: string; serviceIds?: string[]; latitude?: number; longitude?: number }) {
+    return this.adminService.createWorkerProfileForUser(
+      body.email,
+      body.bio || '',
+      body.serviceIds || [],
+      body.latitude || 28.5804579,
+      body.longitude || 77.4392951,
+    );
+  }
 }

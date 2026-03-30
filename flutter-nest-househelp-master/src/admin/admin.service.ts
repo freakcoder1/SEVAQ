@@ -470,4 +470,65 @@ export class AdminService {
       where: { publicId: id } as any,
     });
   }
+
+  /**
+   * Create worker profile for a user by email
+   */
+  async createWorkerProfileForUser(
+    email: string,
+    bio: string,
+    serviceIds: string[],
+    latitude: number,
+    longitude: number,
+  ): Promise<Worker | null> {
+    // Find user by email
+    const user = await this.usersRepository.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new Error(`User not found with email: ${email}`);
+    }
+
+    // Check if worker already exists
+    const existingWorker = await this.workersRepository.findOne({
+      where: { user: { id: user.id } },
+    });
+
+    if (existingWorker) {
+      return existingWorker;
+    }
+
+    // Load services if provided
+    let services: Service[] = [];
+    if (serviceIds && serviceIds.length > 0) {
+      for (const serviceId of serviceIds) {
+        const service = await this.servicesRepository.findOne({
+          where: { id: parseInt(serviceId, 10) },
+        });
+        if (service) {
+          services.push(service);
+        }
+      }
+    }
+
+    // Create worker profile
+    const worker = this.workersRepository.create({
+      user: { id: user.id },
+      bio: bio || '',
+      services: services,
+      latitude: latitude || 28.5804579,
+      longitude: longitude || 77.4392951,
+      currentLat: latitude || 28.5804579,
+      currentLng: longitude || 77.4392951,
+      isAvailable: true,
+    });
+
+    const savedWorker = await this.workersRepository.save(worker);
+
+    return this.workersRepository.findOne({
+      where: { id: savedWorker.id },
+      relations: ['user', 'services'],
+    }) as Promise<Worker>;
+  }
 }
