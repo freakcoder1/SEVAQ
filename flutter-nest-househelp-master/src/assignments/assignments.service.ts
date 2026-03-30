@@ -483,10 +483,10 @@ export class AssignmentsService {
         return null;
       }
 
-      // Calculate score with adjusted weights
-      const distanceScore = distance * 0.3; // 30% weight (reduced from 40%)
-      const ratingScore = (5 - worker.rating) * 8 * 0.4; // 40% weight (increased from 30%)
-      const reviewScore = (100 - Math.min(worker.reviewCount, 100)) * 0.3; // 30% weight
+      // Calculate score - prioritize DISTANCE (closest worker wins)
+      const distanceScore = distance * 0.6 * 10; // 60% weight - distance is most important
+      const ratingScore = (5 - worker.rating) * 8 * 0.2; // 20% weight
+      const reviewScore = (100 - Math.min(worker.reviewCount, 100)) * 0.2; // 20% weight
 
       const totalScore = distanceScore + ratingScore + reviewScore;
 
