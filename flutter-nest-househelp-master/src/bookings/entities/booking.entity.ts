@@ -13,6 +13,13 @@ import { Worker } from '../../workers/entities/worker.entity';
 import { Service } from '../../services/entities/service.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
+
+export class LocationData {
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
 
 export enum BookingStatus {
   REQUESTED = 'requested',
@@ -109,6 +116,12 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
+  @Column({ name: 'serviceRequestId', type: 'uuid', nullable: true })
+  serviceRequestId: string;
+
+  @Column({ type: 'json', nullable: true })
+  location: LocationData;
+
   @Column({ default: false })
   responsibilityTransferred: boolean;
 
@@ -138,6 +151,10 @@ export class Booking {
 
   @OneToOne(() => Payment, (payment) => payment.booking)
   payment: Payment;
+
+  @ManyToOne(() => ServiceRequest, { nullable: true })
+  @JoinColumn({ name: 'serviceRequestId' })
+  serviceRequest: ServiceRequest;
 
   @CreateDateColumn()
   createdAt: Date;

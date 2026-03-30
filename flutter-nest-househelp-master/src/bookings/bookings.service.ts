@@ -517,29 +517,65 @@ export class BookingsService {
       hasUser: !!user,
     });
 
-    if (!user || !user.latitude || !user.longitude) {
-      // Try to load user separately if relation didn't work
-      const fullUser = await this.usersRepository.findOne({
-        where: { publicId: booking.userId } as any,
-      });
-      console.log('🔍 Full user data:', {
-        id: fullUser?.id,
-        latitude: fullUser?.latitude,
-        longitude: fullUser?.longitude,
-        hasUser: !!fullUser,
-      });
+    // Try to load user separately if relation didn't work
+    const fullUser = await this.usersRepository.findOne({
+      where: { publicId: booking.userId } as any,
+    });
+    console.log('🔍 Full user data:', {
+      id: fullUser?.id,
+      latitude: fullUser?.latitude,
+      longitude: fullUser?.longitude,
+      hasUser: !!fullUser,
+    });
 
-      if (!fullUser || !fullUser.latitude || !fullUser.longitude) {
-        throw new BadRequestException(
-          'User location not available for matching',
-        );
+    // Use the user data (either from relation or separately loaded)
+    const userData = fullUser || user;
+
+    // Location fallback logic:
+    // 1. First try user.profile location
+    // 2. Then try service request metadata location
+    // 3. Then try booking location
+    let userLat = userData?.latitude;
+    let userLng = userData?.longitude;
+
+    console.log('🔍 Initial user location:', { userLat, userLng });
+
+    // Fallback to service request location if user location is null
+    // Need to fetch service request separately since relation may not work
+    if (!userLat || !userLng) {
+      // Try to get serviceRequest from relation first
+      if (booking.serviceRequestId) {
+        // Check if serviceRequest relation exists (it may not be loaded)
+        const bookingWithServiceRequest = await this.bookingsRepository.findOne({
+          where: { id: bookingId as any },
+          relations: ['serviceRequest'],
+        });
+        const serviceRequest = bookingWithServiceRequest?.serviceRequest;
+
+        if (serviceRequest?.metadata?.location) {
+          const srLocation = serviceRequest.metadata.location;
+          userLat = srLocation.lat;
+          userLng = srLocation.lng;
+          console.log('🔍 Using service request location:', { userLat, userLng });
+        }
       }
-
-      // Use the full user data
-      return await this.attemptAssignmentWithUser(booking, fullUser);
     }
 
-    return await this.attemptAssignmentWithUser(booking, user);
+    // Fallback to booking location if still null
+    if ((!userLat || !userLng) && booking.location) {
+      userLat = booking.location.latitude;
+      userLng = booking.location.longitude;
+      console.log('🔍 Using booking location:', { userLat, userLng });
+    }
+
+    if (!userLat || !userLng) {
+      throw new BadRequestException(
+        'User location not available for matching',
+      );
+    }
+
+    // Return with user data that has location
+    return await this.attemptAssignmentWithUser(booking, userData);
   }
 
   private async attemptAssignmentWithUser(booking: Booking, user: User) {
