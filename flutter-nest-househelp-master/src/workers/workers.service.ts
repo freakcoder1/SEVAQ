@@ -193,7 +193,7 @@ export class WorkersService {
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('booking.slot', 'slot')
-      .where('booking.workerId = :workerId', { workerId });
+      .where('booking.workerId = :workerId OR booking.assignedWorkerId = :workerId', { workerId });
 
     if (status) {
       query.andWhere('booking.status = :status', { status });
