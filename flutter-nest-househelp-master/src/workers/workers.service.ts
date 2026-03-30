@@ -15,6 +15,8 @@ export class WorkersService {
     private bookingsRepository: Repository<Booking>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Service)
+    private servicesRepository: Repository<Service>,
   ) {}
 
   async findAll() {
@@ -462,9 +464,8 @@ export class WorkersService {
     // Load services if provided
     let services: Service[] = [];
     if (serviceIds && serviceIds.length > 0) {
-      const serviceRepo = this.workersRepository.manager.getRepository(Service);
       for (const serviceId of serviceIds) {
-        const service = await serviceRepo.findOne({ 
+        const service = await this.servicesRepository.findOne({ 
           where: { publicId: serviceId } 
         });
         if (service) {
