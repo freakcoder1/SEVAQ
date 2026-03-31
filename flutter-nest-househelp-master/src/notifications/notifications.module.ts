@@ -5,11 +5,12 @@ import { NotificationsScheduler } from './notifications.scheduler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
+import { Worker } from '../workers/entities/worker.entity';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Booking, User]),
+    TypeOrmModule.forFeature([Booking, User, Worker]),
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationsController],
