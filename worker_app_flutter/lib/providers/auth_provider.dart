@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/worker.dart';
 import '../services/api_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -37,6 +38,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Register FCM token after successful login
+  Future<void> _registerFcmTokenAfterLogin() async {
+    try {
+      final notificationService = NotificationService();
+      // Retry registration after login when JWT token is available
+      await notificationService.retryRegisterToken();
+      debugPrint('FCM token registration triggered after login');
+    } catch (e) {
+      debugPrint('Error registering FCM token after login: $e');
+    }
+  }
+
   // Login with email and password (for workers)
   Future<bool> login(String email, String password) async {
     _isLoading = true;
@@ -55,6 +68,10 @@ class AuthProvider extends ChangeNotifier {
         _isAuthenticated = true;
         _isLoading = false;
         notifyListeners();
+
+        // Register FCM token after successful login
+        _registerFcmTokenAfterLogin();
+
         return true;
       } else {
         _error = 'Invalid response from server';
@@ -266,6 +283,52 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Register worker profile for already authenticated user
+  // POST /workers/me/register
+  Future<bool> registerWorkerProfile({
+    String? bio,
+    List<String>? serviceIds,
+    double? latitude,
+    double? longitude,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      debugPrint('DEBUG registerWorkerProfile: Starting registration');
+
+      final response = await _apiService.post('workers/me/register', {
+        'bio': bio ?? '',
+        'serviceIds': serviceIds ?? [],
+        'latitude': latitude ?? 28.5804579,
+        'longitude': longitude ?? 77.4392951,
+      });
+
+      debugPrint('DEBUG registerWorkerProfile: Response: $response');
+
+      if (response != null && response['worker'] != null) {
+        _worker =
+            Worker.fromJson(Map<String, dynamic>.from(response['worker']));
+        _isLoading = false;
+        notifyListeners();
+        debugPrint('DEBUG registerWorkerProfile: SUCCESS');
+        return true;
+      } else {
+        _error = 'Invalid response from server';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('DEBUG registerWorkerProfile: Error - $e');
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Register a new worker
   Future<bool> registerWorker({
     required String phone,
@@ -303,6 +366,10 @@ class AuthProvider extends ChangeNotifier {
         _isAuthenticated = true;
         _isLoading = false;
         notifyListeners();
+
+        // Register FCM token after successful registration
+        _registerFcmTokenAfterLogin();
+
         return true;
       } else {
         _error = 'Invalid response from server';

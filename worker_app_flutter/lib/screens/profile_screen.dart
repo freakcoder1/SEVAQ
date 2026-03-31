@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/worker.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 
@@ -230,8 +231,8 @@ class WorkerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildServicesCard(BuildContext context, worker) {
-    final services = worker?.services ?? [];
+  Widget _buildServicesCard(BuildContext context, Worker? worker) {
+    final List<String> services = worker?.services ?? [];
 
     return Card(
       child: Padding(
@@ -262,7 +263,7 @@ class WorkerProfileScreen extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: services
-                    .map(
+                    .map<Widget>(
                       (service) => Chip(
                         label: Text(service),
                         backgroundColor: Theme.of(

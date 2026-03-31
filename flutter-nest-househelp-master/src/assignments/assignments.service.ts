@@ -483,12 +483,22 @@ export class AssignmentsService {
         return null;
       }
 
-      // Calculate score - prioritize DISTANCE (closest worker wins)
+      // Calculate score - prioritize DISTANCE (closest worker wins) + WORKER PREFERENCE
+      // Worker preference: Give bonus for Sumit and CP Pandey
+      const WORKER_PREFERENCE_SCORE = 50; // Large negative score to prioritize these workers
+      let workerPreferenceBonus = 0;
+      const preferredWorkerNames = ['sumit', 'cp pandey', 'pandey'];
+      const workerNameLower = (worker.user?.firstName || '').toLowerCase() + ' ' + (worker.user?.lastName || '').toLowerCase();
+      if (preferredWorkerNames.some(name => workerNameLower.includes(name))) {
+        workerPreferenceBonus = WORKER_PREFERENCE_SCORE;
+        console.log(`⭐ Worker ${worker.id} (${workerNameLower}) gets preference bonus!`);
+      }
+      
       const distanceScore = distance * 0.6 * 10; // 60% weight - distance is most important
       const ratingScore = (5 - worker.rating) * 8 * 0.2; // 20% weight
       const reviewScore = (100 - Math.min(worker.reviewCount, 100)) * 0.2; // 20% weight
 
-      const totalScore = distanceScore + ratingScore + reviewScore;
+      const totalScore = distanceScore + ratingScore + reviewScore - workerPreferenceBonus;
 
       console.log(`✅ Worker ${worker.id} scored: ${totalScore.toFixed(2)} (distance: ${distance.toFixed(2)}km, rating: ${worker.rating})`);
 

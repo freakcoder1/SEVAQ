@@ -9,6 +9,9 @@ import 'providers/earnings_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
+import 'services/sound_service.dart';
+import 'services/localization_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +21,33 @@ void main() async {
     options: defaultFirebaseOptions.currentPlatform,
   );
 
+  // Initialize services
+  await _initializeServices();
+
   // Print API config for debugging
   debugPrint('=== Worker App Starting ===');
   debugPrint('API Base URL: ${AppConfig.apiBaseUrl}');
 
   runApp(const WorkerApp());
+}
+
+/// Initialize all services
+Future<void> _initializeServices() async {
+  // Initialize notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  // Register FCM token with backend
+  await notificationService.registerTokenWithBackend();
+
+  // Initialize sound service
+  final soundService = SoundService();
+  await soundService.initialize();
+
+  // Initialize localization (default to Hindi)
+  final localizationService = LocalizationService();
+  localizationService.setLocale(const Locale('hi', 'IN'));
+
+  debugPrint('All services initialized');
 }
 
 class WorkerApp extends StatelessWidget {

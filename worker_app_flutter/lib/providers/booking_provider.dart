@@ -33,23 +33,38 @@ class BookingProvider extends ChangeNotifier {
 
       // Handle different response formats
       if (response == null) {
+        debugPrint('No bookings response (null)');
         _bookings = [];
       } else if (response is List) {
-        // Response is directly a list
-        _bookings = response
-            .map((b) => Booking.fromJson(b as Map<String, dynamic>))
-            .toList();
+        debugPrint('Response is a List with ${response.length} items');
+        _bookings = [];
+        for (int i = 0; i < response.length; i++) {
+          try {
+            final bookingJson = response[i] as Map<String, dynamic>;
+            final booking = Booking.fromJson(bookingJson);
+            _bookings.add(booking);
+            debugPrint(
+                'Parsed booking $i: ${booking.id} - ${booking.serviceName} - ${booking.status}');
+          } catch (e, stackTrace) {
+            debugPrint('Error parsing booking at index $i: $e');
+            debugPrint('Booking keys: ${(response[i] as Map).keys.toList()}');
+          }
+        }
+        debugPrint('Total parsed bookings: ${_bookings.length}');
       } else if (response is Map<String, dynamic>) {
         // Response is a map - check for 'bookings' key
         if (response['bookings'] != null) {
+          debugPrint('Response has bookings key');
           _bookings = (response['bookings'] as List)
               .map((b) => Booking.fromJson(b as Map<String, dynamic>))
               .toList();
         } else {
+          debugPrint('Response is a Map but no bookings key: ${response.keys}');
           // Empty response or other format
           _bookings = [];
         }
       } else {
+        debugPrint('Unexpected response type: ${response.runtimeType}');
         _bookings = [];
       }
     } catch (e) {
@@ -80,13 +95,15 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> rejectBooking(String bookingId) async {
+  Future<bool> rejectBooking(String bookingId, {String? reason}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _apiService.post('workers/bookings/$bookingId/reject', {});
+      await _apiService.post('workers/bookings/$bookingId/reject', {
+        if (reason != null) 'reason': reason,
+      });
       await fetchBookings();
       _isLoading = false;
       notifyListeners();
@@ -144,11 +161,6 @@ class BookingProvider extends ChangeNotifier {
 
   void clearSelection() {
     _selectedBooking = null;
-    notifyListeners();
-  }
-
-  void clearError() {
-    _error = null;
     notifyListeners();
   }
 }

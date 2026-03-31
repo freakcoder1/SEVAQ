@@ -46,21 +46,18 @@ async function runTests() {
   
   const tests = [
     // Worker Profile Endpoints
-    { name: 'GET /api/workers/me', path: '/api/workers/me' },
-    { name: 'GET /api/workers/me/bookings', path: '/api/workers/me/bookings' },
-    { name: 'GET /api/workers/me/earnings', path: '/api/workers/me/earnings' },
+    { name: 'GET /api/workers/me', path: '/api/workers/me', expectedStatus: [200] },
+    { name: 'GET /api/workers/me/bookings', path: '/api/workers/me/bookings', expectedStatus: [200] },
+    { name: 'GET /api/workers/me/earnings', path: '/api/workers/me/earnings', expectedStatus: [200] },
     
-    // Booking Action Endpoints
-    { name: 'GET /api/workers/bookings/:id/accept (GET)', path: '/api/workers/bookings/1/accept' },
-    { name: 'GET /api/workers/bookings/:id/reject (GET)', path: '/api/workers/bookings/1/reject' },
-    { name: 'GET /api/workers/bookings/:id/start (GET)', path: '/api/workers/bookings/1/start' },
-    { name: 'GET /api/workers/bookings/:id/complete (GET)', path: '/api/workers/bookings/1/complete' },
+    // Booking Action Endpoints (POST - need real booking UUID)
+    { name: 'POST /api/workers/bookings/:id/accept', path: '/api/workers/bookings/1/accept', method: 'POST', expectedStatus: [400, 404] },
+    { name: 'POST /api/workers/bookings/:id/reject', path: '/api/workers/bookings/1/reject', method: 'POST', expectedStatus: [400, 404] },
+    { name: 'POST /api/workers/bookings/:id/start', path: '/api/workers/bookings/1/start', method: 'POST', expectedStatus: [400, 404] },
+    { name: 'POST /api/workers/bookings/:id/complete', path: '/api/workers/bookings/1/complete', method: 'POST', expectedStatus: [400, 404] },
     
-    // POST endpoints (need real booking ID)
-    { name: 'POST /api/workers/bookings/:id/accept', path: '/api/workers/bookings/1/accept', method: 'POST' },
-    { name: 'POST /api/workers/bookings/:id/reject', path: '/api/workers/bookings/1/reject', method: 'POST' },
-    { name: 'POST /api/workers/bookings/:id/start', path: '/api/workers/bookings/1/start', method: 'POST' },
-    { name: 'POST /api/workers/bookings/:id/complete', path: '/api/workers/bookings/1/complete', method: 'POST' },
+    // Availability Endpoint
+    { name: 'PATCH /api/workers/me/availability', path: '/api/workers/me/availability', method: 'PATCH', body: { isAvailable: true }, expectedStatus: [200] },
     
     // Auth Endpoints
     { name: 'POST /api/auth/login', path: '/api/auth/login', method: 'POST', body: { email: 'test@test.com', password: 'test123' } },
@@ -89,15 +86,22 @@ async function runTests() {
     if (result.error) {
       console.log(`  ❌ ERROR: ${result.error}`);
       failed++;
-    } else if (result.ok) {
+    } else if (result.ok || (test.expectedStatus && test.expectedStatus.includes(result.status))) {
       console.log(`  ✅ HTTP ${result.status} - OK`);
       passed++;
     } else {
-      console.log(`  ⚠️  HTTP ${result.status}`);
-      if (result.data && typeof result.data === 'object') {
-        if (result.data.message) {
-          console.log(`     Message: ${result.data.message}`);
+      // Check if this test has expected status that includes the actual status
+      if (test.expectedStatus && test.expectedStatus.includes(result.status)) {
+        console.log(`  ✅ HTTP ${result.status} - OK (expected)`);
+        passed++;
+      } else {
+        console.log(`  ⚠️  HTTP ${result.status}`);
+        if (result.data && typeof result.data === 'object') {
+          if (result.data.message) {
+            console.log(`     Message: ${result.data.message}`);
+          }
         }
+        failed++;
       }
     }
     console.log('');

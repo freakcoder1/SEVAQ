@@ -1,4 +1,15 @@
 class Worker {
+  // Helper method to parse double from various types
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
   final String id;
   final String name;
   final String phone;
@@ -23,7 +34,8 @@ class Worker {
 
   factory Worker.fromJson(Map<String, dynamic> json) {
     // Handle nested 'user' object from backend
-    Map<String, dynamic> userData = json['user'] ?? json;
+    Map<String, dynamic> userData =
+        json['user'] is Map ? Map<String, dynamic>.from(json['user']) : json;
 
     // Build name from firstName and lastName
     String fullName = '';
@@ -32,6 +44,48 @@ class Worker {
           '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
     } else {
       fullName = json['name'] ?? userData['name'] ?? '';
+    }
+
+    // Handle services - could be List of strings or List of objects
+    List<String> parsedServices = [];
+    if (json['services'] != null) {
+      final servicesList = json['services'];
+      if (servicesList is List) {
+        for (var service in servicesList) {
+          if (service is Map) {
+            // Service is an object, extract name or id
+            parsedServices.add(
+                service['name']?.toString() ?? service['id']?.toString() ?? '');
+          } else if (service is String) {
+            parsedServices.add(service);
+          }
+        }
+      }
+    } else if (json['serviceCategories'] != null) {
+      parsedServices = List<String>.from(json['serviceCategories']);
+    }
+
+    // Handle location - could be a Map (nested location data) or String
+    String? parsedLocation;
+    final locationValue = json['location'] ?? json['serviceArea'];
+    if (locationValue != null) {
+      if (locationValue is String) {
+        parsedLocation = locationValue;
+      } else if (locationValue is Map) {
+        // Extract address or name from location object
+        parsedLocation = locationValue['address']?.toString() ??
+            locationValue['name']?.toString();
+      }
+    }
+
+    // Handle totalJobs - ensure it's an int
+    int parsedTotalJobs = 0;
+    final totalJobsValue =
+        json['totalJobs'] ?? json['jobsCompleted'] ?? json['completedJobs'];
+    if (totalJobsValue is int) {
+      parsedTotalJobs = totalJobsValue;
+    } else if (totalJobsValue is String) {
+      parsedTotalJobs = int.tryParse(totalJobsValue) ?? 0;
     }
 
     return Worker(
@@ -45,17 +99,10 @@ class Worker {
           json['profileImageUrl'] ??
           userData['photoUrl'],
       isAvailable: json['isAvailable'] ?? json['availability'] ?? false,
-      services: json['services'] != null
-          ? List<String>.from(json['services'])
-          : json['serviceCategories'] != null
-              ? List<String>.from(json['serviceCategories'])
-              : [],
-      rating: (json['rating'] ?? json['averageRating'] ?? 0).toDouble(),
-      totalJobs: json['totalJobs'] ??
-          json['jobsCompleted'] ??
-          json['completedJobs'] ??
-          0,
-      location: json['location'] ?? json['serviceArea'],
+      services: parsedServices,
+      rating: _parseDouble(json['rating'] ?? json['averageRating'] ?? 0),
+      totalJobs: parsedTotalJobs,
+      location: parsedLocation,
     );
   }
 

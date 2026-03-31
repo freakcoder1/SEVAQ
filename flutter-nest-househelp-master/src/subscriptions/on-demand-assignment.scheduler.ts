@@ -13,6 +13,7 @@ import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { AssignmentsService } from '../assignments/assignments.service';
 import { WorkersService } from '../workers/workers.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -32,6 +33,7 @@ export class OnDemandAssignmentScheduler {
     private readonly workerRepository: Repository<Worker>,
     private readonly assignmentsService: AssignmentsService,
     private readonly workersService: WorkersService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -248,6 +250,9 @@ export class OnDemandAssignmentScheduler {
 
       await this.bookingRepository.save(booking);
 
+      // Send push notification to worker
+      await this._notifyWorkerOfAssignment(nearestWorker.worker, booking);
+
       this.logger.log(
         `Directly assigned worker ${nearestWorker.worker.id} to on-demand booking ${booking.id} (distance: ${nearestWorker.distance.toFixed(2)}km)`,
       );
@@ -259,5 +264,25 @@ export class OnDemandAssignmentScheduler {
       );
       return { success: false, reason: error.message };
     }
+  }
+
+  /**
+   * Send push notification to worker about new booking assignment
+   */
+  private async _notifyWorkerOfAssignment(worker: Worker, booking: Booking): Promise<void> {
+    if (!worker.fcmToken) {
+      this.logger.warn(`Worker ${worker.id} has no FCM token, skipping notification`);
+      return;
+    }
+
+    const service = await this.serviceRepository.findOne({ where: { id: booking.serviceId } });
+    const serviceName = service?.name || 'Service';
+    const bookingDate = new Date(booking.date).toLocaleDateString('en-IN');
+
+    const title = 'नई बुकिंग मिली! 🎉';
+    const body = `${serviceName} - ${bookingDate} को। ग्राहक का पता और विवरण देखने के लिए ऐप खोलें।`;
+
+    await this.notificationsService.sendPushNotification(worker.fcmToken, title, body);
+    this.logger.log(`Sent push notification to worker ${worker.id} for booking ${booking.id}`);
   }
 }

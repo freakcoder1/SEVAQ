@@ -72,7 +72,46 @@ export class AppController {
       results.push('✅ Workers seeded');
     } catch (e: any) { results.push(`❌ Workers: ${e.message}`); }
 
+    // Update special workers (ID 17 and 21) to be in Greater Noida West service area
+    try {
+      const updateResult = await ds.query(`
+        UPDATE workers 
+        SET "serviceAreaId" = '67856b26-d323-4ead-95f2-1be8fa361704',
+            "serviceRadiusKm" = 25,
+            latitude = 28.58,
+            longitude = 77.43,
+            "currentLat" = 28.58,
+            "currentLng" = 77.43
+        WHERE id IN (17, 21)
+      `);
+      results.push('✅ Worker locations updated');
+    } catch (e: any) { 
+      console.error('Worker location update error:', e.message);
+      results.push(`❌ Worker locations: ${e.message}`); 
+    }
+
     console.log('🌱 Seeding complete:', results);
     return { message: 'Seeding complete', results };
+  }
+
+  // Quick endpoint to update worker 17 and 21 location to service area
+  @Post('update-worker-locations')
+  async updateWorkerLocations() {
+    const ds = this.dataSource;
+    try {
+      const result = await ds.query(`
+        UPDATE workers 
+        SET "serviceAreaId" = '67856b26-d323-4ead-95f2-1be8fa361704',
+            "serviceRadiusKm" = 25,
+            latitude = 28.58,
+            longitude = 77.43,
+            "currentLat" = 28.58,
+            "currentLng" = 77.43
+        WHERE id IN (17, 21)
+      `);
+      return { message: 'Worker locations updated', result };
+    } catch (e: any) {
+      return { message: 'Error updating locations', error: e.message };
+    }
   }
 }

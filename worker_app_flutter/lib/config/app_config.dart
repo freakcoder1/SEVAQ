@@ -29,19 +29,47 @@ class AppConfig {
   /// Flag to use localhost (for USB debugging with ADB reverse).
   static const bool useLocalhostForUSB = true;
 
-  /// Set to FALSE to use production URL even in debug mode.
-  static const bool useProductionForDebug = false;
+  /// Set to TRUE to use production URL in debug mode (for testing with remote backend)
+  /// Set to FALSE to use localhost URL (for USB debugging with local backend)
+  static const bool useProductionForDebug = true;
 
   /// Returns the appropriate API base URL for the current build mode and
   /// platform.
   static String get apiBaseUrl {
     // For development, check if we should use production URL for physical device testing
     if (kDebugMode) {
-      // Use production URL when testing on physical device without local backend
+      // Use localhost for USB debugging with ADB reverse
+      // Use dev wifi URL for physical device over WiFi
+      // Use production only when explicitly needed
+      if (useProductionForDebug) {
+        debugPrint(
+          'AppConfig: apiBaseUrl = $_productionApiBaseUrl (Debug mode - Production)',
+        );
+        return _productionApiBaseUrl;
+      }
+
+      // Use localhost for USB debugging or WiFi for physical device
+      if (Platform.isAndroid) {
+        // For USB debugging with ADB reverse: use localhost
+        // For WiFi debugging: use WiFi IP
+        if (useLocalhostForUSB) {
+          debugPrint(
+            'AppConfig: apiBaseUrl = $_devLocalhostUrl (Debug mode - USB/Localhost)',
+          );
+          return _devLocalhostUrl;
+        } else {
+          debugPrint(
+            'AppConfig: apiBaseUrl = $_devWifiUrl (Debug mode - WiFi)',
+          );
+          return _devWifiUrl;
+        }
+      }
+
+      // For iOS, use localhost
       debugPrint(
-        'AppConfig: apiBaseUrl = $_productionApiBaseUrl (Debug mode - Production)',
+        'AppConfig: apiBaseUrl = $_devLocalhostUrl (Debug mode - iOS)',
       );
-      return _productionApiBaseUrl;
+      return _devLocalhostUrl;
     }
 
     // Release / profile builds → production URL

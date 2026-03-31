@@ -1,4 +1,15 @@
 class Earnings {
+  // Helper method to parse double from various types
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
   final double thisMonth;
   final double lastMonth;
   final double todayEarnings;
@@ -19,28 +30,43 @@ class Earnings {
 
   factory Earnings.fromJson(Map<String, dynamic> json) {
     return Earnings(
-      thisMonth: (json['thisMonth'] ?? json['currentMonth'] ?? 0).toDouble(),
-      lastMonth: (json['lastMonth'] ?? json['previousMonth'] ?? 0).toDouble(),
-      todayEarnings: (json['today'] ?? json['todayEarnings'] ?? 0).toDouble(),
-      thisWeek: (json['thisWeek'] ?? json['currentWeek'] ?? 0).toDouble(),
-      completedJobsThisMonth:
-          json['completedJobsThisMonth'] ?? json['jobsThisMonth'] ?? 0,
-      completedJobsLastMonth:
-          json['completedJobsLastMonth'] ?? json['jobsLastMonth'] ?? 0,
+      thisMonth: _parseDouble(json['thisMonth'] ?? json['currentMonth'] ?? 0),
+      lastMonth: _parseDouble(json['lastMonth'] ?? json['previousMonth'] ?? 0),
+      todayEarnings: _parseDouble(json['today'] ?? json['todayEarnings'] ?? 0),
+      thisWeek: _parseDouble(json['thisWeek'] ?? json['currentWeek'] ?? 0),
+      completedJobsThisMonth: _parseDouble(json['completedJobs'] ??
+              json['completedJobsThisMonth'] ??
+              json['jobsThisMonth'] ??
+              0)
+          .toInt(),
+      completedJobsLastMonth: _parseDouble(
+              json['completedJobsLastMonth'] ?? json['jobsLastMonth'] ?? 0)
+          .toInt(),
       breakdown: json['breakdown'] != null
           ? (json['breakdown'] as List)
-                .map((e) => EarningDetail.fromJson(e))
-                .toList()
+              .map((e) => EarningDetail.fromJson(e as Map<String, dynamic>))
+              .toList()
           : json['earnings'] != null
-          ? (json['earnings'] as List)
-                .map((e) => EarningDetail.fromJson(e))
-                .toList()
-          : [],
+              ? (json['earnings'] as List)
+                  .map((e) => EarningDetail.fromJson(e as Map<String, dynamic>))
+                  .toList()
+              : [],
     );
   }
 }
 
 class EarningDetail {
+  // Helper method to parse double from various types
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
   final String date;
   final double amount;
   final String? description;
@@ -56,7 +82,7 @@ class EarningDetail {
   factory EarningDetail.fromJson(Map<String, dynamic> json) {
     return EarningDetail(
       date: json['date'] ?? json['day'] ?? '',
-      amount: (json['amount'] ?? json['earnings'] ?? 0).toDouble(),
+      amount: _parseDouble(json['amount'] ?? json['earnings'] ?? 0),
       description: json['description'] ?? json['service'],
       bookingId: json['bookingId']?.toString(),
     );

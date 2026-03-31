@@ -111,6 +111,10 @@ export class Worker {
     endTime: string;
   }>;
 
+  // FCM token for push notifications to worker
+  @Column({ type: 'text', nullable: true })
+  fcmToken: string;
+
   @OneToMany(() => Slot, (slot) => slot.worker)
   slots: Slot[];
 

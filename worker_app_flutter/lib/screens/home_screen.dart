@@ -3,10 +3,51 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/earnings_provider.dart';
+import '../services/notification_service.dart';
+import '../services/sound_service.dart';
+import '../widgets/new_booking_popup.dart';
 import 'booking_detail_screen.dart';
 
-class WorkerHomeScreen extends StatelessWidget {
+class WorkerHomeScreen extends StatefulWidget {
   const WorkerHomeScreen({super.key});
+
+  @override
+  State<WorkerHomeScreen> createState() => _WorkerHomeScreenState();
+}
+
+class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _listenForNewBookings();
+  }
+
+  void _listenForNewBookings() {
+    // Listen for new booking notifications
+    NotificationService.onNewBooking.listen((bookingData) {
+      debugPrint(
+          'New booking received in home screen: ${bookingData['bookingId']}');
+
+      // Play sound and vibrate
+      SoundService().playNewBookingSound();
+
+      // Show popup
+      if (mounted) {
+        _showNewBookingPopup(bookingData);
+      }
+    });
+  }
+
+  Future<void> _showNewBookingPopup(Map<String, dynamic> bookingData) async {
+    final result = await showNewBookingPopup(context, bookingData);
+
+    if (result != null && result['action'] == 'accept') {
+      // Accept the booking - refresh bookings
+      if (mounted) {
+        await context.read<BookingProvider>().fetchBookings();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,9 +233,9 @@ class WorkerHomeScreen extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
         ),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
@@ -228,7 +269,9 @@ class WorkerHomeScreen extends StatelessWidget {
                         ),
                         Text(
                           '₹${earnings?.thisMonth.toStringAsFixed(0) ?? '0'}',
-                          style: Theme.of(context).textTheme.headlineSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
                               ?.copyWith(
                                 color: Colors.green,
                                 fontWeight: FontWeight.bold,

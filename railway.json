@@ -1,6 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "root": "flutter-nest-househelp-master",
+  "root": ".",
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",

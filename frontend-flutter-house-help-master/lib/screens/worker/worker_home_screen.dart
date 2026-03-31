@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../services/api_service.dart';
 import '../../models/worker.dart';
@@ -47,11 +48,57 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
       // Get upcoming bookings
       final bookingsResponse = await _apiService.getMyWorkerBookings();
       if (bookingsResponse is List) {
-        _upcomingBookings = bookingsResponse
-            .map((b) => Booking.fromJson(b))
-            .toList();
+        _upcomingBookings = [];
+        for (var i = 0; i < bookingsResponse.length; i++) {
+          var b = bookingsResponse[i];
+          // Ensure b is a Map<String, dynamic> before passing to fromJson
+          if (b is! Map<String, dynamic>) {
+            debugPrint('Skipping non-Map booking item $i: ${b.runtimeType}');
+            continue;
+          }
+          try {
+            _upcomingBookings.add(Booking.fromJson(b));
+          } catch (e, stackTrace) {
+            debugPrint('Error parsing booking at index $i: $e');
+            debugPrint('Booking keys: ${b.keys.toList()}');
+            // Try to identify which nested object is causing the issue
+            try {
+              // Check user field
+              if (b['user'] is Map<String, dynamic>) {
+                debugPrint('user field parsed OK');
+              } else {
+                debugPrint('user field type: ${b['user']?.runtimeType}');
+              }
+              // Check worker field
+              if (b['worker'] is Map<String, dynamic>) {
+                debugPrint('worker field parsed OK');
+              } else {
+                debugPrint('worker field type: ${b['worker']?.runtimeType}');
+              }
+              // Check service field
+              if (b['service'] is Map<String, dynamic>) {
+                debugPrint('service field parsed OK');
+              } else {
+                debugPrint('service field type: ${b['service']?.runtimeType}');
+              }
+            } catch (nestedErr) {
+              debugPrint('Error checking nested fields: $nestedErr');
+            }
+            debugPrint('Stack trace: $stackTrace');
+            // Continue with next booking even if one fails
+          }
+        }
+        debugPrint(
+          'Parsed ${_upcomingBookings.length} bookings out of ${bookingsResponse.length}',
+        );
+      } else if (bookingsResponse != null) {
+        debugPrint(
+          'Bookings response is not a List, it is: ${bookingsResponse.runtimeType}',
+        );
+        debugPrint('Bookings response: $bookingsResponse');
       }
     } catch (e) {
+      debugPrint('Error loading worker data: $e');
       setState(() {
         _error = 'Failed to load worker data: $e';
       });

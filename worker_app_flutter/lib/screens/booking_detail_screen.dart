@@ -88,9 +88,9 @@ class WorkerBookingDetailScreen extends StatelessWidget {
                 Text(
                   booking.status,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 Text(
                   _getStatusDescription(booking.status),
@@ -365,11 +365,29 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     BuildContext context,
     BookingProvider provider,
   ) async {
+    final reasonController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reject Job'),
-        content: const Text('Are you sure you want to reject this job?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Are you sure you want to reject this job?'),
+            const SizedBox(height: 16),
+            const Text('Reason for rejection (optional):'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Enter reason...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -385,7 +403,10 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      final success = await provider.rejectBooking(booking.id);
+      final reason = reasonController.text.trim().isEmpty
+          ? null
+          : reasonController.text.trim();
+      final success = await provider.rejectBooking(booking.id, reason: reason);
       if (context.mounted) {
         if (success) {
           ScaffoldMessenger.of(

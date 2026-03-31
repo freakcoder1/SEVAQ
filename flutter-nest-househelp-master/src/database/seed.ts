@@ -37,6 +37,21 @@ async function bootstrap() {
 
   console.log('✅ Database seeding complete!');
 
+  // Update special workers to be in service area
+  console.log('🔄 Updating worker locations for Greater Noida West...');
+  
+  await dataSource.query(`
+    UPDATE workers 
+    SET "serviceAreaId" = '67856b26-d323-4ead-95f2-1be8fa361704',
+        "serviceRadiusKm" = 25,
+        latitude = 28.58,
+        longitude = 77.43,
+        "currentLat" = 28.58,
+        "currentLng" = 77.43
+    WHERE id IN (17, 21)
+  `);
+  console.log('✅ Workers 17 and 21 updated with Greater Noida West service area');
+
   await app.close();
 }
 
