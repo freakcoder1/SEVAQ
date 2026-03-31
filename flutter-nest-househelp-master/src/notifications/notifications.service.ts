@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
+import { Worker } from '../workers/entities/worker.entity';
 import * as admin from 'firebase-admin';
 
 @Injectable()
@@ -20,6 +21,8 @@ export class NotificationsService {
     private bookingsRepository: Repository<Booking>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Worker)
+    private workersRepository: Repository<Worker>,
   ) {
     // Configure nodemailer
     this.transporter = nodemailer.createTransport({
@@ -134,6 +137,7 @@ export class NotificationsService {
     fcmToken: string,
     title: string,
     body: string,
+    dataPayload?: Record<string, string>,
   ): Promise<void> {
     try {
       // Check if Firebase Admin SDK is initialized
@@ -150,15 +154,20 @@ export class NotificationsService {
         return;
       }
 
-      const message = {
+      const message: admin.messaging.Message = {
         token: fcmToken,
         notification: {
           title: title,
           body: body,
         },
-        data: {
-          // Optional additional data
-          type: 'pre_service_reminder',
+        data: dataPayload || {
+          type: 'notification',
+        },
+        android: {
+          priority: 'high' as const,
+          notification: {
+            sound: 'default',
+          },
         },
       };
 
@@ -167,6 +176,29 @@ export class NotificationsService {
     } catch (error) {
       console.error('Error sending push notification:', error);
     }
+  }
+
+  async notifyWorkerNewBooking(worker: Worker, booking: Booking): Promise<void> {
+    if (!worker.fcmToken) {
+      console.warn(`No FCM token for worker ${worker.id}`);
+      return;
+    }
+
+    const serviceName = booking.service?.name || 'Service';
+    const notificationTitle = 'नया काम मिला!';
+    const notificationBody = `नया बुकिंग मिली है - ${serviceName}`;
+
+    await this.sendPushNotification(
+      worker.fcmToken,
+      notificationTitle,
+      notificationBody,
+      {
+        type: 'new_booking',
+        bookingId: booking.id.toString(),
+      },
+    );
+
+    console.log(`New booking notification sent to worker ${worker.id} for booking ${booking.id}`);
   }
 
   async notifyAdmins(subject: string, message: string): Promise<void> {

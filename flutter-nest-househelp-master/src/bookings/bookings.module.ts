@@ -9,11 +9,13 @@ import { User } from '../users/entities/user.entity';
 import { ServiceRequest } from '../service-requests/entities/service-request.entity';
 
 import { SlotsModule } from '../slots/slots.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Booking, Worker, Service, User, ServiceRequest]),
     SlotsModule,
+    NotificationsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService],

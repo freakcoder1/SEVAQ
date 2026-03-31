@@ -12,6 +12,7 @@ import {
   BookingType,
 } from './entities/booking.entity';
 import { ServiceRequest } from '../service-requests/entities/service-request.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class BookingsService {
@@ -29,6 +30,7 @@ export class BookingsService {
     @InjectRepository(ServiceRequest)
     private serviceRequestsRepository: Repository<ServiceRequest>,
     private slotsService: SlotsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async findBestWorker(
@@ -863,7 +865,17 @@ export class BookingsService {
     booking.assignmentTimestamp = new Date();
     booking.assignmentReason = 'Manual assignment by admin';
 
-    return this.bookingsRepository.save(booking);
+    const savedBooking = await this.bookingsRepository.save(booking);
+
+    // Send push notification to worker
+    try {
+      await this.notificationsService.notifyWorkerNewBooking(worker, savedBooking);
+    } catch (error) {
+      // Log but don't fail the assignment if notification fails
+      this.logger.error('Failed to send worker notification:', error);
+    }
+
+    return savedBooking;
   }
 
   // Missing methods for controller compatibility
