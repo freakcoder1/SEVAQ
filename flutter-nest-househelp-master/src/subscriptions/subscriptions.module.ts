@@ -20,6 +20,7 @@ import { AvailabilityModule } from '../availability/availability.module';
 import { UsersModule } from '../users/users.module';
 import { ServicesModule } from '../services/services.module';
 import { WorkersModule } from '../workers/workers.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { WorkersModule } from '../workers/workers.module';
     BookingsModule,
     AvailabilityModule,
     UsersModule,
+    NotificationsModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [SubscriptionsController],
