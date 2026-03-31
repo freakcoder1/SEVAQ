@@ -1,17 +1,18 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "root": ".",
+  "name": "SEVAQ",
+  "root": "flutter-nest-househelp-master",
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",
-    "buildCommand": "cd flutter-nest-househelp-master && npm run build"
+    "buildCommand": "npm run build"
   },
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
     "sleepApplication": false,
-    "startCommand": "cd flutter-nest-househelp-master && node dist/main"
+    "startCommand": "node dist/main"
   },
   "env": {
     "SYNCHRONIZE": "true",

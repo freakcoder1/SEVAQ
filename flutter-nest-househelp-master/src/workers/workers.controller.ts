@@ -285,7 +285,7 @@ export class WorkersController {
     @Request() req,
     @Body('fcmToken') fcmToken: string,
   ) {
-    this.logger.log(`Updating FCM token for user: ${req.user.userId}`);
+    this.logger.log(`Updating FCM token for user: ${req.user.userId}, token: ${fcmToken?.substring(0, 30)}...`);
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
       this.logger.error(`Worker not found for user: ${req.user.userId}`);

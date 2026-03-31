@@ -123,12 +123,10 @@ class NotificationService {
 
   /// Send FCM token to backend for this worker
   Future<void> registerTokenWithBackend() async {
-    // Skip if already registered
-    if (_tokenRegistered) {
-      if (kDebugMode) {
-        print('FCM token already registered, skipping');
-      }
-      return;
+    // Always try to register - remove the check to ensure FCM token is always sent
+    // We check inside the function to handle auth/jwt token, not the in-memory flag
+    if (kDebugMode) {
+      print('Attempting to register FCM token with backend...');
     }
 
     if (_fcmToken == null) {

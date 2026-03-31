@@ -45,6 +45,10 @@ class _WorkerMainScreenState extends State<WorkerMainScreen> {
       // Normal flow - fetch bookings and earnings
       context.read<BookingProvider>().fetchBookings();
       context.read<EarningsProvider>().fetchEarnings();
+
+      // Start auto-polling for new bookings
+      context.read<BookingProvider>().startPolling();
+      debugPrint('WorkerMainScreen: Started booking polling');
     }
   }
 
@@ -60,6 +64,9 @@ class _WorkerMainScreenState extends State<WorkerMainScreen> {
       context.read<AuthProvider>().fetchWorkerProfile();
       context.read<BookingProvider>().fetchBookings();
       context.read<EarningsProvider>().fetchEarnings();
+
+      // Start auto-polling for new bookings
+      context.read<BookingProvider>().startPolling();
     });
   }
 

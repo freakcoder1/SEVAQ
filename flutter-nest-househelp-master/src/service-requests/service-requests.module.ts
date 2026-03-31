@@ -11,6 +11,7 @@ import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
 import { SlotsModule } from '../slots/slots.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ServiceProfilesModule } from '../service-profiles/service-profiles.modu
     }),
     SlotsModule,
     ServiceProfilesModule,
+    NotificationsModule,
   ],
   controllers: [ServiceRequestsController],
   providers: [ServiceRequestsService, AssignmentWorker, AssignmentProcessor],

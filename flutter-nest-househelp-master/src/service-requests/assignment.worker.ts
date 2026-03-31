@@ -8,6 +8,7 @@ import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
 import { ServiceType } from '../service-profiles/entities/service-profile.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AssignmentWorker {
@@ -24,6 +25,7 @@ export class AssignmentWorker {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private serviceProfilesService: ServiceProfilesService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async processAssignment(requestId: string): Promise<void> {
@@ -143,6 +145,9 @@ export class AssignmentWorker {
       this.logger.log(
         `Successfully assigned worker ${bestWorker.worker.id} to request ${requestId}`,
       );
+
+      // Send push notification to worker
+      await this._notifyWorkerOfAssignment(bestWorker.worker, request);
     } catch (error) {
       this.logger.error(
         `Error processing assignment for request ${requestId}: ${error.message}`,
@@ -153,6 +158,45 @@ export class AssignmentWorker {
         assignedWorkerId: null,
         assignedSlotId: null,
       });
+    }
+  }
+
+  /**
+   * Send push notification to worker about new booking assignment
+   */
+  private async _notifyWorkerOfAssignment(
+    worker: Worker,
+    request: ServiceRequest,
+  ): Promise<void> {
+    if (!worker.fcmToken) {
+      this.logger.warn(
+        `Worker ${worker.id} has no FCM token, skipping notification`,
+      );
+      return;
+    }
+
+    const service = await this.servicesRepository.findOne({
+      where: { id: request.serviceId as number },
+    });
+    const serviceName = service?.name || 'Service';
+    const requestDate = new Date(request.date).toLocaleDateString('en-IN');
+
+    const title = 'नई बुकिंग मिली! 🎉';
+    const body = `${serviceName} - ${requestDate} को। ग्राहक का पता और विवरण देखने के लिए ऐप खोलें।`;
+
+    try {
+      await this.notificationsService.sendPushNotification(
+        worker.fcmToken,
+        title,
+        body,
+      );
+      this.logger.log(
+        `Sent push notification to worker ${worker.id} for request ${request.id}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send push notification to worker ${worker.id}: ${error.message}`,
+      );
     }
   }
 

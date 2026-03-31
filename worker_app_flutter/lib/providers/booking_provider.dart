@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../models/booking.dart';
 import '../services/api_service.dart';
@@ -9,6 +11,10 @@ class BookingProvider extends ChangeNotifier {
   Booking? _selectedBooking;
   bool _isLoading = false;
   String? _error;
+  Timer? _pollingTimer;
+  int _lastBookingsCount = 0;
+
+  static const Duration pollingInterval = Duration(seconds: 30);
 
   List<Booking> get bookings => _bookings;
   Booking? get selectedBooking => _selectedBooking;
@@ -21,6 +27,65 @@ class BookingProvider extends ChangeNotifier {
       _bookings.where((b) => b.isInProgress || b.isConfirmed).toList();
   List<Booking> get completedBookings =>
       _bookings.where((b) => b.isCompleted).toList();
+
+  /// Start auto-polling for new bookings
+  void startPolling() {
+    stopPolling(); // Cancel any existing timer
+    debugPrint(
+        'BookingProvider: Starting polling every ${pollingInterval.inSeconds} seconds');
+    _pollingTimer = Timer.periodic(pollingInterval, (_) {
+      debugPrint('BookingProvider: Polling triggered');
+      _fetchBookingsSilent();
+    });
+  }
+
+  /// Stop auto-polling
+  void stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+    debugPrint('BookingProvider: Polling stopped');
+  }
+
+  /// Fetch bookings silently without showing loading indicator
+  Future<void> _fetchBookingsSilent() async {
+    try {
+      final response = await _apiService.get('workers/me/bookings');
+
+      if (response == null) {
+        return;
+      }
+
+      List<Booking> newBookings = [];
+      if (response is List) {
+        for (int i = 0; i < response.length; i++) {
+          try {
+            final bookingJson = response[i] as Map<String, dynamic>;
+            final booking = Booking.fromJson(bookingJson);
+            newBookings.add(booking);
+          } catch (e) {
+            debugPrint('Error parsing booking at index $i: $e');
+          }
+        }
+      } else if (response is Map<String, dynamic> &&
+          response['bookings'] != null) {
+        newBookings = (response['bookings'] as List)
+            .map((b) => Booking.fromJson(b as Map<String, dynamic>))
+            .toList();
+      }
+
+      // Check for new bookings
+      if (newBookings.length > _lastBookingsCount && _lastBookingsCount > 0) {
+        debugPrint(
+            'BookingProvider: NEW BOOKINGS DETECTED! ${newBookings.length - _lastBookingsCount} new booking(s)');
+        // TODO: Play sound or show notification for new bookings
+      }
+      _lastBookingsCount = newBookings.length;
+      _bookings = newBookings;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('BookingProvider: Silent fetch error: $e');
+    }
+  }
 
   Future<void> fetchBookings() async {
     _isLoading = true;
@@ -162,5 +227,11 @@ class BookingProvider extends ChangeNotifier {
   void clearSelection() {
     _selectedBooking = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    stopPolling();
+    super.dispose();
   }
 }
