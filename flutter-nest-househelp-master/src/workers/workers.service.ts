@@ -419,6 +419,7 @@ export class WorkersService {
       throw new Error('Worker not found');
     }
 
+    worker.serviceAreaId = '67856b26-d323-4ead-95f2-1be8fa361704'; // Greater Noida - Greater Noida West
     worker.latitude = serviceArea.latitude;
     worker.longitude = serviceArea.longitude;
     worker.currentLat = serviceArea.latitude;
@@ -427,8 +428,28 @@ export class WorkersService {
     if (serviceArea.radiusKm) {
       worker.serviceRadiusKm = serviceArea.radiusKm;
     }
+    // Default to 25km if not specified
+    if (!serviceArea.radiusKm) {
+      worker.serviceRadiusKm = 25;
+    }
 
     return this.workersRepository.save(worker);
+  }
+
+  /**
+   * Update worker's FCM token for push notifications
+   */
+  async updateFcmToken(workerId: number, fcmToken: string): Promise<Worker> {
+    this.logger.log(`updateFcmToken called for workerId: ${workerId}, token: ${fcmToken?.substring(0, 20)}...`);
+    const worker = await this.workersRepository.findOne({ where: { id: workerId } });
+    if (!worker) {
+      this.logger.error(`Worker not found: ${workerId}`);
+      throw new Error('Worker not found');
+    }
+    worker.fcmToken = fcmToken;
+    const saved = await this.workersRepository.save(worker);
+    this.logger.log(`FCM token saved for worker: ${workerId}`);
+    return saved;
   }
 
   /**
@@ -449,6 +470,25 @@ export class WorkersService {
     longitude: number,
   ): Promise<Worker> {
     console.log(`Creating worker profile for user: ${userPublicId}`);
+    
+    // ============================================
+    // Priority 2: Validate required fields
+    // ============================================
+    
+    // Validate bio (min 10 characters)
+    if (!bio || bio.length < 10) {
+      throw new Error('Bio is required and must be at least 10 characters');
+    }
+    
+    // Validate location (latitude and longitude required)
+    if (latitude === undefined || longitude === undefined || latitude === null || longitude === null) {
+      throw new Error('Location is required (latitude and longitude)');
+    }
+    
+    // Validate serviceIds (at least one service)
+    if (!serviceIds || serviceIds.length === 0) {
+      throw new Error('At least one service must be selected');
+    }
     
     // Find the user by their publicId
     const user = await this.usersRepository.findOne({
@@ -475,20 +515,37 @@ export class WorkersService {
       console.log(`Loaded ${services.length} services for worker`);
     }
     
-    // Create the worker profile
+    // ============================================
+    // Priority 3: Set sensible default values
+    // ============================================
+    
+    // Default availability schedule (Mon-Fri 8am-8pm)
+    const defaultSchedule = [
+      { day: 1, startTime: '08:00', endTime: '20:00' }, // Monday
+      { day: 2, startTime: '08:00', endTime: '20:00' }, // Tuesday
+      { day: 3, startTime: '08:00', endTime: '20:00' }, // Wednesday
+      { day: 4, startTime: '08:00', endTime: '20:00' }, // Thursday
+      { day: 5, startTime: '08:00', endTime: '20:00' }, // Friday
+    ];
+    
+    // Create the worker profile with proper defaults
     const worker = this.workersRepository.create({
       user: { id: user.id },
-      bio: bio || '',
+      bio: bio,
       services: services,
-      latitude: latitude || 28.5804579,
-      longitude: longitude || 77.4392951,
-      currentLat: latitude || 28.5804579,
-      currentLng: longitude || 77.4392951,
+      latitude: latitude,
+      longitude: longitude,
+      currentLat: latitude,
+      currentLng: longitude,
+      // Default 25km radius (like established workers)
+      serviceRadiusKm: 25,
+      // Default availability schedule
+      availabilitySchedule: defaultSchedule,
       isAvailable: true,
     });
     
     const savedWorker = await this.workersRepository.save(worker);
-    console.log(`Worker profile created with ID: ${savedWorker.id}`);
+    console.log(`Worker profile created with ID: ${savedWorker.id} with 25km radius and default schedule`);
     
     // Reload with relations
     return this.workersRepository.findOne({

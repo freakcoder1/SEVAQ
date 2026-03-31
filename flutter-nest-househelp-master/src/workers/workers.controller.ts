@@ -276,6 +276,25 @@ export class WorkersController {
   }
 
   /**
+   * Update worker's FCM token for push notifications
+   * PATCH /workers/me/fcm-token
+   */
+  @Patch('me/fcm-token')
+  @UseGuards(JwtAuthGuard)
+  async updateMyFcmToken(
+    @Request() req,
+    @Body('fcmToken') fcmToken: string,
+  ) {
+    this.logger.log(`Updating FCM token for user: ${req.user.userId}`);
+    const worker = await this.workersService.findByUserId(req.user.userId);
+    if (!worker) {
+      this.logger.error(`Worker not found for user: ${req.user.userId}`);
+      throw new NotFoundException('Worker profile not found');
+    }
+    return this.workersService.updateFcmToken(worker.id, fcmToken);
+  }
+
+  /**
    * Create worker profile for logged-in user
    * POST /workers/me/register
    * Protected by JWT - user must already be logged in
