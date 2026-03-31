@@ -859,6 +859,9 @@ export class BookingsService {
       throw new BadRequestException('Worker not found');
     }
 
+    // Log the worker's fcmToken for debugging
+    this.logger.log(`Worker ${worker.id} FCM token: ${worker.fcmToken ? worker.fcmToken.substring(0, 30) + '...' : 'NULL'}`);
+
     booking.worker = worker;
     booking.assignedWorkerId = workerId;
     booking.assignmentState = AssignmentState.ASSIGNED;
