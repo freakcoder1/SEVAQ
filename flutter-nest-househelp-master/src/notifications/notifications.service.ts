@@ -47,11 +47,31 @@ export class NotificationsService {
   }
 
   private initializeFirebase(): void {
+    // Try to get FIREBASE_SERVICE_ACCOUNT first (full JSON)
+    const serviceAccountJson = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
     const projectId = this.configService.get('FIREBASE_PROJECT_ID');
     const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
     const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
 
-    // Only initialize if all required credentials are provided
+    // Try to initialize using service account JSON first
+    if (serviceAccountJson && serviceAccountJson.includes('service_account')) {
+      try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+        this.firebaseInitialized = true;
+        console.log('Firebase Admin SDK initialized successfully from service account');
+        return;
+      } catch (error) {
+        console.warn(
+          'Firebase Admin SDK initialization from service account failed:',
+          error.message,
+        );
+      }
+    }
+
+    // Fall back to individual credentials
     if (
       projectId &&
       clientEmail &&
