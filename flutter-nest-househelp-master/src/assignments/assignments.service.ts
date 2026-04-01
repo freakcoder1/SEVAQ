@@ -7,6 +7,7 @@ import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
 import { AvailabilityService, AvailabilityCheckRequest, AvailabilityCheckResult } from '../availability/availability.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AssignmentsService {
@@ -23,6 +24,7 @@ export class AssignmentsService {
     private usersRepository: Repository<User>,
     private slotsService: SlotsService,
     private availabilityService: AvailabilityService,
+    private notificationsService: NotificationsService,
     private dataSource: DataSource,
   ) {}
 
@@ -88,6 +90,22 @@ export class AssignmentsService {
         assignmentMetadata: undefined,
       });
       return { success: false, reason: 'Slot was booked by another request' };
+    }
+
+    // Fetch the full booking with relations for notification
+    const fullBooking = await this.bookingsRepository.findOne({
+      where: { id: booking.id },
+      relations: ['user', 'worker', 'service', 'worker.user']
+    });
+
+    // Send push notification to worker
+    if (fullBooking) {
+      try {
+        await this.notificationsService.notifyWorkerNewBooking(bestWorker.worker, fullBooking);
+      } catch (error) {
+        // Log but don't fail the assignment if notification fails
+        this.logger.error('Failed to send worker notification:', error);
+      }
     }
 
     return { success: true, worker: bestWorker.worker };
@@ -347,6 +365,22 @@ export class AssignmentsService {
           assignmentMetadata: undefined
         });
         return { success: false, reason: 'Failed to book worker slot' };
+      }
+
+      // Fetch the full booking with relations for notification
+      const fullBooking = await this.bookingsRepository.findOne({
+        where: { id: booking.id },
+        relations: ['user', 'worker', 'service', 'worker.user']
+      });
+
+      // Send push notification to worker
+      if (fullBooking) {
+        try {
+          await this.notificationsService.notifyWorkerNewBooking(bestWorker.worker, fullBooking);
+        } catch (error) {
+          // Log but don't fail the assignment if notification fails
+          this.logger.error('Failed to send worker notification:', error);
+        }
       }
 
       console.log('=== ASSIGNMENT SUCCESS ===');

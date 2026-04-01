@@ -83,6 +83,29 @@ export class SubscriptionAssignmentScheduler {
   }
 
   /**
+   * Convert service publicId (UUID) to internal service id (integer)
+   * This is needed because bookings expect internal id but the mapping uses publicId
+   */
+  private async getInternalServiceIdByPublicId(publicId: string): Promise<number | null> {
+    try {
+      const service = await this.serviceRepository.findOne({
+        where: { publicId },
+      });
+
+      if (!service) {
+        this.logger.error(`Service not found for publicId: ${publicId}`);
+        return null;
+      }
+
+      this.logger.log(`Converted service publicId ${publicId} to internal id ${service.id}`);
+      return service.id;
+    } catch (error) {
+      this.logger.error(`Error converting service publicId to internal id: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Get the current time in IST timezone
    */
   private getNowInIST(): Date {
@@ -363,7 +386,17 @@ export class SubscriptionAssignmentScheduler {
 
       // Get the service UUID from the service profile for finding workers
       const serviceUuid = this.getServiceUuidByProfile(subscription.serviceProfile);
-      const serviceId = serviceUuid; // Pass the UUID string to findByService
+      
+      // Convert service publicId (UUID) to internal service id (integer) for booking creation
+      // The SERVICE_NAME_TO_ID mapping uses publicId (UUID), but bookings expect internal id (integer)
+      const internalServiceId = await this.getInternalServiceIdByPublicId(serviceUuid);
+      if (!internalServiceId) {
+        this.logger.error(`Failed to convert service UUID to internal id for: ${serviceUuid}`);
+        return { success: false, reason: 'Invalid service configuration' };
+      }
+      // serviceUuid (string) is used for finding workers via workersService.findByService
+      // internalServiceId (number) is used for creating bookings
+      const serviceId = internalServiceId;
 
       // Get user's location from subscription - prioritize subscription location,
       // then user's preferred location, then user's regular location
@@ -470,12 +503,12 @@ export class SubscriptionAssignmentScheduler {
 
         if (!booking || !booking.id) {
           // If booking creation fails, try to assign worker directly anyway
-          const assignmentResult = await this.directlyAssignWorkerWithoutBooking(location, serviceId, subscription.id);
+          const assignmentResult = await this.directlyAssignWorkerWithoutBooking(location, serviceUuid, subscription.id);
           return assignmentResult;
         }
 
         // Now assign a worker to this booking
-        const assignmentResult = await this.directlyAssignWorker(booking, location, serviceId);
+        const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
 
         if (assignmentResult.success) {
           this.logger.log(
@@ -534,7 +567,7 @@ export class SubscriptionAssignmentScheduler {
 
       // Now assign a worker to this booking directly without slot lookup
       // This skips the slot service which doesn't work properly for subscriptions
-      const assignmentResult = await this.directlyAssignWorker(booking, location, serviceId);
+      const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
 
       if (assignmentResult.success) {
         this.logger.log(
@@ -571,12 +604,12 @@ export class SubscriptionAssignmentScheduler {
   async directlyAssignWorker(
     booking: Booking,
     location: { lat: number; lng: number },
-    serviceId: string,
+    serviceId: string | number,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
       this.logger.log(`Starting direct worker assignment for booking ${booking.id}`);
 
-      // Find workers for this service using the correct method
+      // Find workers for this service using the publicId (UUID) string
       const workers = await this.workersService.findByService(serviceId.toString());
 
       if (!workers || workers.length === 0) {
@@ -635,13 +668,13 @@ export class SubscriptionAssignmentScheduler {
    */
   async directlyAssignWorkerWithoutBooking(
     location: { lat: number; lng: number },
-    serviceId: string,
+    serviceId: string | number,
     subscriptionId: number,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
       this.logger.log(`Starting direct worker assignment for subscription ${subscriptionId}`);
 
-      // Find workers for this service
+      // Find workers for this service using the publicId (UUID) string
       const workers = await this.workersService.findByService(serviceId.toString());
 
       if (!workers || workers.length === 0) {

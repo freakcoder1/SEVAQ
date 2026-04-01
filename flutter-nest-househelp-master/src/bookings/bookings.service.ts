@@ -633,7 +633,17 @@ export class BookingsService {
       booking.assignedWorkerId = bestMatch.worker.id;
       booking.assignmentTimestamp = new Date();
       booking.assignmentReason = 'Best match found';
-      return await this.bookingsRepository.save(booking);
+      const savedBooking = await this.bookingsRepository.save(booking);
+
+      // Send push notification to worker
+      try {
+        await this.notificationsService.notifyWorkerNewBooking(bestMatch.worker, savedBooking);
+      } catch (error) {
+        // Log but don't fail the assignment if notification fails
+        this.logger.error('Failed to send worker notification:', error);
+      }
+
+      return savedBooking;
     } catch (error) {
       // Assignment failed - booking remains in REQUESTED state
       // This is not an error, just no workers available
