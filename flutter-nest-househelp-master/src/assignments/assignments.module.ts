@@ -7,6 +7,7 @@ import { ServicesModule } from '../services/services.module';
 import { UsersModule } from '../users/users.module';
 import { SlotsModule } from '../slots/slots.module';
 import { AvailabilityModule } from '../availability/availability.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Worker } from '../workers/entities/worker.entity';
@@ -22,6 +23,7 @@ import { User } from '../users/entities/user.entity';
     UsersModule,
     SlotsModule,
     AvailabilityModule,
+    NotificationsModule,
   ],
   controllers: [AssignmentsController],
   providers: [AssignmentsService],
