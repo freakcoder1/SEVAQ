@@ -21,7 +21,7 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node", "jest"]
+    "types": ["node", "jest", "uuid"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]
