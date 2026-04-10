@@ -67,6 +67,7 @@
     "twilio": "^4.0.0",
     "typeorm": "^0.3.28",
     "uuid": "^9.0.1",
+    "@types/uuid": "^11.0.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
@@ -84,7 +85,6 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^6.0.2",
-    "@types/uuid": "^11.0.0",
     "axios": "^1.13.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
