@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { WorkersService } from './workers.service';
 import { CreateWorkerDto } from './dto/create-worker.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { JwtRequest } from '../common/types/jwt-user.type';
+import type { JwtRequest } from '../common/types/jwt-user.type';
 import { User } from '../users/entities/user.entity';
 
 @Controller('workers')
