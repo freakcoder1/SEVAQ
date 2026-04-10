@@ -8,6 +8,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { AssignmentsModule } from '../assignments/assignments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { User } from '../users/entities/user.entity';
 
 @Module({
@@ -18,6 +19,7 @@ import { User } from '../users/entities/user.entity';
     SubscriptionsModule,
     ServiceProfilesModule,
     AssignmentsModule,
+    NotificationsModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

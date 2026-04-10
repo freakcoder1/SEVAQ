@@ -15,6 +15,7 @@ import { AdminCreateUserDto } from './dto/admin-create-user.dto';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 import {
   PaginationDto,
   createPaginatedResponse,
@@ -32,7 +33,7 @@ export class UsersController {
 
   @Post('register-fcm-token')
   @UseGuards(JwtAuthGuard)
-  async registerFcmToken(@Request() req, @Body('fcmToken') fcmToken: string) {
+  async registerFcmToken(@Request() req: JwtRequest, @Body('fcmToken') fcmToken: string) {
     await this.usersService.updateFcmToken(req.user.userId, fcmToken);
     return { success: true, message: 'FCM token registered successfully' };
   }

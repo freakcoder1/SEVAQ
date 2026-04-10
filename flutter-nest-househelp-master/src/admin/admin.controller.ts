@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Query, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Query, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../auth/admin.guard';
@@ -37,7 +37,7 @@ export class AdminController {
     @Query('serviceId') serviceId?: string,
   ) {
     return this.adminService.getAllWorkers({
-      isAvailable: isAvailable === 'true',
+      isAvailable: isAvailable ? isAvailable === 'true' : undefined,
       minRating: minRating ? parseFloat(minRating) : undefined,
       serviceId,
     });
@@ -91,6 +91,8 @@ export class AdminController {
     @Query('endDate') endDate?: string,
     @Query('workerId') workerId?: string,
     @Query('userId') userId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.adminService.getAllBookings({
       status: status as BookingStatus,
@@ -98,7 +100,19 @@ export class AdminController {
       endDate,
       workerId: workerId ? parseInt(workerId, 10) : undefined,
       userId,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
     });
+  }
+
+  /**
+   * Get all unassigned bookings (workerId IS NULL)
+   * GET /admin/bookings/unassigned
+   * NOTE: This must come BEFORE bookings/:id to avoid route conflict
+   */
+  @Get('bookings/unassigned')
+  async getUnassignedBookings() {
+    return this.adminService.getUnassignedBookings();
   }
 
   /**
@@ -132,6 +146,23 @@ export class AdminController {
     @Body('reason') reason?: string,
   ) {
     return this.adminService.cancelBooking(id, reason);
+  }
+
+  /**
+   * Manually assign a worker to a booking
+   * POST /admin/bookings/:id/assign
+   */
+  @Post('bookings/:id/assign')
+  async assignBooking(
+    @Param('id') id: string,
+    @Body() body: { workerId: number; notes?: string },
+    @Request() req: any,
+  ) {
+    if (!body.workerId) {
+      throw new BadRequestException('workerId is required');
+    }
+    const adminId = req.user?.id || 'admin';
+    return this.adminService.manualAssignBooking(id, body.workerId, adminId, body.notes);
   }
 
   // ============================================

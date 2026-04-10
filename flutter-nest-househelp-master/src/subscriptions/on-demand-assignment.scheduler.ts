@@ -166,10 +166,30 @@ export class OnDemandAssignmentScheduler {
         return { success: false, reason: 'Booking has no serviceId' };
       }
 
-      // Get user's location
-      const user = await this.userRepository.findOne({
-        where: { publicId: booking.userId },
-      });
+      // Get user from the already-loaded relation (booking.user is loaded via relations: ['user'])
+      // Fall back to querying by numeric id only if relation isn't loaded
+      let user: User | null = booking.user;
+
+      if (!user) {
+        this.logger.log(`User relation not loaded for booking ${booking.id}, querying by numeric id...`);
+        // booking.userId may be numeric (internal id) or UUID (publicId)
+        // Try to detect which format it is
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(booking.userId);
+        
+        if (isUUID) {
+          user = await this.userRepository.findOne({
+            where: { publicId: booking.userId },
+          });
+        } else {
+          // Numeric internal id - query by id column
+          const numericId = parseInt(booking.userId, 10);
+          if (!isNaN(numericId)) {
+            user = await this.userRepository.findOne({
+              where: { id: numericId },
+            });
+          }
+        }
+      }
 
       if (!user) {
         this.logger.error(`User ${booking.userId} not found for booking ${booking.id}`);
@@ -240,7 +260,6 @@ export class OnDemandAssignmentScheduler {
 
       // Update the booking with the worker
       booking.workerId = nearestWorker.worker.id;
-      booking.assignedWorkerId = nearestWorker.worker.id;
       booking.assignmentState = AssignmentState.ASSIGNED;
 
       // If status was requested, update to confirmed
@@ -268,8 +287,21 @@ export class OnDemandAssignmentScheduler {
 
   /**
    * Send push notification to worker about new booking assignment
+   * Only sends notification if payment is complete (isPaid = true)
    */
   private async _notifyWorkerOfAssignment(worker: Worker, booking: Booking): Promise<void> {
+    // Check if notification has already been sent to prevent duplicate notifications
+    if (booking.notificationSent) {
+      this.logger.log(`Skipping notification for on-demand booking ${booking.id} - notification already sent`);
+      return;
+    }
+
+    // Check if payment is complete before notifying worker
+    if (!booking.isPaid) {
+      this.logger.log(`Skipping notification for on-demand booking ${booking.id} - payment not complete (isPaid: ${booking.isPaid})`);
+      return;
+    }
+
     if (!worker.fcmToken) {
       this.logger.warn(`Worker ${worker.id} has no FCM token, skipping notification`);
       return;
@@ -282,7 +314,39 @@ export class OnDemandAssignmentScheduler {
     const title = 'नई बुकिंग मिली! 🎉';
     const body = `${serviceName} - ${bookingDate} को। ग्राहक का पता और विवरण देखने के लिए ऐप खोलें।`;
 
-    await this.notificationsService.sendPushNotification(worker.fcmToken, title, body);
-    this.logger.log(`Sent push notification to worker ${worker.id} for booking ${booking.id}`);
+    // Extract customer and location details for rich notification payload
+    const customerName = booking.user?.firstName ?? 'Customer';
+    const customerPhone = booking.user?.phone ?? '';
+    const customerAddress = booking.user?.address ?? '';
+    const price = booking.amount?.toString() ?? booking.totalAmount?.toString() ?? '0';
+
+    // Use push notification with both android.notification (for sound in background/terminated)
+    // and data payload (for Flutter to show in-app dialog in foreground)
+    // The notificationSent flag prevents duplicate notifications
+    await this.notificationsService.sendPushNotification(
+      worker.fcmToken,
+      title,
+      body,
+      {
+        type: 'new_booking',
+        bookingId: booking.id.toString(),
+        serviceName,
+        serviceDate: bookingDate,
+        startTime: booking.startTime ?? '',
+        endTime: booking.endTime ?? '',
+        customerName,
+        customerPhone,
+        customerAddress,
+        price,
+        assignmentType: 'on_demand',
+        timestamp: new Date().toISOString(),
+      },
+    );
+
+    // Mark notification as sent to prevent duplicates
+    booking.notificationSent = true;
+    await this.bookingRepository.save(booking);
+
+    this.logger.log(`Sent data-only notification to worker ${worker.id} for booking ${booking.id}`);
   }
 }

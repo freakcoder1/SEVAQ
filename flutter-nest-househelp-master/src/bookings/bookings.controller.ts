@@ -12,6 +12,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -47,7 +48,7 @@ export class BookingsController {
 
   @Get()
   async findAll(
-    @Request() req,
+    @Request() req: JwtRequest,
     @Query() paginationDto: PaginationDto,
     @Query('workerId') workerId?: string,
   ) {

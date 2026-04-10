@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const BASE_URL = 'http://127.0.0.1:45357';
+const BASE_URL = 'http://127.0.0.1:45357/api';
 
 async function main() {
   console.log('=== TESTING COMPLETE SERVICE REQUEST → ASSIGNMENT → BOOKING → PAYMENT FLOW ===\n');

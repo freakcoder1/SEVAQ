@@ -10,6 +10,7 @@ import {
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { ServiceRequestsService } from './service-requests.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 
 @Controller('service-requests')
 @UseGuards(JwtAuthGuard)
@@ -18,7 +19,7 @@ export class ServiceRequestsController {
 
   @Post()
   async createServiceRequest(
-    @Request() req,
+    @Request() req: JwtRequest,
     @Body() request: CreateServiceRequestDto,
   ): Promise<{ requestId: string; assignmentStatus: string }> {
     console.log(

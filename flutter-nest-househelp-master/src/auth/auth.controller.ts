@@ -19,6 +19,7 @@ import { WorkersService } from '../workers/workers.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 import {
   LoginDto,
   VerifyOtpLoginDto,
@@ -120,7 +121,7 @@ export class AuthController {
    */
   @Post('workers/register-authenticated')
   @UseGuards(JwtAuthGuard)
-  async registerWorkerProfile(@Request() req, @Body() body: { name?: string; bio?: string; serviceIds?: string[]; latitude?: number; longitude?: number }) {
+  async registerWorkerProfile(@Request() req: JwtRequest, @Body() body: { name?: string; bio?: string; serviceIds?: string[]; latitude?: number; longitude?: number }) {
     this.logger.log(`Worker profile creation request from user: ${req.user.userId}`);
     this.logger.log(`Request body: ${JSON.stringify(body)}`);
     
@@ -151,8 +152,10 @@ export class AuthController {
         message: 'Worker registered successfully. Pending admin approval.',
         needsApproval: true
       };
-    } catch (error) {
-      this.logger.error(`Worker profile creation failed: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Worker profile creation failed: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -170,8 +173,9 @@ export class AuthController {
       );
       this.logger.log(`OTP login successful for phone: ${verifyOtpLoginDto.phone}`);
       return result;
-    } catch (error) {
-      this.logger.error(`OTP login failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`OTP login failed: ${errorMessage}`);
       throw error;
     }
   }
@@ -186,8 +190,9 @@ export class AuthController {
         verifyIdTokenDto.idToken,
       );
       return decodedToken;
-    } catch (error) {
-      this.logger.error(`Token verification failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Token verification failed: ${errorMessage}`);
       throw error;
     }
   }
@@ -200,21 +205,22 @@ export class AuthController {
     try {
       const user = await this.firebaseAuthService.getUserByPhone(getUserByPhoneDto.phone);
       return { user };
-    } catch (error) {
-      this.logger.error(`Get user by phone failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Get user by phone failed: ${errorMessage}`);
       throw error;
     }
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
+  getProfile(@Request() req: JwtRequest) {
     return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
+  async updateProfile(@Request() req: JwtRequest, @Body() updateUserDto: UpdateUserDto) {
     const userId = req.user.userId;
     return this.authService.updateProfile(userId, updateUserDto);
   }

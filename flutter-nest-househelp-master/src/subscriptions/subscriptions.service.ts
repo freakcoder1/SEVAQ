@@ -34,6 +34,21 @@ export class SubscriptionsService {
       throw new Error('Service profile not found');
     }
 
+    // Check for existing active subscription with the same service profile
+    const existingSubscription = await this.subscriptionRepository.findOne({
+      where: {
+        userId,
+        serviceProfileId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+    });
+
+    if (existingSubscription) {
+      throw new Error(
+        `You already have an active subscription for this service (Subscription #${existingSubscription.id}). Please cancel it first or manage your existing subscription.`,
+      );
+    }
+
     const subscription = this.subscriptionRepository.create({
       publicId: uuidv4(),
       userId,
@@ -104,7 +119,7 @@ export class SubscriptionsService {
 
   async getSubscriptionsByPublicId(publicId: string): Promise<Subscription[]> {
     // Join on user.publicId since subscription.userId stores the user's publicId (UUID)
-    return this.subscriptionRepository
+    const subscriptions = await this.subscriptionRepository
       .createQueryBuilder('subscription')
       .innerJoin('subscription.user', 'user')
       .where('user.publicId = :publicId', { publicId })
@@ -113,6 +128,19 @@ export class SubscriptionsService {
       .leftJoinAndSelect('assignedWorker.user', 'workerUser')
       .orderBy('subscription.createdAt', 'DESC')
       .getMany();
+
+    // Log for debugging - check if assignedWorker is loaded
+    for (const sub of subscriptions) {
+      console.log(`Subscription ${sub.id}: assignedWorkerId=${sub.assignedWorkerId}, has assignedWorker=${!!sub.assignedWorker}`);
+      if (sub.assignedWorker) {
+        console.log(`  Worker ${sub.assignedWorker.id}: has user=${!!sub.assignedWorker.user}`);
+        if (sub.assignedWorker.user) {
+          console.log(`  Worker user: ${sub.assignedWorker.user.firstName} ${sub.assignedWorker.user.lastName}`);
+        }
+      }
+    }
+
+    return subscriptions;
   }
 
   async pauseSubscription(id: number): Promise<Subscription> {

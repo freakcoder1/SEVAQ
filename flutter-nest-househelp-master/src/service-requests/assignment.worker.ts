@@ -146,8 +146,9 @@ export class AssignmentWorker {
         `Successfully assigned worker ${bestWorker.worker.id} to request ${requestId}`,
       );
 
-      // Send push notification to worker
-      await this._notifyWorkerOfAssignment(bestWorker.worker, request);
+      // NOTE: Worker notification is intentionally NOT sent here.
+      // The notification will be sent after payment is confirmed in payments.service.ts
+      // This ensures workers only get notified about paid bookings.
     } catch (error) {
       this.logger.error(
         `Error processing assignment for request ${requestId}: ${error.message}`,

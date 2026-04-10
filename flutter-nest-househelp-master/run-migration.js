@@ -1,47 +1,43 @@
-const { execSync } = require('child_process');
-const { DataSource } = require('typeorm');
+const { Client } = require('pg');
+require('dotenv').config();
 
 async function runMigration() {
-    try {
-        console.log('Setting up database connection...');
-        
-        const dataSource = new DataSource({
-            type: 'postgres',
-            host: process.env.DB_HOST || 'localhost',
-            port: process.env.DB_PORT || 5432,
-            username: process.env.DB_USERNAME || 'postgres',
-            password: process.env.DB_PASSWORD || 'postgres',
-            database: process.env.DB_NAME || 'househelp',
-            entities: ['dist/**/*.entity{.ts,.js}'],
-            synchronize: false,
-            logging: false
-        });
+  const client = new Client({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    user: process.env.DB_USERNAME || 'postgres',
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'househelp',
+  });
 
-        await dataSource.initialize();
-        console.log('Database connection established');
+  try {
+    await client.connect();
+    console.log('Connected to database');
 
-        // Update existing workers with default location data
-        console.log('Updating existing workers with default location data...');
-        await dataSource.query(`
-            UPDATE "worker"
-            SET
-                "latitude" = 28.5804579,
-                "longitude" = 77.4392951,
-                "currentLat" = 28.5804579,
-                "currentLng" = 77.4392951
-            WHERE "latitude" IS NULL OR "longitude" IS NULL
-        `);
-        
-        // Run the migration to add yearsOfExperience column
-        console.log('Running migration to add yearsOfExperience column...');
-        await dataSource.runMigrations();
-        console.log('Migration completed successfully!');
+    // Check if column exists
+    const checkResult = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'subscriptions' AND column_name = 'last_notification_sent_at'
+    `);
 
-        await dataSource.destroy();
-    } catch (error) {
-        console.error('Migration failed:', error);
-        process.exit(1);
+    if (checkResult.rows.length > 0) {
+      console.log('Column last_notification_sent_at already exists');
+    } else {
+      await client.query(`
+        ALTER TABLE subscriptions 
+        ADD COLUMN last_notification_sent_at TIMESTAMP NULL
+      `);
+      console.log('Successfully added last_notification_sent_at column');
     }
+
+    console.log('Migration completed successfully');
+  } catch (error) {
+    console.error('Migration failed:', error.message);
+    process.exit(1);
+  } finally {
+    await client.end();
+  }
 }
 
 runMigration();

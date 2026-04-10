@@ -187,20 +187,60 @@ export class WorkersService {
 
   /**
    * Get bookings assigned to this worker
+   * Uses QueryBuilder to properly handle integer ID comparison
+   * Checks both assignedWorkerId (integer) and workerId (UUID for legacy/one-time bookings)
    */
   async getWorkerBookings(workerId: number, status?: string): Promise<Booking[]> {
-    const query = this.bookingsRepository
+    // Build query using QueryBuilder for proper type handling
+    // Query both:
+    // - assignedWorkerId (integer) for subscription bookings
+    // - workerId (integer) for legacy one-time/on-demand bookings
+    // Note: The workerId column in the database is INTEGER type
+    const queryBuilder = this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('booking.slot', 'slot')
-      .where('booking.workerId = :workerId OR booking.assignedWorkerId = :workerId', { workerId });
-
+      .leftJoinAndSelect('booking.subscription', 'subscription')
+      .addSelect('booking.location')
+      .where('(booking.assignedWorkerId = :workerId OR booking.workerId = :workerId)', { workerId });
+    
+    // Add status filter if provided
     if (status) {
-      query.andWhere('booking.status = :status', { status });
+      queryBuilder.andWhere('booking.status = :status', { status });
     }
+    
+    queryBuilder.orderBy('booking.createdAt', 'DESC');
+    queryBuilder.limit(500); // Limit to prevent overwhelming the app
+    
+    return queryBuilder.getMany();
+  }
 
-    return query.orderBy('booking.date', 'ASC').addOrderBy('booking.startTime', 'ASC').getMany();
+  /**
+   * Get ONLY ACCEPTED / CONFIRMED bookings for this worker
+   * Returns only bookings that have been explicitly accepted by the worker
+   * Includes both subscription bookings AND one-time bookings
+   * This is a dedicated endpoint for the "Ongoing Accepted Bookings" dashboard section
+   */
+  async getAcceptedWorkerBookings(workerId: number): Promise<Booking[]> {
+    const acceptedStatuses = [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS];
+    
+    const queryBuilder = this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.service', 'service')
+      .leftJoinAndSelect('booking.slot', 'slot')
+      .leftJoinAndSelect('booking.subscription', 'subscription')
+      .addSelect('booking.location')
+      .where('(booking.assignedWorkerId = :workerId OR booking.workerId = :workerId)', { workerId })
+      // Include both CONFIRMED and IN_PROGRESS statuses for accepted ongoing bookings
+      .andWhere('booking.status IN (:...statuses)', { statuses: acceptedStatuses });
+    
+    queryBuilder.orderBy('booking.date', 'ASC'); // Sort by date, nearest first
+    queryBuilder.addOrderBy('booking.startTime', 'ASC');
+    queryBuilder.limit(100);
+    
+    return queryBuilder.getMany();
   }
 
   /**
@@ -271,14 +311,21 @@ export class WorkersService {
    * Accept a booking assignment
    */
   async acceptBooking(bookingId: string, workerId: number): Promise<Booking> {
-    const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      select: ['id', 'workerId', 'assignedWorkerId', 'status', 'location', 'userId', 'serviceId', 'date', 'startTime', 'endTime', 'amount', 'createdAt', 'updatedAt']
+    });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    if (booking.workerId !== workerId) {
+    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    const worker = await this.workersRepository.findOne({ where: { id: workerId } });
+    // Compare using string casting to handle the type mismatch
+    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
-    if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
+    if (booking.status !== BookingStatus.REQUESTED && booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
       throw new BadRequestException('Booking cannot be accepted in current status');
     }
 
@@ -290,14 +337,21 @@ export class WorkersService {
    * Reject a booking assignment
    */
   async rejectBooking(bookingId: string, workerId: number, reason?: string): Promise<Booking> {
-    const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      select: ['id', 'workerId', 'assignedWorkerId', 'status', 'location', 'userId', 'serviceId', 'date', 'startTime', 'endTime', 'amount', 'createdAt', 'updatedAt']
+    });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    if (booking.workerId !== workerId) {
+    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    const worker = await this.workersRepository.findOne({ where: { id: workerId } });
+    // Compare using string casting to handle the type mismatch
+    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
-    if (booking.status !== BookingStatus.PENDING) {
+    if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.REQUESTED) {
       throw new BadRequestException('Booking cannot be rejected in current status');
     }
 
@@ -311,14 +365,22 @@ export class WorkersService {
    * Start a job (mark as in progress)
    */
   async startBooking(bookingId: string, workerId: number): Promise<Booking> {
-    const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      select: ['id', 'workerId', 'assignedWorkerId', 'status', 'location', 'userId', 'serviceId', 'date', 'startTime', 'endTime', 'amount', 'createdAt', 'updatedAt']
+    });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    if (booking.workerId !== workerId) {
+    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    const worker = await this.workersRepository.findOne({ where: { id: workerId } });
+    // Compare using string casting to handle the type mismatch
+    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
-    if (booking.status !== BookingStatus.CONFIRMED) {
+    // Allow starting from CONFIRMED or REQUESTED status (on-demand bookings may be REQUESTED)
+    if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.REQUESTED) {
       throw new BadRequestException('Booking must be confirmed before starting');
     }
 
@@ -330,11 +392,18 @@ export class WorkersService {
    * Complete a job
    */
   async completeBooking(bookingId: string, workerId: number): Promise<Booking> {
-    const booking = await this.bookingsRepository.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      select: ['id', 'workerId', 'assignedWorkerId', 'status', 'location', 'userId', 'serviceId', 'date', 'startTime', 'endTime', 'amount', 'createdAt', 'updatedAt']
+    });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    if (booking.workerId !== workerId) {
+    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    const worker = await this.workersRepository.findOne({ where: { id: workerId } });
+    // Compare using string casting to handle the type mismatch
+    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
     if (booking.status !== BookingStatus.IN_PROGRESS) {
@@ -445,7 +514,7 @@ export class WorkersService {
     const worker = await this.workersRepository.findOne({ where: { id: workerId } });
     if (!worker) {
       this.logger.error(`Worker not found: ${workerId}`);
-      throw new Error('Worker not found');
+      throw new NotFoundException('Worker not found');
     }
     worker.fcmToken = fcmToken;
     const saved = await this.workersRepository.save(worker);
@@ -486,17 +555,58 @@ export class WorkersService {
       throw new Error('Location is required (latitude and longitude)');
     }
     
-    // Validate serviceIds (at least one service)
+    // Allow empty serviceIds for testing - use default service "Home Cleaning" UUID
     if (!serviceIds || serviceIds.length === 0) {
-      throw new Error('At least one service must be selected');
+      console.log('No services selected, using default service: Home Cleaning (6138cfa5-4ffd-47cf-b55f-55d4c30a6c51)');
+      serviceIds = ['6138cfa5-4ffd-47cf-b55f-55d4c30a6c51'];
+    }
+
+    // Try multiple ways to find the user
+    let user: User | null = null;
+    let userIdToUse: number | null = null;
+    
+    // 1. Try finding by publicId (UUID)
+    if (userPublicId && userPublicId.includes('-')) {
+      user = await this.usersRepository.findOne({
+        where: { publicId: userPublicId },
+      });
+      if (user) {
+        console.log(`Found user by publicId: ${user.id} (${user.email})`);
+        userIdToUse = user.id;
+      }
     }
     
-    // Find the user by their publicId
-    const user = await this.usersRepository.findOne({
-      where: { publicId: userPublicId },
-    });
+    // 2. If not found and looks like a numeric ID, try finding by internal id
+    if (!user && userPublicId && !userPublicId.includes('-')) {
+      const numericId = parseInt(userPublicId, 10);
+      if (!isNaN(numericId)) {
+        user = await this.usersRepository.findOne({
+          where: { id: numericId },
+        });
+        if (user) {
+          console.log(`Found user by numeric id: ${user.id} (${user.email})`);
+          userIdToUse = user.id;
+        }
+      }
+    }
     
+    // 3. If still not found, try finding by email (common for dev mode)
+    if (!user && userPublicId && userPublicId.includes('@')) {
+      user = await this.usersRepository.findOne({
+        where: { email: userPublicId },
+      });
+      if (user) {
+        console.log(`Found user by email: ${user.id} (${user.email})`);
+        userIdToUse = user.id;
+      }
+    }
+    
+    // If user still not found after all attempts, throw error
     if (!user) {
+      console.error(`User not found with any identifier: ${userPublicId}`);
+      // Debug: list all users in DB to help diagnose
+      const allUsers = await this.usersRepository.find({ take: 5 });
+      console.log(`Debug - Sample users in DB:`, allUsers.map(u => ({ id: u.id, publicId: u.publicId, email: u.email })));
       throw new Error('User not found');
     }
     

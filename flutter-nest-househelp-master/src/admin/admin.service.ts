@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Worker } from '../workers/entities/worker.entity';
-import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
+import { Booking, BookingStatus, AssignmentState } from '../bookings/entities/booking.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { Service } from '../services/entities/service.entity';
@@ -37,6 +37,7 @@ export class AdminService {
     activeSubscriptions: number;
     pendingAssignments: number;
     completedJobsToday: number;
+    todayBookings: number;
     averageRating: number;
     bookingsByStatus: Record<string, number>;
     revenueByMonth: Array<{ month: string; revenue: number }>;
@@ -73,12 +74,35 @@ export class AdminService {
     });
 
     // Completed jobs today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Correct timezone handling for Asia/Calcutta (UTC+5:30)
+    const now = new Date();
+    // Get today's date in local timezone (Asia/Calcutta)
+    const todayLocal = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+    todayLocal.setUTCHours(0, 0, 0, 0);
+    const startOfToday = new Date(todayLocal.getTime() - (5.5 * 60 * 60 * 1000));
+    
+    const endOfToday = new Date(startOfToday.getTime() + (24 * 60 * 60 * 1000) - 1);
+    
     const completedJobsToday = await this.bookingsRepository.count({
       where: {
         status: BookingStatus.COMPLETED,
-        updatedAt: new Date(today.getTime()),
+        updatedAt: Between(startOfToday, endOfToday),
+      },
+    });
+
+    // Today's total bookings (all bookings created for today's date)
+    // Format date correctly for Asia/Calcutta timezone
+    // Calculate today's start and end in Asia/Calcutta timezone (UTC+5:30)
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(0, 0, 0, 0);
+    todayStart.setTime(todayStart.getTime() - (5.5 * 60 * 60 * 1000));
+    
+    const todayEnd = new Date(todayStart);
+    todayEnd.setTime(todayEnd.getTime() + (24 * 60 * 60 * 1000) - 1);
+      
+    const todayBookings = await this.bookingsRepository.count({
+      where: {
+        createdAt: Between(todayStart, todayEnd),
       },
     });
 
@@ -146,6 +170,7 @@ export class AdminService {
       activeSubscriptions,
       pendingAssignments,
       completedJobsToday,
+      todayBookings,
       averageRating: Math.round(averageRating * 10) / 10,
       bookingsByStatus: statusMap,
       revenueByMonth,
@@ -167,8 +192,7 @@ export class AdminService {
   }): Promise<Worker[]> {
     const query = this.workersRepository
       .createQueryBuilder('worker')
-      .leftJoinAndSelect('worker.user', 'user')
-      .leftJoinAndSelect('worker.services', 'services');
+      .leftJoinAndSelect('worker.user', 'user');
 
     if (filters?.isAvailable !== undefined) {
       query.andWhere('worker.isAvailable = :isAvailable', {
@@ -183,9 +207,10 @@ export class AdminService {
     }
 
     if (filters?.serviceId) {
-      query.andWhere('services.publicId = :serviceId', {
-        serviceId: filters.serviceId,
-      });
+      query.innerJoin('worker.services', 'services')
+        .andWhere('services.publicId = :serviceId', {
+          serviceId: filters.serviceId,
+        });
     }
 
     return query.getMany();
@@ -236,11 +261,17 @@ export class AdminService {
     endDate?: string;
     workerId?: number;
     userId?: string;
-  }): Promise<Booking[]> {
-    const query = this.bookingsRepository
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
+     const query = this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('user.addresses', 'userAddresses')
       .leftJoinAndSelect('booking.worker', 'worker')
+      .leftJoinAndSelect('booking.assignedWorker', 'assignedWorker')
+      .leftJoinAndSelect('worker.user', 'workerUser')
+      .leftJoinAndSelect('assignedWorker.user', 'assignedWorkerUser')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('booking.slot', 'slot');
 
@@ -264,7 +295,50 @@ export class AdminService {
       query.andWhere('booking.userId = :userId', { userId: filters.userId });
     }
 
-    return query.orderBy('booking.date', 'DESC').addOrderBy('booking.startTime', 'DESC').getMany();
+    query.orderBy('booking.date', 'DESC').addOrderBy('booking.startTime', 'DESC');
+
+    // Apply pagination if provided
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    
+    if (page && limit) {
+      query.skip((page - 1) * limit).take(limit);
+    }
+
+    const [bookings, total] = await query.getManyAndCount();
+
+    // Map bookings to add legacy worker properties that frontend expects
+    const mappedBookings = bookings.map(booking => {
+      const mapped: any = { ...booking };
+      
+      // Use new worker relation first, fallback to legacy assignedWorker for backwards compatibility
+      const activeWorker = booking.worker || booking.assignedWorker;
+      
+      if (activeWorker) {
+        mapped.workerId = activeWorker.id;
+        mapped.worker = activeWorker;
+        mapped.assignedWorker = activeWorker;
+        
+        // Check both possible user relation aliases (workerUser for new, assignedWorkerUser for legacy)
+        const workerUserData = (activeWorker as any).workerUser || (activeWorker as any).assignedWorkerUser;
+        
+        // Add safe null check for worker user relation
+        if (workerUserData) {
+          const firstName = workerUserData.firstName || '';
+          const lastName = workerUserData.lastName || '';
+          mapped.workerName = `${firstName} ${lastName}`.trim();
+        } else {
+          mapped.workerName = 'Unassigned';
+        }
+      } else {
+        mapped.workerName = 'Unassigned';
+      }
+      
+      return mapped;
+    });
+
+    // Return array directly for backwards compatibility with frontend
+    return mappedBookings;
   }
 
   /**
@@ -299,6 +373,79 @@ export class AdminService {
       where: { id },
       relations: ['user', 'worker', 'service', 'slot'],
     });
+  }
+
+  /**
+   * Get all unassigned bookings (workerId IS NULL)
+   */
+  async getUnassignedBookings(): Promise<Booking[]> {
+    return this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.service', 'service')
+      .leftJoinAndSelect('booking.slot', 'slot')
+      .where('booking.workerId IS NULL')
+      .orWhere('booking.assignmentState = :state', { state: AssignmentState.PENDING })
+      .orderBy('booking.createdAt', 'DESC')
+      .getMany();
+  }
+
+  /**
+   * Manually assign a worker to a booking
+   */
+  async manualAssignBooking(
+    bookingId: string,
+    workerId: number,
+    adminId: string | number,
+    notes?: string,
+  ): Promise<Booking | null> {
+    // Find the booking
+    const booking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      relations: ['user', 'service'],
+    });
+
+    if (!booking) {
+      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+    }
+
+    // Find the worker
+    const worker = await this.workersRepository.findOne({
+      where: { id: workerId },
+      relations: ['user', 'services'],
+    });
+
+    if (!worker) {
+      throw new NotFoundException(`Worker with ID ${workerId} not found`);
+    }
+
+    // Check if worker provides the required service
+    if (booking.service && worker.services) {
+      const hasService = worker.services.some(
+        (s) => s.id === booking.service.id,
+      );
+      if (!hasService) {
+        throw new BadRequestException(
+          `Worker does not provide the required service: ${booking.service.name}`,
+        );
+      }
+    }
+
+    // Update the booking
+    await this.bookingsRepository.update(bookingId, {
+      workerId: workerId,
+      assignedWorkerId: workerId,
+      assignmentState: AssignmentState.ASSIGNED,
+      status: BookingStatus.CONFIRMED,
+    });
+
+    // Return the updated booking with relations
+    const updatedBooking = await this.bookingsRepository.findOne({
+      where: { id: bookingId },
+      relations: ['user', 'worker', 'service', 'slot'],
+    });
+
+    return updatedBooking;
   }
 
   // ============================================

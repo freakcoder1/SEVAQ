@@ -16,22 +16,17 @@ import { Worker } from '../workers/entities/worker.entity';
 import { AssignmentsService } from '../assignments/assignments.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { WorkersService } from '../workers/workers.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-// Mapping of serviceType to service.name for finding the correct service ID
-const SERVICE_TYPE_TO_NAME: Record<ServiceType, string> = {
-  [ServiceType.COOK]: 'Cooking',
-  [ServiceType.CLEANING]: 'Home Cleaning',
-  [ServiceType.MAID]: 'Maid Service',
-};
-
-// Map service names to hardcoded service IDs used in workersService.findByService
-const SERVICE_NAME_TO_ID: Record<string, string> = {
-  'Cooking': '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
-  'Home Cleaning': '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b',
-  'Maid Service': '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b',
+// Mapping of serviceType to possible service names for database lookup
+// These are used as fallback names when dynamic lookup fails
+const SERVICE_TYPE_TO_NAMES: Record<ServiceType, string[]> = {
+  [ServiceType.COOK]: ['Cooking', 'Cook', 'Kitchen'],
+  [ServiceType.CLEANING]: ['Home Cleaning', 'Cleaning', 'House Cleaning'],
+  [ServiceType.MAID]: ['Maid Service', 'Maid', 'Housekeeping'],
 };
 
 @Injectable()
@@ -52,34 +47,70 @@ export class SubscriptionAssignmentScheduler {
     private readonly assignmentsService: AssignmentsService,
     private readonly bookingsService: BookingsService,
     private readonly workersService: WorkersService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
-   * Get the correct service UUID for finding workers
+   * Get the correct service UUID for finding workers using dynamic database lookup
    * Returns the UUID string that workersService.findByService expects
    */
-  private getServiceUuidByProfile(serviceProfile: ServiceProfile): string {
-    const serviceName = SERVICE_TYPE_TO_NAME[serviceProfile.serviceType];
-    if (!serviceName) {
-      this.logger.warn(
-        `Unknown service type: ${serviceProfile.serviceType}, using default service UUID`,
-      );
-      return '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b'; // Home Cleaning fallback
-    }
-
-    const serviceId = SERVICE_NAME_TO_ID[serviceName];
-    if (!serviceId) {
-      this.logger.warn(
-        `Service UUID not found for name: ${serviceName}, using default service UUID`,
-      );
-      return '7ff3de68-1068-4cbf-8f9f-9d283bca1f5b'; // Home Cleaning fallback
-    }
-
-    this.logger.log(
-      `Mapped service type ${serviceProfile.serviceType} (${serviceName}) to service UUID: ${serviceId}`,
-    );
+  private async getServiceUuidByProfile(serviceProfile: ServiceProfile): Promise<string | null> {
+    const possibleNames = SERVICE_TYPE_TO_NAMES[serviceProfile.serviceType];
     
-    return serviceId;
+    if (!possibleNames || possibleNames.length === 0) {
+      this.logger.warn(
+        `Unknown service type: ${serviceProfile.serviceType}`,
+      );
+      return null;
+    }
+
+    // Try to find the service by each possible name in the database
+    for (const serviceName of possibleNames) {
+      const service = await this.serviceRepository.findOne({
+        where: { name: serviceName },
+      });
+
+      if (service) {
+        this.logger.log(
+          `Found service "${serviceName}" in database with publicId: ${service.publicId}`,
+        );
+        return service.publicId;
+      }
+    }
+
+    // If no exact match found, try a broader search
+    this.logger.warn(
+      `No service found for type ${serviceProfile.serviceType} with names: ${possibleNames.join(', ')}. Trying broader search...`,
+    );
+
+    // Try searching by partial name match
+    for (const serviceName of possibleNames) {
+      const services = await this.serviceRepository.find({
+        where: { name: Like(`%${serviceName}%`) },
+      });
+
+      if (services.length > 0) {
+        this.logger.log(
+          `Found service with partial match for "${serviceName}": ${services[0].publicId}`,
+        );
+        return services[0].publicId;
+      }
+    }
+
+    // Last resort: return any available service
+    const anyService = await this.serviceRepository.findOne({
+      select: ['publicId'],
+    });
+
+    if (anyService) {
+      this.logger.warn(
+        `Using fallback service UUID: ${anyService.publicId}`,
+      );
+      return anyService.publicId;
+    }
+
+    this.logger.error(`No services found in database`);
+    return null;
   }
 
   /**
@@ -203,18 +234,22 @@ export class SubscriptionAssignmentScheduler {
     try {
       // Get current time in IST
       const nowIST = this.getNowInIST();
+      
+      // Only process subscriptions that started within the last 48 hours
+      // This prevents old subscriptions from generating spurious bookings
+      const fortyEightHoursAgo = new Date(nowIST.getTime() - 48 * 60 * 60 * 1000);
 
-      // Find subscriptions that need immediate assignment (starting today or earlier)
+      // Find subscriptions that need immediate assignment (started within last 48 hours)
       const subscriptionsToAssign = await this.subscriptionRepository.find({
         where: {
           status: SubscriptionStatus.ACTIVE,
-          startDate: Between(new Date(0), nowIST), // Start date is today or in the past
+          startDate: Between(fortyEightHoursAgo, nowIST), // Started within last 48 hours
         },
         relations: ['serviceProfile', 'user', 'assignedWorker', 'assignedWorker.user'],
       });
 
       this.logger.log(
-        `Found ${subscriptionsToAssign.length} subscriptions needing immediate assignment (starting today)`,
+        `Found ${subscriptionsToAssign.length} subscriptions needing immediate assignment (started within last 48h)`,
       );
 
       // Log subscription details for debugging
@@ -294,19 +329,22 @@ export class SubscriptionAssignmentScheduler {
       }
 
       // =====================================================
-      // CATCH-ALL: Assign workers to ANY active subscription without a worker
-      // This ensures all active subscriptions get workers regardless of start date
+      // CATCH-ALL: Assign workers to active subscriptions without a worker
+      // Only includes subscriptions that started within the last 24 hours or start in the future
+      // This prevents old subscriptions from generating spurious bookings
       // =====================================================
+      const twentyFourHoursAgo = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000);
       const unassignedSubscriptions = await this.subscriptionRepository.find({
         where: {
           status: SubscriptionStatus.ACTIVE,
           assignedWorkerId: IsNull(),
+          startDate: Between(twentyFourHoursAgo, new Date(nowIST.getTime() + 30 * 24 * 60 * 60 * 1000)), // Last 24h to next 30 days
         },
         relations: ['serviceProfile', 'user'],
       });
 
       this.logger.log(
-        `Found ${unassignedSubscriptions.length} active subscriptions without assigned workers (catch-all)`,
+        `Found ${unassignedSubscriptions.length} active subscriptions without assigned workers (catch-all, within valid date range)`,
       );
 
       for (const subscription of unassignedSubscriptions) {
@@ -332,12 +370,13 @@ export class SubscriptionAssignmentScheduler {
 
   /**
    * Check if a booking already exists for a given subscription on a given date
+   * Returns the booking object if found, null otherwise
    * Used for idempotency to prevent duplicate booking creation
    */
-  private async bookingExistsForSubscription(
+  private async getExistingBookingForSubscription(
     subscriptionId: number,
     dateStr: string,
-  ): Promise<boolean> {
+  ): Promise<Booking | null> {
     const existing = await this.bookingRepository.findOne({
       where: {
         type: 'subscription' as any,
@@ -345,7 +384,66 @@ export class SubscriptionAssignmentScheduler {
         notes: Like(`%subscription ${subscriptionId}%`),
       },
     });
-    return !!existing;
+    return existing || null;
+  }
+
+  /**
+   * Legacy method for backward compatibility
+   * @deprecated Use getExistingBookingForSubscription instead
+   */
+  private async bookingExistsForSubscription(
+    subscriptionId: number,
+    dateStr: string,
+  ): Promise<boolean> {
+    const booking = await this.getExistingBookingForSubscription(subscriptionId, dateStr);
+    return !!booking;
+  }
+
+  /**
+   * Check if a notification has already been sent for this subscription today
+   * Uses the subscription's lastNotificationSentAt field to prevent duplicate notifications
+   * within a cooldown period (1 hour)
+   */
+  private async hasNotificationCooldownExpired(subscription: Subscription): Promise<boolean> {
+    if (!subscription.lastNotificationSentAt) {
+      return true; // No notification sent yet, cooldown has "expired"
+    }
+
+    const now = new Date();
+    const lastSent = new Date(subscription.lastNotificationSentAt);
+    const cooldownPeriodMs = 60 * 60 * 1000; // 1 hour cooldown
+
+    const timeSinceLastNotification = now.getTime() - lastSent.getTime();
+    const hasExpired = timeSinceLastNotification > cooldownPeriodMs;
+
+    if (!hasExpired) {
+      this.logger.log(
+        `Subscription ${subscription.id}: Notification cooldown not expired ` +
+        `(last sent: ${lastSent.toISOString()}, cooldown: 1 hour)`,
+      );
+    }
+
+    return hasExpired;
+  }
+
+  /**
+   * Check if ANY booking exists for a given subscription (regardless of date)
+   * Returns the most recent booking if found, null otherwise
+   * Used for idempotency to prevent duplicate booking creation
+   */
+  private async getAnyBookingForSubscription(
+    subscriptionId: number,
+  ): Promise<Booking | null> {
+    const existing = await this.bookingRepository.findOne({
+      where: {
+        type: 'subscription' as any,
+        notes: Like(`%subscription ${subscriptionId}%`),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+    return existing || null;
   }
 
   /**
@@ -355,17 +453,33 @@ export class SubscriptionAssignmentScheduler {
     subscription: Subscription,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
-      // Idempotency check: skip if a booking already exists for this subscription today
-      const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const alreadyExists = await this.bookingExistsForSubscription(
-        subscription.id,
-        todayStr,
-      );
-      if (alreadyExists) {
+      // NOTIFICATION DEDUPLICATION CHECK: Skip if notification was sent recently (within 1 hour)
+      // This prevents duplicate notifications when the scheduler runs every 10 minutes
+      const cooldownExpired = await this.hasNotificationCooldownExpired(subscription);
+      if (!cooldownExpired) {
         this.logger.log(
-          `Skipping subscription ${subscription.id}: booking already exists for today (${todayStr})`,
+          `Skipping subscription ${subscription.id}: notification cooldown not expired`,
         );
-        return { success: true, reason: 'Booking already exists for today' };
+        return { success: true, reason: 'Notification cooldown active' };
+      }
+
+      // Idempotency check: skip if ANY booking already exists for this subscription
+      // (not just today's date - subscriptions can have future dates)
+      const existingBooking = await this.getAnyBookingForSubscription(
+        subscription.id,
+      );
+      if (existingBooking) {
+        // If booking exists and notification was already sent, skip
+        if (existingBooking.notificationSent) {
+          this.logger.log(
+            `Skipping subscription ${subscription.id}: booking ${existingBooking.id} exists and notification already sent`,
+          );
+          return { success: true, reason: 'Booking exists with notification sent' };
+        }
+        // Booking exists but notification wasn't sent - continue to assign worker
+        this.logger.log(
+          `Subscription ${subscription.id}: booking ${existingBooking.id} exists but notification not sent, continuing with worker assignment`,
+        );
       }
 
       // Validate subscription has required data
@@ -385,10 +499,14 @@ export class SubscriptionAssignmentScheduler {
       }
 
       // Get the service UUID from the service profile for finding workers
-      const serviceUuid = this.getServiceUuidByProfile(subscription.serviceProfile);
+      const serviceUuid = await this.getServiceUuidByProfile(subscription.serviceProfile);
+      
+      if (!serviceUuid) {
+        this.logger.error(`Failed to get service UUID for subscription ${subscription.id}`);
+        return { success: false, reason: 'Invalid service configuration' };
+      }
       
       // Convert service publicId (UUID) to internal service id (integer) for booking creation
-      // The SERVICE_NAME_TO_ID mapping uses publicId (UUID), but bookings expect internal id (integer)
       const internalServiceId = await this.getInternalServiceIdByPublicId(serviceUuid);
       if (!internalServiceId) {
         this.logger.error(`Failed to convert service UUID to internal id for: ${serviceUuid}`);
@@ -526,6 +644,8 @@ export class SubscriptionAssignmentScheduler {
           // Reset workerAssignmentFailed since worker was successfully assigned
           subscription.workerAssignmentFailed = false;
           await this.subscriptionRepository.save(subscription);
+          
+          // Notification is already sent inside directlyAssignWorker(), no need to send again
         } else {
           this.logger.warn(
             `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
@@ -582,6 +702,8 @@ export class SubscriptionAssignmentScheduler {
             `Updated subscription ${subscription.id} with assigned worker ${assignmentResult.worker.id}`,
           );
         }
+        
+        // Notification is already sent inside directlyAssignWorker(), no need to send again
       } else {
         this.logger.warn(
           `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
@@ -649,11 +771,58 @@ export class SubscriptionAssignmentScheduler {
       booking.worker = nearestWorker;
       booking.assignedWorkerId = nearestWorker.id;
       booking.assignmentState = AssignmentState.ASSIGNED;
-      await this.bookingRepository.save(booking);
+
+      // CRITICAL FIX: Save booking with proper verification and error handling
+      try {
+        const savedBooking = await this.bookingRepository.save(booking);
+        
+        // DEFENSIVE VERIFICATION: Double check save actually persisted
+        if (!savedBooking || savedBooking.id !== booking.id) {
+          throw new Error(`Booking save returned invalid entity for booking ${booking.id}`);
+        }
+
+        // VERIFICATION: Reload from database to 100% confirm changes were persisted
+        const verifiedBooking = await this.bookingRepository.findOne({ where: { id: booking.id } });
+        
+        if (!verifiedBooking) {
+          throw new Error(`Booking ${booking.id} not found after save - critical persistence failure`);
+        }
+
+        if (verifiedBooking.assignedWorkerId !== nearestWorker.id) {
+          throw new Error(
+            `Booking ${booking.id} save failed to persist worker assignment. ` +
+            `Expected worker ${nearestWorker.id}, got ${verifiedBooking.assignedWorkerId}`
+          );
+        }
+
+        if (verifiedBooking.assignmentState !== AssignmentState.ASSIGNED) {
+          throw new Error(
+            `Booking ${booking.id} save failed to persist assignment state. ` +
+            `Expected ${AssignmentState.ASSIGNED}, got ${verifiedBooking.assignmentState}`
+          );
+        }
+
+        this.logger.log(
+          `✅ SUCCESS: Worker ${nearestWorker.id} assigned and PERSISTED to booking ${booking.id} ` +
+          `(distance: ${minDistance.toFixed(2)}km) - database verified`,
+        );
+
+      } catch (saveError) {
+        this.logger.error(
+          `❌ CRITICAL FAILURE: Could not save booking ${booking.id} after worker assignment: ${saveError.message}`,
+          saveError.stack
+        );
+        
+        // FAIL EXPLICITLY - do NOT send notification if booking was not saved
+        throw new Error(`Booking persistence failed: ${saveError.message}`);
+      }
 
       this.logger.log(
         `Directly assigned worker ${nearestWorker.id} to booking ${booking.id} (distance: ${minDistance.toFixed(2)}km)`,
       );
+
+      // Send push notification to worker about new booking
+      await this._notifyWorkerOfAssignment(nearestWorker, booking);
 
       return { success: true, worker: nearestWorker };
     } catch (error) {
@@ -725,6 +894,9 @@ export class SubscriptionAssignmentScheduler {
         `Directly assigned worker ${nearestWorker.id} to subscription ${subscriptionId} (distance: ${minDistance.toFixed(2)}km)`,
       );
 
+      // Note: No booking exists in this case, so we can't send a booking notification
+      // The worker will see it when they poll for subscriptions
+
       return { success: true, worker: nearestWorker };
     } catch (error) {
       this.logger.error(`Error in direct worker assignment without booking: ${error.message}`);
@@ -772,5 +944,67 @@ export class SubscriptionAssignmentScheduler {
       },
       relations: ['serviceProfile', 'user'],
     });
+  }
+
+  /**
+   * Send full-screen push notification to worker about new booking assignment
+   * Uses sendFullScreenPushNotification with fullScreenIntent for alarm-style full-screen display
+   * Works even when app is terminated (unlike regular notifications)
+   */
+  private async _notifyWorkerOfAssignment(worker: Worker, booking: Booking): Promise<void> {
+    // Check if notification has already been sent to prevent duplicate notifications
+    if (booking.notificationSent) {
+      this.logger.log(`Skipping notification for booking ${booking.id} - notification already sent`);
+      return;
+    }
+
+    // Check if worker has FCM token
+    if (!worker.fcmToken) {
+      this.logger.warn(`Worker ${worker.id} has no FCM token, skipping notification`);
+      return;
+    }
+
+    const serviceName = booking.service?.name || 'Service';
+    const bookingDate = booking.date || new Date().toISOString().split('T')[0];
+
+    // Extract customer and location details for rich notification payload
+    const customerName = booking.user?.firstName ?? 'Customer';
+    const customerPhone = booking.user?.phone ?? '';
+    const customerAddress = booking.user?.address ?? '';
+    const price = booking.amount?.toString() ?? booking.totalAmount?.toString() ?? '0';
+
+    try {
+      // Use sendFullScreenPushNotification with fullScreenIntent for alarm-style full-screen display
+      // This sends both android.notification (for system tray) and data payload (for Flutter in foreground)
+      // The notificationSent flag prevents duplicate notifications
+      await this.notificationsService.sendFullScreenPushNotification(
+        worker.fcmToken,
+        'नई बुकिंग मिली! 🎉',
+        `${serviceName} - ${bookingDate} को। ग्राहक का पता और विवरण देखने के लिए ऐप खोलें।`,
+        {
+          type: 'new_booking',
+          bookingId: booking.id.toString(),
+          serviceName,
+          serviceDate: bookingDate,
+          startTime: booking.startTime ?? '',
+          endTime: booking.endTime ?? '',
+          customerName,
+          customerPhone,
+          customerAddress,
+          price,
+          assignmentType: 'subscription',
+          timestamp: new Date().toISOString(),
+        },
+      );
+
+      // Mark notification as sent to prevent duplicates
+      booking.notificationSent = true;
+      await this.bookingRepository.save(booking);
+
+      this.logger.log(`Sent data-only notification to worker ${worker.id} for booking ${booking.id}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error sending notification to worker ${worker.id}: ${errorMsg}`);
+    }
   }
 }

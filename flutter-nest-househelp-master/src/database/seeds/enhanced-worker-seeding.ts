@@ -550,17 +550,17 @@ export class EnhancedWorkerSeeding {
     this.logger.log(`Found ${workers.length} workers in database`);
 
     // Group workers by service radius
-    const radiusGroups = workers.reduce((acc, worker) => {
+    const radiusGroups = workers.reduce((acc: Record<number, number>, worker) => {
       const radius = worker.serviceRadiusKm;
       if (!acc[radius]) acc[radius] = 0;
       acc[radius]++;
       return acc;
-    }, {});
+    }, {} as Record<number, number>);
 
     this.logger.log('Service radius distribution:', radiusGroups);
 
     // Group workers by service type
-    const serviceCounts = {};
+    const serviceCounts: Record<string, number> = {};
     workers.forEach((worker) => {
       worker.services.forEach((service) => {
         serviceCounts[service.name] = (serviceCounts[service.name] || 0) + 1;

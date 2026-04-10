@@ -14,6 +14,7 @@ import {
 import { LocationService } from './locations.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../auth/admin.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 
 interface LocationAvailabilityDto {
   lat: number;
@@ -109,7 +110,7 @@ export class LocationsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('waitlist')
-  async addToWaitlist(@Req() req, @Body() waitlistDto: WaitlistDto) {
+  async addToWaitlist(@Req() req: JwtRequest, @Body() waitlistDto: WaitlistDto) {
     this.logger.log(
       `Adding user to waitlist: userId=${waitlistDto.userId}, serviceId=${waitlistDto.serviceId}`,
     );
@@ -134,7 +135,7 @@ export class LocationsController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('waitlist/current')
-  async removeFromWaitlist(@Req() req) {
+  async removeFromWaitlist(@Req() req: JwtRequest) {
     const userId = req.user.userId;
     this.logger.log(`Removing user ${userId} from waitlist`);
     await this.locationService.removeFromWaitlist(userId);
@@ -143,7 +144,7 @@ export class LocationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('waitlist/status/:userId')
-  async getWaitlistStatus(@Req() req, @Param('userId') userId: string) {
+  async getWaitlistStatus(@Req() req: JwtRequest, @Param('userId') userId: string) {
     this.logger.debug(`Getting waitlist status for user: ${userId}`);
 
     // Allow users to only check their own waitlist status
@@ -159,7 +160,7 @@ export class LocationsController {
   @UseGuards(JwtAuthGuard)
   @Post('user/:userId/location')
   async updatePreferredLocation(
-    @Req() req,
+    @Req() req: JwtRequest,
     @Param('userId') userId: string,
     @Body() locationDto: LocationAvailabilityDto,
   ) {
@@ -187,7 +188,7 @@ export class LocationsController {
   @UseGuards(JwtAuthGuard)
   @Post('worker/:workerId/location')
   async updateWorkerLocation(
-    @Req() req,
+    @Req() req: JwtRequest,
     @Param('workerId') workerId: number,
     @Body() locationDto: LocationAvailabilityDto,
   ) {

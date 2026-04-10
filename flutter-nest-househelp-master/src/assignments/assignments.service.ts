@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, MoreThanOrEqual, In } from 'typeorm';
 import { Booking, AssignmentState } from '../bookings/entities/booking.entity';
 import { SlotsService } from '../slots/slots.service';
 import { Worker } from '../workers/entities/worker.entity';
@@ -102,6 +102,10 @@ export class AssignmentsService {
     if (fullBooking) {
       try {
         await this.notificationsService.notifyWorkerNewBooking(bestWorker.worker, fullBooking);
+        // Save the booking to persist the notificationSent flag
+        if (fullBooking.notificationSent) {
+          await this.bookingsRepository.save(fullBooking);
+        }
       } catch (error) {
         // Log but don't fail the assignment if notification fails
         this.logger.error('Failed to send worker notification:', error);
@@ -377,6 +381,10 @@ export class AssignmentsService {
       if (fullBooking) {
         try {
           await this.notificationsService.notifyWorkerNewBooking(bestWorker.worker, fullBooking);
+          // Save the booking to persist the notificationSent flag
+          if (fullBooking.notificationSent) {
+            await this.bookingsRepository.save(fullBooking);
+          }
         } catch (error) {
           // Log but don't fail the assignment if notification fails
           this.logger.error('Failed to send worker notification:', error);
@@ -474,12 +482,25 @@ export class AssignmentsService {
       const distance = this.calculateDistance(userLat, userLng, workerLat, workerLng);
       console.log(`📏 Worker ${worker.id} distance: ${distance.toFixed(2)}km`);
       
-      // Flexible radius check (start with 25km, expand if needed)
-      const maxRadius = 30; // Increased from 15km to cover wider service areas
+      // Flexible radius check - use worker's serviceRadiusKm or default to 25km
+      const workerServiceRadius = worker.serviceRadiusKm || 25;
+      const maxRadius = Math.min(workerServiceRadius, 30); // Use worker's radius, max 30km
       if (distance > maxRadius) {
-        console.log(`❌ Worker ${worker.id} too far (${distance.toFixed(2)}km > ${maxRadius}km)`);
+        console.log(`❌ Worker ${worker.id} too far (${distance.toFixed(2)}km > ${maxRadius}km, service radius: ${workerServiceRadius}km)`);
         return null;
       }
+
+      // Load balancing: Check how many bookings worker has today
+      const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const todayBookingsCount = await this.bookingsRepository.count({
+        where: {
+          workerId: worker.id,
+          date: MoreThanOrEqual(todayStr),
+          status: In(['CONFIRMED', 'IN_PROGRESS']),
+        },
+      });
+      console.log(`📊 Worker ${worker.id} has ${todayBookingsCount} bookings today`);
 
       // Convert string dates to Date objects if needed
       const startTimeDate = typeof startTime === 'string' ? new Date(startTime) : startTime;
@@ -517,7 +538,7 @@ export class AssignmentsService {
         return null;
       }
 
-      // Calculate score - prioritize DISTANCE (closest worker wins) + WORKER PREFERENCE
+      // Calculate score - prioritize DISTANCE (closest worker wins) + WORKER PREFERENCE + LOAD BALANCING
       // Worker preference: Give bonus for Sumit and CP Pandey
       const WORKER_PREFERENCE_SCORE = 50; // Large negative score to prioritize these workers
       let workerPreferenceBonus = 0;
@@ -528,13 +549,18 @@ export class AssignmentsService {
         console.log(`⭐ Worker ${worker.id} (${workerNameLower}) gets preference bonus!`);
       }
       
-      const distanceScore = distance * 0.6 * 10; // 60% weight - distance is most important
-      const ratingScore = (5 - worker.rating) * 8 * 0.2; // 20% weight
-      const reviewScore = (100 - Math.min(worker.reviewCount, 100)) * 0.2; // 20% weight
+      // Load balancing score: workers with fewer today's jobs get priority (lower score = better)
+      const loadScore = todayBookingsCount * 5;
+      
+      // Distance score: 3km free zone, then penalize
+      const distanceScore = distance <= 3 ? 0 : (distance - 3) * 1.5;
+      
+      // Rating score: penalize workers with rating below 4.0
+      const ratingScore = worker.rating < 4.0 ? (4.0 - worker.rating) * 20 : 0;
 
-      const totalScore = distanceScore + ratingScore + reviewScore - workerPreferenceBonus;
+      const totalScore = distanceScore + ratingScore + loadScore - workerPreferenceBonus;
 
-      console.log(`✅ Worker ${worker.id} scored: ${totalScore.toFixed(2)} (distance: ${distance.toFixed(2)}km, rating: ${worker.rating})`);
+      console.log(`✅ Worker ${worker.id} scored: ${totalScore.toFixed(2)} (distance: ${distance.toFixed(2)}km, rating: ${worker.rating}, todayJobs: ${todayBookingsCount}, loadScore: ${loadScore})`);
 
       return {
         worker,

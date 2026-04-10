@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AssignmentsService } from '../assignments/assignments.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/entities/user.entity';
 import Razorpay = require('razorpay');
 import * as crypto from 'crypto';
@@ -25,6 +26,7 @@ export class PaymentsService {
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
     private assignmentsService: AssignmentsService,
+    private notificationsService: NotificationsService,
     private dataSource: DataSource,
   ) {
     const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
@@ -104,6 +106,8 @@ export class PaymentsService {
         firstName: booking.user.firstName,
         lastName: booking.user.lastName,
         email: booking.user.email,
+        phone: booking.user.phone,
+        address: booking.user.address,
       };
     }
     
@@ -244,7 +248,31 @@ export class PaymentsService {
         // Update booking with payment info
         await queryRunner.manager.update('Booking', booking.id, {
           isPaid: true,
+          status: 'confirmed',
         });
+
+        // ✅ PERMANENT FIX: Reload booking from database AFTER save to verify persistence
+        // Never trust in-memory objects - always verify what was actually written
+        const bookingRepo = queryRunner.manager.getRepository('Booking');
+        booking = await bookingRepo.findOne({
+          where: { id: booking.id },
+          relations: ['worker', 'worker.user', 'service', 'user'],
+        });
+
+        // ✅ Validate persistence actually succeeded
+        if (!booking) {
+          throw new Error(`Booking ${bookingData.id} vanished after update - persistence failure`);
+        }
+
+        if (!booking.isPaid) {
+          throw new Error(`Booking ${booking.id} was not marked as paid in database - critical persistence failure`);
+        }
+
+        if (booking.status !== 'confirmed') {
+          throw new Error(`Booking ${booking.id} status was not updated to confirmed - persistence failure`);
+        }
+
+        this.logger.log(`✅ Verified booking ${booking.id} persisted correctly: isPaid=${booking.isPaid}, status=${booking.status}`);
       } else {
         // Create new booking within transaction
         const validBookingData: any = {};
@@ -374,6 +402,47 @@ export class PaymentsService {
       this.logger.log(
         `Payment and booking transaction completed successfully for booking: ${booking.id}`,
       );
+
+      // Send notification to assigned worker now that payment is complete
+      if (booking.workerId || booking.assignedWorkerId) {
+        const workerId = booking.workerId || booking.assignedWorkerId;
+        this.logger.log(`Payment complete for booking ${booking.id}, notifying worker ${workerId}`);
+        
+        // Import Worker entity for type
+        const { Worker } = require('../workers/entities/worker.entity');
+        
+        // Create a minimal worker object with just the ID and FCM token
+        const worker = await this.dataSource.getRepository('Worker').findOne({
+          where: { id: workerId },
+          relations: ['user'],
+        });
+        
+        if (worker) {
+          const serviceName = booking.service?.name || 'Service';
+          const bookingDate = booking.date || new Date().toISOString().split('T')[0];
+          
+          try {
+              await this.notificationsService.sendFullScreenPushNotification(
+                worker.fcmToken,
+                'नई बुकिंग मिली! 🎉',
+                `${serviceName} - ${bookingDate} को। ग्राहक का पता और विवरण देखने के लिए ऐप खोलें।`,
+                {
+                  type: 'new_booking',
+                  bookingId: booking.id.toString(),
+                  serviceName,
+                  serviceDate: bookingDate,
+                  startTime: booking.startTime ?? '',
+                  assignmentType: booking.type || 'on_demand',
+                  timestamp: new Date().toISOString(),
+                },
+              );
+              this.logger.log(`Sent full-screen payment-confirmed notification to worker ${workerId} for booking ${booking.id}`);
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error sending notification to worker ${workerId}: ${errorMsg}`);
+          }
+        }
+      }
 
       // Serialize the booking to ensure relations are included in response
       return this.serializeBooking(booking);

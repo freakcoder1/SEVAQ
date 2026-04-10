@@ -20,8 +20,10 @@ export class DatabaseMonitoringService implements OnModuleInit {
     public slowQueries: Gauge<string>,
   ) {}
 
-  async onModuleInit() {
-    await this.startMonitoring();
+  onModuleInit() {
+    // Start monitoring in background - DO NOT await!
+    // Awaiting would block module initialization forever
+    this.startMonitoring();
   }
 
   private async startMonitoring() {

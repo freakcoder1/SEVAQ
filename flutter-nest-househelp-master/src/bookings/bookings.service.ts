@@ -173,7 +173,18 @@ export class BookingsService {
 
         // Populate booking with service request details
         createBookingDto.serviceRequestId = serviceRequest.id; // Use UUID
-        createBookingDto.userId = serviceRequest.userId;
+        
+        // ✅ FIX: Convert numeric user id to UUID publicId
+        // serviceRequest.userId is INTEGER (from service_requests table), we need UUID for booking user reference
+        const serviceUser = await this.usersRepository.findOne({
+          where: { id: serviceRequest.userId }
+        });
+        
+        if (!serviceUser) {
+          throw new BadRequestException('User associated with service request not found');
+        }
+        
+        createBookingDto.userId = serviceUser.publicId; // Now using proper UUID publicId
         createBookingDto.serviceId = serviceRequest.serviceId;
         createBookingDto.workerId = serviceRequest.assignedWorkerId;
         
@@ -362,10 +373,7 @@ export class BookingsService {
           const endHours = parseTimeToHours(createBookingDto.endTime);
           const durationHours = Math.max(0, endHours - startHours);
 
-          console.log('🔍 DEBUG create: startHours =', startHours, ', endHours =', endHours, ', durationHours =', durationHours);
-
           amount = basePrice * durationHours;
-          console.log('🔍 DEBUG create: Calculated amount =', amount, '(basePrice', basePrice, '* duration', durationHours, ')');
         } else {
           amount = 0;
         }
@@ -407,7 +415,6 @@ export class BookingsService {
             const dateStr = typeof createBookingDto.date === 'string' 
               ? createBookingDto.date 
               : new Date(createBookingDto.date).toISOString().split('T')[0];
-            console.log('🔍 DEBUG: Date handling - using explicit date:', dateStr);
             return dateStr;
           }
           
@@ -415,13 +422,11 @@ export class BookingsService {
           if (typeof createBookingDto.startTime === 'string' &&
               createBookingDto.startTime.includes('T')) {
             const dateStr = new Date(createBookingDto.startTime).toISOString().split('T')[0];
-            console.log('🔍 DEBUG: Date handling - extracted from startTime:', dateStr);
             return dateStr;
           }
           
           // Priority 3: Look up date from service request if serviceRequestId is provided
           if (createBookingDto.serviceRequestId) {
-            console.log('🔍 DEBUG: Date handling - serviceRequestId provided, date should be set earlier in the flow');
             // The date should have been set from service request earlier in this function (lines 192-199)
             // If we reach here, the service request might not have a valid date
           }
@@ -453,8 +458,44 @@ export class BookingsService {
         ? savedBooking[0]
         : savedBooking;
 
-      // DEBUG: Log assignment state after save
-      console.log('🔍 DEBUG: Booking saved, workerId:', bookingToReturn.workerId, ', assignmentState:', bookingToReturn.assignmentState);
+      // Booking saved
+
+      // ============================================
+      // NEW: Notify user (customer) about booking confirmation
+      // ============================================
+      try {
+        // Load user with fcmToken
+        // FIX: userId can be either numeric ID or UUID publicId
+        const userIdValue = createBookingDto.userId;
+        let user: User | null = null;
+        
+        if (typeof userIdValue === 'number' || !isNaN(Number(userIdValue))) {
+          // It's a numeric ID
+          user = await this.usersRepository.findOne({
+            where: { id: Number(userIdValue) },
+          });
+        } else {
+          // It's a UUID publicId
+          user = await this.usersRepository.findOne({
+            where: { publicId: userIdValue },
+          });
+        }
+        
+        if (user) {
+          // Reload savedBooking with service relation for notification
+          const savedBookingWithService = await this.bookingsRepository.findOne({
+            where: { id: bookingToReturn.id },
+            relations: ['service'],
+          });
+          
+          if (savedBookingWithService) {
+            await this.notificationsService.notifyUserBookingConfirmation(user, savedBookingWithService);
+          }
+        }
+      } catch (notifyError) {
+        console.error('🔍 ERROR: Failed to send customer notification:', notifyError);
+        // Don't fail the booking if notification fails
+      }
 
       // FIX: Ensure assignmentState is correctly set for bookings with worker assigned
       // If worker is assigned but assignmentState is not ASSIGNED, update it
@@ -497,7 +538,7 @@ export class BookingsService {
 
   async attemptAssignment(bookingId: string) {
     const booking = await this.bookingsRepository.findOne({
-      where: { id: bookingId as any },
+      where: { id: bookingId },
       relations: ['user', 'service'],
     });
     if (!booking) {
@@ -635,13 +676,9 @@ export class BookingsService {
       booking.assignmentReason = 'Best match found';
       const savedBooking = await this.bookingsRepository.save(booking);
 
-      // Send push notification to worker
-      try {
-        await this.notificationsService.notifyWorkerNewBooking(bestMatch.worker, savedBooking);
-      } catch (error) {
-        // Log but don't fail the assignment if notification fails
-        this.logger.error('Failed to send worker notification:', error);
-      }
+      // NOTE: Worker notification is intentionally NOT sent here.
+      // The notification will be sent after payment is confirmed in payments.service.ts
+      // This ensures workers only get notified about paid bookings.
 
       return savedBooking;
     } catch (error) {
@@ -759,6 +796,23 @@ export class BookingsService {
         firstName: booking.user.firstName,
         lastName: booking.user.lastName,
         email: booking.user.email,
+        phone: booking.user.phone,
+        address: booking.user.address,
+        addresses: booking.user.addresses ? booking.user.addresses.map((addr: any) => ({
+          id: addr.id,
+          societyName: addr.societyName,
+          towerNumber: addr.towerNumber,
+          flatNumber: addr.flatNumber,
+          landmark: addr.landmark,
+          area: addr.area,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          isDefault: addr.isDefault,
+          label: addr.label,
+        })) : [],
       } : null,
     };
   }
@@ -768,6 +822,7 @@ export class BookingsService {
       where: { id },
       relations: [
         'user',
+        'user.addresses',
         'worker',
         'service',
         'worker.user',
@@ -880,13 +935,9 @@ export class BookingsService {
 
     const savedBooking = await this.bookingsRepository.save(booking);
 
-    // Send push notification to worker
-    try {
-      await this.notificationsService.notifyWorkerNewBooking(worker, savedBooking);
-    } catch (error) {
-      // Log but don't fail the assignment if notification fails
-      this.logger.error('Failed to send worker notification:', error);
-    }
+    // NOTE: Worker notification is intentionally NOT sent here.
+    // The notification will be sent after payment is confirmed in payments.service.ts
+    // This ensures workers only get notified about paid bookings.
 
     return savedBooking;
   }
@@ -914,6 +965,7 @@ export class BookingsService {
     const query = this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('user.addresses', 'userAddresses')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('booking.service', 'service');
 
@@ -954,7 +1006,7 @@ export class BookingsService {
   async getBookingsByWorker(workerId: number) {
     return this.bookingsRepository.find({
       where: { assignedWorkerId: workerId },
-      relations: ['user', 'service'],
+      relations: ['user', 'user.addresses', 'service'],
       order: { createdAt: 'DESC' },
     });
   }

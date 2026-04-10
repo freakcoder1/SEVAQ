@@ -86,8 +86,18 @@ export class FirebaseAuthService {
     this.logger.log(`Dev login for phone: ${phone}`);
 
     try {
-      // Find existing user by phone
+      // Normalize phone number: strip all non-numeric characters for consistent lookup
+      const normalizedPhone = phone.replace(/[^0-9]/g, '');
+      this.logger.log(`Normalized phone for lookup: ${normalizedPhone}`);
+      
+      // Find existing user by phone - try both original and normalized formats
       let user = await this.usersService.findOneByPhone(phone);
+      
+      // If not found, try with normalized phone number
+      if (!user) {
+        this.logger.log(`User not found with original phone, trying normalized: ${normalizedPhone}`);
+        user = await this.usersService.findOneByPhone(`+${normalizedPhone}`);
+      }
 
       if (!user) {
         // Create new user
@@ -96,7 +106,7 @@ export class FirebaseAuthService {
         const createUserDto = {
           email: `user_${phone.replace(/[^0-9]/g, '')}@phone.auth`,
           password: securePassword,
-          firstName: 'User',
+          firstName: 'Worker',
           lastName: phone.replace('+', ''),
           phone: phone,
           role: UserRole.USER,
@@ -105,6 +115,24 @@ export class FirebaseAuthService {
           createUserDto as any,
           phone,
         );
+      } else {
+        // FIX: If user has default "User" name (e.g., "User 917870603149"), update it
+        // This handles the case where users were created with old code
+        const isDefaultName =
+          user!.firstName === 'User' &&
+          user!.lastName &&
+          /^\d{10,15}$/.test(user!.lastName.replace(/\+/, ''));
+        
+        if (isDefaultName) {
+          this.logger.log(`Updating default name for user: ${user!.publicId}`);
+          await this.usersService.update(user!.publicId, {
+            firstName: 'Worker',
+            lastName: phone.replace('+', ''),
+          } as any);
+          // Update local user object for subsequent checks
+          user!.firstName = 'Worker';
+          user!.lastName = phone.replace('+', '');
+        }
       }
 
       const needsProfileCompletion =

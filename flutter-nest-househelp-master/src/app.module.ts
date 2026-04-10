@@ -32,6 +32,8 @@ import { DatabaseModule } from './database/database.module';
 import { ServiceProfilesModule } from './service-profiles/service-profiles.module';
 import { AdminModule } from './admin/admin.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { AddressesModule } from './addresses/addresses.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
 import { Worker } from './workers/entities/worker.entity';
@@ -51,8 +53,25 @@ import {
 } from './metrics/entities/metric.entity';
 import { ServiceProfile } from './service-profiles/entities/service-profile.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
+import { AuditModule } from './audit/audit.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
+import { AdminUser } from './admin/entities/admin-user.entity';
+import { AuditLog } from './audit/entities/audit-log.entity';
+import { FinanceModule } from './finance/finance.module';
+import { SupportModule } from './support/support.module';
+import { SystemConfigModule } from './config/config.module';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { ResponseTimeInterceptor } from './common/interceptors/response-time.interceptor';
+import { SupportTicket } from './support/entities/support-ticket.entity';
+import { CommunicationLog } from './support/entities/communication-log.entity';
+import { NotificationTemplate } from './config/entities/notification-template.entity';
+import { BusinessHours } from './config/entities/business-hours.entity';
+import { ServiceArea as ConfigServiceArea } from './config/entities/service-area.entity';
+import { PricingRule } from './config/entities/pricing-rule.entity';
+import { Payout } from './finance/entities/payout.entity';
+import { Refund } from './finance/entities/refund.entity';
+import { Address } from './addresses/entities/address.entity';
 
 @Module({
   imports: [
@@ -138,6 +157,7 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
           Review,
           MicroZone,
           ServiceArea,
+          ConfigServiceArea,
           Waitlist,
           ServiceRequest,
           AssignmentMetric,
@@ -146,6 +166,16 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
           SystemPerformanceMetric,
           ServiceProfile,
           Subscription,
+          AdminUser,
+          AuditLog,
+          SupportTicket,
+          CommunicationLog,
+          NotificationTemplate,
+          BusinessHours,
+          PricingRule,
+          Payout,
+          Refund,
+          Address,
         ];
 
         return {
@@ -182,6 +212,14 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     ServiceProfilesModule,
     SubscriptionsModule,
     AdminModule,
+    MetricsModule,
+    AuditModule,
+    AnalyticsModule,
+    MonitoringModule,
+    FinanceModule,
+    SupportModule,
+    SystemConfigModule,
+    AddressesModule,
     // DatabaseModule,
   ],
   controllers: [AppController],

@@ -12,7 +12,7 @@ export class FixWorkerLocationData1736660000000 implements MigrationInterface {
             AND column_name IN ('latitude', 'longitude', 'currentLat', 'currentLng')
         `);
 
-    const existingColumns = columns.map((col) => col.column_name);
+    const existingColumns = columns.map((col: Record<string, string>) => col.column_name);
 
     // Only update if all required columns exist
     if (

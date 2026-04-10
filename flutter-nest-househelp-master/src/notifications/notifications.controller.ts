@@ -1,10 +1,28 @@
 import { Controller, Post, Get, UseGuards, Request } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
+
+  /**
+   * GET /notifications/firebase-status
+   * Returns Firebase initialization status for monitoring and diagnostics
+   */
+  @Get('firebase-status')
+  getFirebaseStatus() {
+    const status = this.notificationsService.getFirebaseStatus();
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      firebase: status,
+      summary: status.initialized
+        ? `Firebase is initialized (Project: ${status.projectId}, Type: ${status.credentialType})`
+        : `Firebase is NOT initialized. Last error: ${status.lastError}`,
+    };
+  }
 
   @Post('send-pre-service-reminders')
   async sendPreServiceReminders() {
@@ -14,7 +32,7 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('upcoming-bookings')
-  async getUpcomingBookings(@Request() req) {
+  async getUpcomingBookings(@Request() req: JwtRequest) {
     const bookings =
       await this.notificationsService.findBookingsNeedingReminders(
         req.user.userId,
@@ -69,7 +87,7 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('all-bookings')
-  async getAllBookings(@Request() req) {
+  async getAllBookings(@Request() req: JwtRequest) {
     const bookings = await this.notificationsService.findAllUserBookings(
       req.user.userId,
     );

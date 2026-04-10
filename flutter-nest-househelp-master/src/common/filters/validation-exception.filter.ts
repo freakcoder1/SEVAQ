@@ -39,7 +39,7 @@ export class ValidationExceptionFilter implements ExceptionFilter {
       errors:
         typeof exceptionResponse === 'string'
           ? exceptionResponse
-          : exceptionResponse['message'] || 'Invalid input data',
+          : (exceptionResponse as Record<string, unknown>)?.message || 'Invalid input data',
     });
   }
 }

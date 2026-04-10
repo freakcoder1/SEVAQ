@@ -8,17 +8,54 @@ import {
   JoinColumn,
   OneToOne,
 } from 'typeorm';
+import { Expose, Type } from 'class-transformer';
+import { IsOptional, IsNumber, IsString } from 'class-validator';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
 import { Service } from '../../services/entities/service.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
+import { Subscription } from '../../subscriptions/entities/subscription.entity';
 
 export class LocationData {
+  @Expose()
+  @IsNumber()
+  lat: number;
+
+  @Expose()
+  @IsNumber()
+  lng: number;
+
+  @Expose()
+  @IsNumber()
   latitude: number;
+
+  @Expose()
+  @IsNumber()
   longitude: number;
-  address?: string;
+
+  @Expose()
+  @IsOptional()
+  @IsString()
+  address: string;
+
+  constructor() {
+    // Auto synchronize property formats
+    Object.defineProperty(this, 'latitude', {
+      get() { return this.lat; },
+      set(v) { this.lat = v; },
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'longitude', {
+      get() { return this.lng; },
+      set(v) { this.lng = v; },
+      enumerable: true,
+      configurable: true
+    });
+  }
 }
 
 export enum BookingStatus {
@@ -59,12 +96,19 @@ export class Booking {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ name: 'workerId', type: 'int', nullable: true })
-  workerId: number;
-
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'workerId' })
   worker: Worker;
+
+  @Column({ type: 'int', nullable: true })
+  workerId: number;
+
+  @ManyToOne(() => Worker, { nullable: true })
+  @JoinColumn({ name: 'assignedWorkerId' })
+  assignedWorker: Worker;
+
+  @Column({ type: 'int', nullable: true })
+  assignedWorkerId: number;
 
   @Column({ name: 'serviceId', type: 'int', nullable: true })
   serviceId: number;
@@ -120,6 +164,7 @@ export class Booking {
   serviceRequestId: string;
 
   @Column({ type: 'json', nullable: true })
+  @Type(() => LocationData)
   location: LocationData;
 
   @Column({ default: false })
@@ -134,8 +179,8 @@ export class Booking {
   @Column({ type: 'text', default: AssignmentState.PENDING })
   assignmentState: AssignmentState;
 
-  @Column({ name: 'assignedWorkerId', type: 'int', nullable: true })
-  assignedWorkerId: number;
+  @Column({ default: false })
+  isPaid: boolean;
 
   @Column({ type: 'text', nullable: true })
   assignmentReason: string;
@@ -146,6 +191,9 @@ export class Booking {
   @Column({ type: 'timestamp', nullable: true })
   assignmentTimestamp: Date;
 
+  @Column({ default: false })
+  notificationSent: boolean;
+
   @Column({ type: 'text', nullable: true })
   assignmentMetadata: string;
 
@@ -155,6 +203,13 @@ export class Booking {
   @ManyToOne(() => ServiceRequest, { nullable: true })
   @JoinColumn({ name: 'serviceRequestId' })
   serviceRequest: ServiceRequest;
+
+  @Column({ type: 'int', nullable: true })
+  subscriptionId: number;
+
+  @ManyToOne(() => Subscription, { nullable: true })
+  @JoinColumn({ name: 'subscriptionId' })
+  subscription: Subscription;
 
   @CreateDateColumn()
   createdAt: Date;

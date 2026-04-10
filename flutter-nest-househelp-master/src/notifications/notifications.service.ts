@@ -9,11 +9,45 @@ import { User } from '../users/entities/user.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import * as admin from 'firebase-admin';
 
+/**
+ * Firebase initialization status interface for diagnostics
+ */
+export interface FirebaseStatus {
+  initialized: boolean;
+  projectId: string | null;
+  credentialType: 'service_account' | 'individual' | 'none';
+  lastError: string | null;
+  lastAttemptAt: string | null;
+  credentialValidation: {
+    hasServiceAccountJson: boolean;
+    hasProjectId: boolean;
+    hasClientEmail: boolean;
+    hasPrivateKey: boolean;
+    serviceAccountValid: boolean;
+    privateKeyFormatValid: boolean;
+  };
+}
+
 @Injectable()
 export class NotificationsService {
   private transporter: nodemailer.Transporter;
-  private twilioClient: Twilio;
+  private twilioClient: Twilio | undefined;
   private firebaseInitialized: boolean = false;
+  private firebaseStatus: FirebaseStatus = {
+    initialized: false,
+    projectId: null,
+    credentialType: 'none',
+    lastError: null,
+    lastAttemptAt: null,
+    credentialValidation: {
+      hasServiceAccountJson: false,
+      hasProjectId: false,
+      hasClientEmail: false,
+      hasPrivateKey: false,
+      serviceAccountValid: false,
+      privateKeyFormatValid: false,
+    },
+  };
 
   constructor(
     private configService: ConfigService,
@@ -49,61 +83,202 @@ export class NotificationsService {
     this.initializeFirebase();
   }
 
-  private initializeFirebase(): void {
-    // Try to get FIREBASE_SERVICE_ACCOUNT first (full JSON)
+  /**
+   * Validate Firebase credentials before attempting initialization
+   * Returns validation result and detailed status
+   */
+  private validateFirebaseCredentials(): {
+    valid: boolean;
+    errors: string[];
+    validation: FirebaseStatus['credentialValidation'];
+  } {
     const serviceAccountJson = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
     const projectId = this.configService.get('FIREBASE_PROJECT_ID');
     const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
     const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
 
-    // Try to initialize using service account JSON first
-    if (serviceAccountJson && serviceAccountJson.includes('service_account')) {
-      try {
-        const serviceAccount = JSON.parse(serviceAccountJson);
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-        });
-        this.firebaseInitialized = true;
-        console.log('Firebase Admin SDK initialized successfully from service account');
-        return;
-      } catch (error) {
-        console.warn(
-          'Firebase Admin SDK initialization from service account failed:',
-          error.message,
-        );
+    const validation: FirebaseStatus['credentialValidation'] = {
+      hasServiceAccountJson: !!serviceAccountJson,
+      hasProjectId: !!projectId,
+      hasClientEmail: !!clientEmail,
+      hasPrivateKey: !!privateKey,
+      serviceAccountValid: false,
+      privateKeyFormatValid: false,
+    };
+
+    const errors: string[] = [];
+
+    // Validate service account JSON if present
+    if (serviceAccountJson) {
+      if (serviceAccountJson.includes('service_account')) {
+        try {
+          const parsed = JSON.parse(serviceAccountJson);
+          if (parsed.project_id && parsed.client_email && parsed.private_key) {
+            validation.serviceAccountValid = true;
+            console.log('[Firebase Validation] Service account JSON is valid');
+          } else {
+            errors.push('Service account JSON missing required fields (project_id, client_email, private_key)');
+          }
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          errors.push(`Service account JSON is invalid: ${msg}`);
+        }
+      } else {
+        errors.push('Service account JSON does not contain "service_account" identifier');
       }
     }
 
-    // Fall back to individual credentials
+    // Validate private key format if present
+    if (privateKey) {
+      const normalizedKey = privateKey.replace(/\\n/g, '\n');
+      if (normalizedKey.includes('-----BEGIN RSA PRIVATE KEY-----') ||
+          normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        validation.privateKeyFormatValid = true;
+        console.log('[Firebase Validation] Private key format is valid');
+      } else {
+        errors.push('Private key does not appear to be in PEM format (missing BEGIN PRIVATE KEY header)');
+      }
+    }
+
+    // Check if we have at least one valid credential set
+    const hasValidServiceAccount = validation.serviceAccountValid;
+    const hasValidIndividualCredentials =
+      validation.hasProjectId &&
+      validation.hasClientEmail &&
+      validation.privateKeyFormatValid &&
+      projectId !== 'your-firebase-project-id';
+
+    const valid = hasValidServiceAccount || hasValidIndividualCredentials;
+
+    if (!valid && !errors.length) {
+      errors.push('No valid Firebase credentials configured');
+    }
+
+    return { valid, errors, validation };
+  }
+
+  /**
+   * Initialize Firebase Admin SDK with detailed logging and diagnostics
+   */
+  private initializeFirebase(): void {
+    console.log('='.repeat(60));
+    console.log('[Firebase Init] Starting Firebase Admin SDK initialization...');
+    console.log('='.repeat(60));
+
+    // Record attempt timestamp
+    this.firebaseStatus.lastAttemptAt = new Date().toISOString();
+
+    // Step 1: Validate credentials
+    console.log('[Firebase Init] Step 1: Validating credentials...');
+    const validationResult = this.validateFirebaseCredentials();
+    this.firebaseStatus.credentialValidation = validationResult.validation;
+
+    console.log('[Firebase Init] Credential validation results:');
+    console.log(`  - Has Service Account JSON: ${validationResult.validation.hasServiceAccountJson}`);
+    console.log(`  - Service Account Valid: ${validationResult.validation.serviceAccountValid}`);
+    console.log(`  - Has Project ID: ${validationResult.validation.hasProjectId}`);
+    console.log(`  - Has Client Email: ${validationResult.validation.hasClientEmail}`);
+    console.log(`  - Has Private Key: ${validationResult.validation.hasPrivateKey}`);
+    console.log(`  - Private Key Format Valid: ${validationResult.validation.privateKeyFormatValid}`);
+
+    if (validationResult.errors.length > 0) {
+      console.warn('[Firebase Init] Validation warnings:');
+      validationResult.errors.forEach(err => console.warn(`  - ${err}`));
+    }
+
+    // Step 2: Try service account JSON initialization
+    const serviceAccountJson = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
+    
+    if (validationResult.validation.serviceAccountValid) {
+      console.log('[Firebase Init] Step 2: Attempting initialization with service account JSON...');
+      try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        console.log(`[Firebase Init] Service account details:`);
+        console.log(`  - Project ID: ${serviceAccount.project_id}`);
+        console.log(`  - Client Email: ${serviceAccount.client_email}`);
+        console.log(`  - Token URI: ${serviceAccount.token_uri}`);
+
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+
+        this.firebaseInitialized = true;
+        this.firebaseStatus.initialized = true;
+        this.firebaseStatus.projectId = serviceAccount.project_id;
+        this.firebaseStatus.credentialType = 'service_account';
+        this.firebaseStatus.lastError = null;
+
+        console.log('[Firebase Init] ✅ Firebase Admin SDK initialized successfully from service account');
+        console.log(`[Firebase Init] Project: ${serviceAccount.project_id}`);
+        console.log('='.repeat(60));
+        return;
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.firebaseStatus.lastError = `Service account init failed: ${errorMsg}`;
+        console.warn(`[Firebase Init] ❌ Service account initialization failed: ${errorMsg}`);
+      }
+    }
+
+    // Step 3: Fall back to individual credentials
+    const projectId = this.configService.get('FIREBASE_PROJECT_ID');
+    const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
+    const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
+
     if (
       projectId &&
       clientEmail &&
       privateKey &&
       projectId !== 'your-firebase-project-id'
     ) {
+      console.log('[Firebase Init] Step 3: Attempting initialization with individual credentials...');
       try {
+        const normalizedPrivateKey = privateKey.replace(/\\n/g, '\n');
+        console.log(`[Firebase Init] Using individual credentials for project: ${projectId}`);
+
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId,
             clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
+            privateKey: normalizedPrivateKey,
           }),
         });
+
         this.firebaseInitialized = true;
-        console.log('Firebase Admin SDK initialized successfully');
-      } catch (error) {
-        console.warn(
-          'Firebase Admin SDK initialization failed, push notifications will be skipped:',
-          error.message,
-        );
-        this.firebaseInitialized = false;
+        this.firebaseStatus.initialized = true;
+        this.firebaseStatus.projectId = projectId;
+        this.firebaseStatus.credentialType = 'individual';
+        this.firebaseStatus.lastError = null;
+
+        console.log('[Firebase Init] ✅ Firebase Admin SDK initialized successfully');
+        console.log(`[Firebase Init] Project: ${projectId}`);
+        console.log('='.repeat(60));
+        return;
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.firebaseStatus.lastError = `Individual credentials init failed: ${errorMsg}`;
+        console.warn(`[Firebase Init] ❌ Individual credentials initialization failed: ${errorMsg}`);
       }
-    } else {
-      console.warn(
-        'Firebase Admin SDK credentials not configured, push notifications will be skipped',
-      );
-      this.firebaseInitialized = false;
     }
+
+    // Step 4: Initialization failed
+    this.firebaseInitialized = false;
+    this.firebaseStatus.initialized = false;
+    this.firebaseStatus.credentialType = 'none';
+    if (!this.firebaseStatus.lastError) {
+      this.firebaseStatus.lastError = 'No valid credentials provided';
+    }
+
+    console.warn('[Firebase Init] ❌ Firebase Admin SDK initialization failed');
+    console.warn(`[Firebase Init] Error: ${this.firebaseStatus.lastError}`);
+    console.warn('[Firebase Init] Push notifications will be skipped');
+    console.log('='.repeat(60));
+  }
+
+  /**
+   * Get detailed Firebase initialization status for diagnostics
+   */
+  getFirebaseStatus(): FirebaseStatus {
+    return { ...this.firebaseStatus };
   }
 
   async sendEmail(to: string, subject: string, text: string): Promise<void> {
@@ -122,13 +297,18 @@ export class NotificationsService {
 
   async sendSms(to: string, message: string): Promise<void> {
     try {
+      if (!this.twilioClient) {
+        console.warn('[SMS] Twilio client not initialized, skipping SMS');
+        return;
+      }
       await this.twilioClient.messages.create({
         body: message,
         from: this.configService.get('TWILIO_PHONE_NUMBER'),
         to,
       });
-    } catch (error) {
-      console.error('Error sending SMS:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[SMS] Error sending SMS:', errorMsg);
       // Don't throw error to prevent failing the entire reminder process
     }
   }
@@ -142,31 +322,55 @@ export class NotificationsService {
     try {
       // Check if Firebase Admin SDK is initialized
       if (!this.firebaseInitialized) {
-        console.warn(
-          'Firebase Admin SDK not initialized, skipping push notification',
+        console.error(
+          '[NOTIFICATION FAILURE] Firebase Admin SDK NOT initialized - push notifications will NOT work!',
         );
         return;
+      } else {
+        console.log('[NOTIFICATION] Firebase Admin SDK is initialized, ready to send push');
       }
 
       // Check if FCM token is provided
       if (!fcmToken) {
-        console.warn('No FCM token provided, skipping push notification');
+        console.error('[NOTIFICATION FAILURE] No FCM token provided, cannot send push notification');
         return;
+      } else {
+        console.log(`[NOTIFICATION] FCM token present (${fcmToken.substring(0, 20)}...), ready to send`);
       }
 
+      // Send FCM message with both android.notification and data blocks.
+      // - android.notification: Shows system tray notification with sound (background/terminated)
+      // - data: Flutter processes to show in-app dialog (foreground)
+      // The notificationSent flag prevents duplicate notifications.
       const message: admin.messaging.Message = {
         token: fcmToken,
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: dataPayload || {
-          type: 'notification',
+        data: {
+          ...dataPayload,
+          // Include title and body in data payload for Flutter to use
+          notification_title: title,
+          notification_body: body,
+          // Channel ID for Android notification channel
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          id: '1',
+          status: 'done',
         },
         android: {
           priority: 'high' as const,
           notification: {
-            sound: 'default',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+            title: title,
+            body: body,
+            // Link to Android notification channel for sound customization
+            channelId: 'new_booking_channel',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              contentAvailable: true,
+              sound: 'default',
+            },
           },
         },
       };
@@ -178,27 +382,209 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Send a full-screen push notification for critical alerts (worker booking notifications).
+   * This sends BOTH data and android.notification blocks so that:
+   * - android.notification: Shows system tray notification with full-screen intent (background/terminated)
+   * - data: Flutter processes to show in-app dialog (foreground)
+   * - Uses full_screen_booking_channel for full-screen alarm behavior
+   */
+  async sendFullScreenPushNotification(
+    fcmToken: string,
+    title: string,
+    body: string,
+    dataPayload?: Record<string, string>,
+  ): Promise<void> {
+    try {
+      if (!this.firebaseInitialized) {
+        console.error(
+          '[NOTIFICATION FAILURE] Firebase Admin SDK NOT initialized - push notifications will NOT work!',
+        );
+        return;
+      }
+
+      if (!fcmToken) {
+        console.error('[NOTIFICATION FAILURE] No FCM token provided');
+        return;
+      }
+
+      // Send BOTH notification and data blocks:
+      // - notification: Shows system tray notification when app is terminated
+      // - data: Flutter processes the payload when app is in foreground/background
+      // - high priority ensures immediate delivery
+      const message: admin.messaging.Message = {
+        token: fcmToken,
+        data: {
+          ...dataPayload,
+          notification_title: title,
+          notification_body: body,
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          id: '1',
+          status: 'done',
+          fullScreen: 'true',
+        },
+        notification: {
+          title: title,
+          body: body,
+        },
+        android: {
+          priority: 'high' as const,
+          ttl: 0, // immediate delivery
+          notification: {
+            channelId: 'full_screen_booking_channel',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+            title: title,
+            body: body,
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              contentAvailable: true,
+              sound: 'default',
+              interruptionLevel: 'critical',
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log(`Successfully sent full-screen push notification: ${response}`);
+    } catch (error) {
+      console.error('Error sending full-screen push notification:', error);
+    }
+  }
+
+  /**
+   * Send a data-only FCM notification that will be processed by the background handler
+   * even when the app is in the background or terminated.
+   * The notification title and body are included in the data payload.
+   */
+  async sendDataOnlyNotification(
+    fcmToken: string,
+    title: string,
+    body: string,
+    dataPayload?: Record<string, string>,
+  ): Promise<void> {
+    try {
+      if (!this.firebaseInitialized) {
+        console.error(
+          '[NOTIFICATION FAILURE] Firebase Admin SDK NOT initialized - push notifications will NOT work!',
+        );
+        return;
+      }
+
+      if (!fcmToken) {
+        console.error('[NOTIFICATION FAILURE] No FCM token provided');
+        return;
+      }
+
+      // Data-only message - no notification block, so background handler will process it
+      // even when the app is in the background or terminated.
+      // The background handler shows a full-screen local notification.
+      const message: admin.messaging.Message = {
+        token: fcmToken,
+        data: {
+          ...dataPayload,
+          // Include title and body in data payload for local notification display
+          notification_title: title,
+          notification_body: body,
+        },
+        android: {
+          priority: 'high' as const,
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log(`Successfully sent data-only push notification: ${response}`);
+    } catch (error) {
+      console.error('Error sending data-only push notification:', error);
+    }
+  }
+
   async notifyWorkerNewBooking(worker: Worker, booking: Booking): Promise<void> {
+    console.log(`[notifyWorkerNewBooking] Starting for worker ${worker.id}, booking ${booking.id}`);
+    
+    // Check if notification has already been sent to prevent duplicate notifications
+    if (booking.notificationSent) {
+      console.log(`[notifyWorkerNewBooking] Skipping notification for booking ${booking.id} - notification already sent`);
+      return;
+    }
+    
     if (!worker.fcmToken) {
-      console.warn(`No FCM token for worker ${worker.id}`);
+      console.error(`[NOTIFICATION FAILURE] No FCM token for worker ${worker.id} - worker needs to register their FCM token first!`);
       return;
     }
 
+    console.log(`[notifyWorkerNewBooking] Worker has FCM token: ${worker.fcmToken.substring(0, 20)}...`);
+    
     const serviceName = booking.service?.name || 'Service';
     const notificationTitle = 'नया काम मिला!';
     const notificationBody = `नया बुकिंग मिली है - ${serviceName}`;
 
-    await this.sendPushNotification(
+    console.log(`[notifyWorkerNewBooking] Sending full-screen push notification: title="${notificationTitle}", body="${notificationBody}"`);
+    
+    // Send full-screen push notification with both notification and data blocks
+    // This ensures the notification appears even when app is terminated
+    // Uses full_screen_booking_channel which has fullScreenIntent enabled
+    await this.sendFullScreenPushNotification(
       worker.fcmToken,
       notificationTitle,
       notificationBody,
       {
         type: 'new_booking',
         bookingId: booking.id.toString(),
+        serviceName: booking.service?.name ?? 'Service',
+        serviceDate: booking.date ?? new Date().toISOString().split('T')[0],
+        startTime: booking.startTime ?? '',
+        customerName: booking.user?.firstName ?? 'Customer',
+        customerAddress: booking.location?.address ?? '',
+        price: booking.amount?.toString() ?? '0',
+        assignmentType: 'on_demand',
+        fullScreen: 'true',  // Trigger full-screen notification
+        timestamp: new Date().toISOString(),
       },
     );
 
-    console.log(`New booking notification sent to worker ${worker.id} for booking ${booking.id}`);
+    // Mark notification as sent to prevent duplicates
+    booking.notificationSent = true;
+
+    console.log(`[notifyWorkerNewBooking] Completed for worker ${worker.id} for booking ${booking.id}`);
+  }
+
+  // ============================================
+  // NEW: Notify user (customer) about booking confirmation
+  // ============================================
+  async notifyUserBookingConfirmation(user: User, booking: Booking): Promise<void> {
+    console.log(`[notifyUserBookingConfirmation] Starting for user ${user.id}, booking ${booking.id}`);
+    
+    // Check if user has FCM token
+    // Note: User's fcmToken is stored in the user record
+    if (!user.fcmToken) {
+      console.log(`[notifyUserBookingConfirmation] No FCM token for user ${user.id} - user needs to register their FCM token first!`);
+      return;
+    }
+
+    console.log(`[notifyUserBookingConfirmation] User has FCM token: ${user.fcmToken.substring(0, 20)}...`);
+    
+    const serviceName = booking.service?.name || 'Service';
+    const notificationTitle = 'बुकिंग पुष्टि!';
+    const notificationBody = `आपकी ${serviceName} बुकिंग पुष्टि हो गई है!`;
+
+    console.log(`[notifyUserBookingConfirmation] Sending push notification: title="${notificationTitle}", body="${notificationBody}"`);
+    
+    await this.sendPushNotification(
+      user.fcmToken,
+      notificationTitle,
+      notificationBody,
+      {
+        type: 'booking_confirmation',
+        bookingId: booking.id.toString(),
+      },
+    );
+
+    console.log(`[notifyUserBookingConfirmation] Completed for user ${user.id} for booking ${booking.id}`);
   }
 
   async notifyAdmins(subject: string, message: string): Promise<void> {

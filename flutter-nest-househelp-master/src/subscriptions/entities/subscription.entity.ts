@@ -109,6 +109,9 @@ export class Subscription {
   @Column({ type: 'boolean', default: false, name: 'worker_assignment_failed' })
   workerAssignmentFailed: boolean;
 
+  @Column({ type: 'timestamp', nullable: true, name: 'last_notification_sent_at' })
+  lastNotificationSentAt: Date | null;
+
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'assignedWorkerId' })
   assignedWorker: Worker | null;

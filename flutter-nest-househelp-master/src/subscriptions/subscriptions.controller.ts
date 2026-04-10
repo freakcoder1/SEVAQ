@@ -19,6 +19,7 @@ import {
   SubscriptionStatus,
 } from './entities/subscription.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtRequest } from '../common/types/jwt-user.type';
 
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard)
@@ -38,7 +39,7 @@ export class SubscriptionsController {
       location: { lat: number; lng: number; address?: string };
       monthlyPriceSnapshot?: number;
     },
-    @Request() req,
+    @Request() req: JwtRequest,
   ): Promise<Subscription> {
     try {
       const startDate = new Date(body.startDate);
@@ -51,8 +52,15 @@ export class SubscriptionsController {
         body.location,
         body.monthlyPriceSnapshot ?? 0,
       );
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check for duplicate subscription error
+      if (errorMessage.includes('already have an active subscription')) {
+        throw new HttpException(errorMessage, HttpStatus.CONFLICT);
+      }
+      
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -97,8 +105,9 @@ export class SubscriptionsController {
   async pauseSubscription(@Param('id') id: string): Promise<Subscription> {
     try {
       return this.subscriptionsService.pauseSubscription(parseInt(id));
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -106,8 +115,9 @@ export class SubscriptionsController {
   async resumeSubscription(@Param('id') id: string): Promise<Subscription> {
     try {
       return this.subscriptionsService.resumeSubscription(parseInt(id));
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -115,8 +125,9 @@ export class SubscriptionsController {
   async cancelSubscription(@Param('id') id: string): Promise<Subscription> {
     try {
       return this.subscriptionsService.cancelSubscription(parseInt(id));
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -130,8 +141,9 @@ export class SubscriptionsController {
         parseInt(id),
         updates,
       );
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -147,9 +159,10 @@ export class SubscriptionsController {
     try {
       await this.scheduler.handleSubscriptionAssignments();
       return { message: 'Scheduler triggered successfully' };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new HttpException(
-        `Scheduler trigger failed: ${error.message}`,
+        `Scheduler trigger failed: ${errorMessage}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
