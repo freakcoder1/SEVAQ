@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,
@@ -9,7 +9,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
+    "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
@@ -21,6 +21,7 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
     "types": ["node", "jest"]
   },
   "include": ["src/**/*"],
