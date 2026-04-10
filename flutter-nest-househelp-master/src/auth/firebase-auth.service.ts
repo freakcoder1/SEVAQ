@@ -33,15 +33,23 @@ export class FirebaseAuthService {
       serviceAccountJson !== 'your-firebase-project-id'
     ) {
       try {
-        const serviceAccount = JSON.parse(serviceAccountJson);
+        // Fix: replace escaped newlines in private key before parsing
+        const fixedServiceAccountJson = serviceAccountJson.replace(/\\n/g, '\n');
+        const serviceAccount = JSON.parse(fixedServiceAccountJson);
+        
+        // Fix: ensure private key has proper formatting
+        if (serviceAccount.private_key) {
+          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n').trim();
+        }
+
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
         });
         this.firebaseInitialized = true;
-        this.logger.log('Firebase Admin SDK initialized successfully');
+        this.logger.log('✅ [Firebase Init] Firebase Admin SDK initialized successfully');
       } catch (error) {
         this.logger.warn(
-          'Failed to initialize Firebase Admin SDK, OTP login will not work',
+          '⚠️  [Firebase Init] Failed to initialize Firebase Admin SDK, OTP login will not work',
           error.message,
         );
         this.firebaseInitialized = false;
