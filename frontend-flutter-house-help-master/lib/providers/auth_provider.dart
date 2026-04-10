@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../services/api_service.dart';
 import '../services/navigation_service.dart';
+import '../services/firebase_messaging_service.dart';
 import '../models/user.dart';
 import './booking_provider.dart';
 
@@ -316,6 +317,9 @@ class AuthProvider with ChangeNotifier {
           'AuthProvider: Refreshed user from API: ${_currentUser?.email}',
         );
       }
+    } on TokenExpiredException {
+      debugPrint('AuthProvider: Token expired during _refreshUserFromApi');
+      await handleTokenExpired();
     } catch (e) {
       debugPrint('AuthProvider: Error refreshing user: $e');
     }
@@ -429,6 +433,11 @@ class AuthProvider with ChangeNotifier {
           debugPrint('AuthProvider: Notifying listeners and returning true');
           notifyListeners();
           _releaseAuthLock();
+
+          // Register FCM token after successful login
+          debugPrint('AuthProvider: Registering FCM token after login');
+          FirebaseMessagingService.registerFcmToken();
+
           debugPrint('AuthProvider: login() - About to return true');
           return true;
         } else {
@@ -507,6 +516,11 @@ class AuthProvider with ChangeNotifier {
           _isLoading = false;
           _releaseAuthLock();
           notifyListeners();
+
+          // Register FCM token after successful registration
+          debugPrint('AuthProvider: Registering FCM token after registration');
+          FirebaseMessagingService.registerFcmToken();
+
           return true;
         }
       }
@@ -565,6 +579,46 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Handle TokenExpiredException by clearing auth state and redirecting to login
+  /// This method should be called when a TokenExpiredException is caught
+  Future<void> handleTokenExpired() async {
+    debugPrint(
+      'AuthProvider: Token expired, clearing session and redirecting to login',
+    );
+
+    // Clear all auth state
+    _currentUser = null;
+    _cachedToken = null;
+    _cachedUserId = null;
+    _cachedUser = null;
+    _cacheLoaded = false;
+
+    // Clear from secure storage
+    try {
+      await _storage.delete(key: 'jwt_token');
+      await _storage.delete(key: 'user_id');
+      await _storage.delete(key: 'cached_user');
+    } catch (e) {
+      debugPrint('AuthProvider: Error clearing secure storage: $e');
+    }
+
+    // Clear from SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_TOKEN_KEY);
+      await prefs.remove(_USER_ID_KEY);
+      await prefs.remove(_CACHED_USER_KEY);
+    } catch (e) {
+      debugPrint('AuthProvider: Error clearing SharedPreferences: $e');
+    }
+
+    // Notify listeners to update UI
+    notifyListeners();
+
+    // Navigate to login screen
+    NavigationService().navigateToLogin();
   }
 
   Future<bool> updateProfile(Map<String, dynamic> updateData) async {
@@ -688,6 +742,13 @@ class AuthProvider with ChangeNotifier {
 
           _releaseAuthLock();
           notifyListeners();
+
+          // Register FCM token after successful Firebase login
+          debugPrint(
+            'AuthProvider: Registering FCM token after Firebase login',
+          );
+          FirebaseMessagingService.registerFcmToken();
+
           return true;
         }
       }

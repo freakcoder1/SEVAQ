@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../providers/earnings_provider.dart';
+import '../widgets/notification_listener_widget.dart';
 import 'home_screen.dart';
 import 'bookings_screen.dart';
 import 'earnings_screen.dart';
@@ -19,12 +20,16 @@ class WorkerMainScreen extends StatefulWidget {
 class _WorkerMainScreenState extends State<WorkerMainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const WorkerHomeScreen(),
-    const WorkerBookingsScreen(),
-    const WorkerEarningsScreen(),
-    const WorkerProfileScreen(),
-  ];
+  void navigateToBookings() {
+    setState(() => _currentIndex = 1);
+  }
+
+  List<Widget> get _screens => [
+        WorkerHomeScreen(onViewAllJobs: navigateToBookings),
+        const WorkerBookingsScreen(),
+        const WorkerEarningsScreen(),
+        const WorkerProfileScreen(),
+      ];
 
   @override
   void initState() {
@@ -79,24 +84,31 @@ class _WorkerMainScreenState extends State<WorkerMainScreen> {
           return _buildNoWorkerProfileScreen();
         }
 
-        return Scaffold(
-          body: IndexedStack(index: _currentIndex, children: _screens),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_today),
-                label: 'Jobs',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.account_balance_wallet),
-                label: 'Earnings',
-              ),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profile'),
-            ],
+        return NotificationListenerWidget(
+          child: Scaffold(
+            body: IndexedStack(index: _currentIndex, children: _screens),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Theme.of(context).primaryColor,
+              unselectedItemColor:
+                  Theme.of(context).colorScheme.onSurfaceVariant,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today),
+                  label: 'Jobs',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.account_balance_wallet),
+                  label: 'Earnings',
+                ),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person), label: 'Profile'),
+              ],
+            ),
           ),
         );
       },

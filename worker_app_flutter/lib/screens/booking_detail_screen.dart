@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../providers/booking_provider.dart';
 import '../providers/earnings_provider.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_spacing.dart';
+import '../constants/app_radius.dart';
+import '../constants/app_elevation.dart';
+import '../widgets/status_chip.dart';
+import '../widgets/info_row.dart';
+import '../widgets/section_header.dart';
 
 class WorkerBookingDetailScreen extends StatelessWidget {
   final Booking booking;
@@ -12,36 +20,38 @@ class WorkerBookingDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Job Details')),
+      appBar: AppBar(
+        title: const Text('Job Details'),
+        actions: [
+          StatusChip.fromBookingStatus(booking.status),
+          const SizedBox(width: AppSpacing.md),
+        ],
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status Card
             _buildStatusCard(context),
-            const SizedBox(height: 16),
-
-            // Service Info
+            const SizedBox(height: AppSpacing.md),
             _buildInfoCard(context),
-            const SizedBox(height: 16),
-
-            // Customer Info
+            const SizedBox(height: AppSpacing.md),
             _buildCustomerCard(context),
-            const SizedBox(height: 16),
-
-            // Address
-            _buildAddressCard(context),
-            const SizedBox(height: 16),
-
-            // Pricing
+            const SizedBox(height: AppSpacing.md),
+            if (booking.customerAddress != null &&
+                booking.customerAddress!.isNotEmpty)
+              _buildAddressCard(context),
+            if (booking.customerAddress != null &&
+                booking.customerAddress!.isNotEmpty)
+              const SizedBox(height: AppSpacing.md),
             _buildPricingCard(context),
-
-            // Action Buttons
             if (booking.isPending ||
                 booking.isConfirmed ||
-                booking.isInProgress)
+                booking.isInProgress) ...[
+              const SizedBox(height: AppSpacing.lg),
               _buildActionButtons(context),
+            ],
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
@@ -49,71 +59,115 @@ class WorkerBookingDetailScreen extends StatelessWidget {
   }
 
   Widget _buildStatusCard(BuildContext context) {
-    Color statusColor;
+    final statusColor = AppColors.getStatusColor(booking.status);
+    final statusSurface = AppColors.getStatusSurfaceColor(booking.status);
     IconData statusIcon;
 
-    switch (booking.status) {
+    switch (booking.status.toUpperCase()) {
       case 'PENDING':
-        statusColor = Colors.orange;
-        statusIcon = Icons.pending_actions;
+      case 'REQUESTED':
+        statusIcon = Icons.pending_actions_outlined;
         break;
       case 'CONFIRMED':
-        statusColor = Colors.blue;
-        statusIcon = Icons.check_circle;
+      case 'ACCEPTED':
+        statusIcon = Icons.check_circle_outline;
         break;
       case 'IN_PROGRESS':
-        statusColor = Colors.purple;
         statusIcon = Icons.engineering;
         break;
       case 'COMPLETED':
-        statusColor = Colors.green;
         statusIcon = Icons.task_alt;
         break;
+      case 'CANCELLED':
+      case 'REJECTED':
+        statusIcon = Icons.cancel_outlined;
+        break;
       default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.info;
+        statusIcon = Icons.info_outline;
     }
 
-    return Card(
-      color: statusColor.withValues(alpha: 0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(statusIcon, color: statusColor, size: 40),
-            const SizedBox(width: 16),
-            Column(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: statusSurface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: statusColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 32),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  booking.status,
+                  _getFormattedStatus(booking.status),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: statusColor,
                         fontWeight: FontWeight.bold,
                       ),
                 ),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   _getStatusDescription(booking.status),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  String _getStatusDescription(String status) {
-    switch (status) {
+  String _getFormattedStatus(String status) {
+    switch (status.toUpperCase()) {
       case 'PENDING':
-        return 'You can accept or reject this job';
+      case 'REQUESTED':
+        return 'Pending Review';
       case 'CONFIRMED':
+      case 'ACCEPTED':
+        return 'Confirmed';
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'COMPLETED':
+        return 'Completed';
+      case 'CANCELLED':
+      case 'REJECTED':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  }
+
+  String _getStatusDescription(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+      case 'REQUESTED':
+        return 'Review the job details and accept or reject';
+      case 'CONFIRMED':
+      case 'ACCEPTED':
         return 'Job accepted, ready to start';
       case 'IN_PROGRESS':
         return 'Currently working on this job';
       case 'COMPLETED':
         return 'Job completed successfully';
+      case 'CANCELLED':
+      case 'REJECTED':
+        return 'This job has been cancelled';
       default:
         return '';
     }
@@ -121,66 +175,81 @@ class WorkerBookingDetailScreen extends StatelessWidget {
 
   Widget _buildInfoCard(BuildContext context) {
     return Card(
+      elevation: AppElevation.sm,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Service Details',
-              style: Theme.of(context).textTheme.titleMedium,
+            SectionHeader(title: 'Service Details'),
+            const SizedBox(height: AppSpacing.sm),
+            InfoRow(
+              icon: Icons.cleaning_services_outlined,
+              label: 'Service',
+              value: booking.serviceName,
             ),
-            const Divider(),
-            const SizedBox(height: 8),
-            _buildInfoRow(context, 'Service', booking.serviceName),
             if (booking.serviceCategory != null)
-              _buildInfoRow(context, 'Category', booking.serviceCategory!),
-            _buildInfoRow(context, 'Date', booking.scheduledDate),
-            _buildInfoRow(context, 'Time', booking.startTime),
+              InfoRow(
+                icon: Icons.category_outlined,
+                label: 'Category',
+                value: booking.serviceCategory!,
+              ),
+            InfoRow(
+              icon: Icons.calendar_today_outlined,
+              label: 'Date',
+              value: booking.scheduledDate,
+            ),
+            InfoRow(
+              icon: Icons.access_time_outlined,
+              label: 'Time',
+              value: booking.startTime,
+            ),
             if (booking.endTime != null)
-              _buildInfoRow(context, 'End Time', booking.endTime!),
+              InfoRow(
+                icon: Icons.access_time_filled_outlined,
+                label: 'End Time',
+                value: booking.endTime!,
+              ),
             if (booking.bookingType != null)
-              _buildInfoRow(context, 'Type', booking.bookingType!),
+              InfoRow(
+                icon: Icons.work_outline,
+                label: 'Type',
+                value: booking.bookingType!,
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-          ),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-
   Widget _buildCustomerCard(BuildContext context) {
     return Card(
+      elevation: AppElevation.sm,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Customer Information',
-              style: Theme.of(context).textTheme.titleMedium,
+            SectionHeader(title: 'Customer Information'),
+            const SizedBox(height: AppSpacing.sm),
+            InfoRow(
+              icon: Icons.person_outline,
+              label: 'Name',
+              value: booking.customerName,
             ),
-            const Divider(),
-            const SizedBox(height: 8),
-            _buildInfoRow(context, 'Name', booking.customerName),
             if (booking.customerPhone != null)
-              _buildInfoRow(context, 'Phone', booking.customerPhone!),
+              InfoRow(
+                icon: Icons.phone_outlined,
+                label: 'Phone',
+                value: booking.customerPhone!,
+                trailing: IconButton(
+                  icon: const Icon(Icons.call, size: 20),
+                  color: AppColors.success,
+                  onPressed: () {
+                    // TODO: Implement phone call
+                  },
+                ),
+              ),
           ],
         ),
       ),
@@ -188,43 +257,108 @@ class WorkerBookingDetailScreen extends StatelessWidget {
   }
 
   Widget _buildAddressCard(BuildContext context) {
-    if (booking.customerAddress == null) return const SizedBox.shrink();
-
     return Card(
+      elevation: AppElevation.sm,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Address', style: Theme.of(context).textTheme.titleMedium),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.copy),
-                  onPressed: () {
-                    // Copy address to clipboard
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Address copied!')),
-                    );
-                  },
+                Text(
+                  'Customer Address',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.copy_outlined, size: 20),
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: booking.customerAddress!),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Address copied to clipboard'),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                          ),
+                        );
+                      },
+                      tooltip: 'Copy address',
+                    ),
+                    if (booking.customerLatitude != null &&
+                        booking.customerLongitude != null)
+                      IconButton(
+                        icon: const Icon(Icons.map, size: 20),
+                        onPressed: () => _openInMaps(context),
+                        tooltip: 'View on Map',
+                      ),
+                  ],
                 ),
               ],
             ),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.location_on, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    booking.customerAddress!,
-                    style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 20,
+                    color: AppColors.textSecondary,
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.customerAddress!,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        if (booking.customerLatitude != null &&
+                            booking.customerLongitude != null) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.gps_fixed,
+                                size: 14,
+                                color: Colors.green[700],
+                              ),
+                              const SizedBox(width: AppSpacing.xxs),
+                              Text(
+                                'Lat: ${booking.customerLatitude!.toStringAsFixed(6)}, Lng: ${booking.customerLongitude!.toStringAsFixed(6)}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Colors.green[700],
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -232,28 +366,101 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     );
   }
 
+  void _openInMaps(BuildContext context) async {
+    if (booking.customerLatitude == null || booking.customerLongitude == null) {
+      return;
+    }
+
+    final lat = booking.customerLatitude!;
+    final lng = booking.customerLongitude!;
+    final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+
+    // Try to open in external browser
+    try {
+      final Uri uri = Uri.parse(url);
+      // Use launchUrl if url_launcher is available, otherwise show snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Opening maps: $lat, $lng'),
+          action: SnackBarAction(
+            label: 'Copy',
+            onPressed: () {
+              Clipboard.setData(
+                ClipboardData(text: '$lat, $lng'),
+              );
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Coordinates: $lat, $lng')),
+      );
+    }
+  }
+
   Widget _buildPricingCard(BuildContext context) {
     return Card(
+      elevation: AppElevation.sm,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Payment Details',
-              style: Theme.of(context).textTheme.titleMedium,
+            SectionHeader(
+              title: 'Payment Details',
+              action: Icon(
+                Icons.currency_rupee,
+                size: 20,
+                color: AppColors.success,
+              ),
             ),
-            const Divider(),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              context,
-              'Amount',
-              '₹${booking.price.toStringAsFixed(0)}',
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.successSurface,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(
+                  color: AppColors.success.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Amount',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.success,
+                        ),
+                  ),
+                  Text(
+                    '₹${booking.price.toStringAsFixed(0)}',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
             ),
-            if (booking.paymentStatus != null)
-              _buildInfoRow(context, 'Payment Status', booking.paymentStatus!),
-            if (booking.notes != null)
-              _buildInfoRow(context, 'Notes', booking.notes!),
+            if (booking.paymentStatus != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              InfoRow(
+                icon: Icons.payment_outlined,
+                label: 'Payment Status',
+                value: booking.paymentStatus!,
+              ),
+            ],
+            if (booking.notes != null && booking.notes!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              InfoRow(
+                icon: Icons.note_outlined,
+                label: 'Notes',
+                value: booking.notes!,
+                isMultiline: true,
+              ),
+            ],
           ],
         ),
       ),
@@ -263,62 +470,77 @@ class WorkerBookingDetailScreen extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     final bookingProvider = context.read<BookingProvider>();
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Column(
-        children: [
-          if (booking.isPending) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: bookingProvider.isLoading
-                        ? null
-                        : () => _handleReject(context, bookingProvider),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                    ),
-                    child: const Text('Reject'),
+    return Column(
+      children: [
+        if (booking.isPending) ...[
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: bookingProvider.isLoading
+                      ? null
+                      : () => _handleReject(context, bookingProvider),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Reject'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.md),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: bookingProvider.isLoading
-                        ? null
-                        : () => _handleAccept(context, bookingProvider),
-                    child: const Text('Accept Job'),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: bookingProvider.isLoading
+                      ? null
+                      : () => _handleAccept(context, bookingProvider),
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('Accept Job'),
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.md),
                   ),
                 ),
-              ],
-            ),
-          ],
-          if (booking.isConfirmed) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: bookingProvider.isLoading
-                    ? null
-                    : () => _handleStart(context, bookingProvider),
-                child: const Text('Start Job'),
               ),
-            ),
-          ],
-          if (booking.isInProgress) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: bookingProvider.isLoading
-                    ? null
-                    : () => _handleComplete(context, bookingProvider),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text('Complete Job'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ],
-      ),
+        if (booking.isConfirmed) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: bookingProvider.isLoading
+                  ? null
+                  : () => _handleStart(context, bookingProvider),
+              icon: const Icon(Icons.play_arrow, size: 20),
+              label: const Text('Start Job'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              ),
+            ),
+          ),
+        ],
+        if (booking.isInProgress) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: bookingProvider.isLoading
+                  ? null
+                  : () => _handleComplete(context, bookingProvider),
+              icon: const Icon(Icons.check_circle, size: 20),
+              label: const Text('Complete Job'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -329,6 +551,9 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
         title: const Text('Accept Job'),
         content: const Text('Are you sure you want to accept this job?'),
         actions: [
@@ -349,12 +574,24 @@ class WorkerBookingDetailScreen extends StatelessWidget {
       if (context.mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Job accepted successfully!')),
+            SnackBar(
+              content: const Text('Job accepted successfully!'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
           );
           Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.error ?? 'Failed to accept job')),
+            SnackBar(
+              content: Text(provider.error ?? 'Failed to accept job'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
           );
         }
       }
@@ -369,20 +606,25 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
         title: const Text('Reject Job'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Are you sure you want to reject this job?'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             const Text('Reason for rejection (optional):'),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: reasonController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Enter reason...',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
               ),
               maxLines: 3,
             ),
@@ -395,7 +637,7 @@ class WorkerBookingDetailScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Reject'),
           ),
         ],
@@ -409,13 +651,25 @@ class WorkerBookingDetailScreen extends StatelessWidget {
       final success = await provider.rejectBooking(booking.id, reason: reason);
       if (context.mounted) {
         if (success) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Job rejected')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Job rejected'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+          );
           Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.error ?? 'Failed to reject job')),
+            SnackBar(
+              content: Text(provider.error ?? 'Failed to reject job'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
           );
         }
       }
@@ -426,16 +680,60 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     BuildContext context,
     BookingProvider provider,
   ) async {
-    final success = await provider.startBooking(booking.id);
-    if (context.mounted) {
-      if (success) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Job started!')));
-        Navigator.pop(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: const Text('Start Job'),
+        content: const Text(
+            'Are you sure you want to start this job now? You will not be able to accept other jobs while this is active.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppColors.inProgress),
+            child: const Text('Start Now'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await provider.startBooking(booking.id);
+      if (context.mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  '✅ Job started successfully! Screen will update automatically.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+          );
+          // Do NOT pop immediately - let state refresh show live changes
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.error ?? 'Failed to start job')),
+          SnackBar(
+            content: Text(provider.error ?? 'Failed to start job'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+          ),
         );
       }
     }
@@ -448,6 +746,9 @@ class WorkerBookingDetailScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
         title: const Text('Complete Job'),
         content: const Text('Mark this job as completed?'),
         actions: [
@@ -457,7 +758,7 @@ class WorkerBookingDetailScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text('Complete'),
           ),
         ],
@@ -468,15 +769,26 @@ class WorkerBookingDetailScreen extends StatelessWidget {
       final success = await provider.completeBooking(booking.id);
       if (context.mounted) {
         if (success) {
-          // Refresh earnings
           context.read<EarningsProvider>().fetchEarnings();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Job completed!')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Job completed!'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+          );
           Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.error ?? 'Failed to complete job')),
+            SnackBar(
+              content: Text(provider.error ?? 'Failed to complete job'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
           );
         }
       }

@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import '../models/slot.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
+import '../models/address.dart';
 import 'booking_confirmation_screen.dart';
 import 'assignment_confirmed_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/address_input_popup.dart';
 
 /// BookingScreen - SEVAQ assignment system
 /// Workers are assigned just-in-time (24-48h before service)
@@ -35,6 +37,8 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _isProcessing = false;
   String? _orderId;
   final ApiService _apiService = ApiService();
+  Address? _savedAddress;
+  bool _isLoadingAddress = true;
 
   @override
   void initState() {
@@ -43,6 +47,116 @@ class _BookingScreenState extends State<BookingScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    _loadSavedAddress();
+  }
+
+  Future<void> _loadSavedAddress() async {
+    try {
+      final response = await _apiService.getDefaultAddress();
+      if (response != null) {
+        setState(() {
+          _savedAddress = Address.fromJson(response);
+          _isLoadingAddress = false;
+        });
+      } else {
+        setState(() => _isLoadingAddress = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading saved address: $e');
+      setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  Future<void> _showAddressPopup() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AddressInputPopup(
+        onAddressSaved: (address) {
+          Navigator.of(context).pop(address.toCreateJson());
+        },
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _isProcessing = true);
+      try {
+        final savedAddress = await _apiService.saveAddress(result);
+        if (savedAddress != null) {
+          setState(() {
+            _savedAddress = Address.fromJson(savedAddress);
+          });
+        }
+        // Continue with payment
+        _proceedToPayment();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving address: ${e.toString()}')),
+        );
+      } finally {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  void _startPayment() async {
+    // Check if user has a saved address
+    if (_savedAddress == null) {
+      // Show address popup first
+      _showAddressPopup();
+    } else {
+      // Proceed directly to payment
+      _proceedToPayment();
+    }
+  }
+
+  void _proceedToPayment() async {
+    setState(() => _isProcessing = true);
+
+    try {
+      final selectedService = widget.service;
+      final duration = widget.slot.endTime
+          .difference(widget.slot.startTime)
+          .inHours;
+      final amountInRupees = selectedService != null
+          ? (selectedService.basePrice * duration)
+          : 500.0;
+
+      // Create order on backend
+      final orderResponse = await _apiService.post('payments/create-order', {
+        'amount': amountInRupees,
+        'currency': 'INR',
+        'addressId': _savedAddress?.id,
+      });
+
+      if (orderResponse != null && orderResponse['id'] != null) {
+        _orderId = orderResponse['id'];
+
+        var options = {
+          'key': 'rzp_test_1234567890', // Replace with your actual Razorpay key
+          'amount': (amountInRupees * 100).toInt(), // Amount in paise
+          'currency': 'INR',
+          'name': 'SEVAQ',
+          'description': 'Professional Home Service',
+          'order_id': _orderId,
+          'prefill': {'contact': '9999999999', 'email': 'test@example.com'},
+          'external': {
+            'wallets': ['paytm'],
+          },
+        };
+
+        _razorpay.open(options);
+      } else {
+        throw Exception('Failed to create order');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating payment order: ${e.toString()}'),
+        ),
+      );
+      setState(() => _isProcessing = false);
+    }
   }
 
   @override
@@ -113,6 +227,16 @@ class _BookingScreenState extends State<BookingScreen> {
         ? (selectedService.basePrice * duration * 100).toInt()
         : 50000;
 
+    // Build location data from saved address
+    Map<String, dynamic>? locationData;
+    if (_savedAddress != null) {
+      locationData = {
+        'latitude': _savedAddress!.latitude,
+        'longitude': _savedAddress!.longitude,
+        'address': _savedAddress!.fullAddress,
+      };
+    }
+
     final bookingData = {
       'user': user.id,
       'worker': assignmentData['worker']['id'],
@@ -123,6 +247,8 @@ class _BookingScreenState extends State<BookingScreen> {
       'currency': 'INR',
       'assignmentId': assignmentData['assignmentId'],
       'isFromAssignment': true,
+      'location': locationData,
+      'addressId': _savedAddress?.id,
     };
 
     // Verify payment and create booking
@@ -170,6 +296,16 @@ class _BookingScreenState extends State<BookingScreen> {
         ? (selectedService.basePrice * duration * 100).toInt()
         : 50000;
 
+    // Build location data from saved address
+    Map<String, dynamic>? locationData;
+    if (_savedAddress != null) {
+      locationData = {
+        'latitude': _savedAddress!.latitude,
+        'longitude': _savedAddress!.longitude,
+        'address': _savedAddress!.fullAddress,
+      };
+    }
+
     final bookingData = {
       'user': user.id,
       'service': selectedService?.id,
@@ -177,6 +313,8 @@ class _BookingScreenState extends State<BookingScreen> {
       'endTime': widget.slot.endTime.toIso8601String(),
       'amount': amount,
       'currency': 'INR',
+      'location': locationData,
+      'addressId': _savedAddress?.id,
     };
 
     // Verify payment and create booking
@@ -210,54 +348,6 @@ class _BookingScreenState extends State<BookingScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('External Wallet: ${response.walletName}')),
     );
-  }
-
-  void _startPayment() async {
-    setState(() => _isProcessing = true);
-
-    try {
-      final selectedService = widget.service;
-      final duration = widget.slot.endTime
-          .difference(widget.slot.startTime)
-          .inHours;
-      final amountInRupees = selectedService != null
-          ? (selectedService.basePrice * duration)
-          : 500.0;
-
-      // Create order on backend
-      final orderResponse = await _apiService.post('payments/create-order', {
-        'amount': amountInRupees,
-        'currency': 'INR',
-      });
-
-      if (orderResponse != null && orderResponse['id'] != null) {
-        _orderId = orderResponse['id'];
-
-        var options = {
-          'key': 'rzp_test_1234567890', // Replace with your actual Razorpay key
-          'amount': (amountInRupees * 100).toInt(), // Amount in paise
-          'currency': 'INR',
-          'name': 'SEVAQ',
-          'description': 'Professional Home Service',
-          'order_id': _orderId,
-          'prefill': {'contact': '9999999999', 'email': 'test@example.com'},
-          'external': {
-            'wallets': ['paytm'],
-          },
-        };
-
-        _razorpay.open(options);
-      } else {
-        throw Exception('Failed to create order');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creating payment order: ${e.toString()}'),
-        ),
-      );
-      setState(() => _isProcessing = false);
-    }
   }
 
   @override

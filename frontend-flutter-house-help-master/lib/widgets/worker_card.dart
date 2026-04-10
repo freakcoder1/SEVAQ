@@ -67,14 +67,43 @@ class WorkerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Semantics(
-                      excludeSemantics: true,
-                      child: Text(
-                        '${worker.user.firstName} ${worker.user.lastName}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Semantics(
+                            excludeSemantics: true,
+                            child: Text(
+                              '${worker.user.firstName} ${worker.user.lastName}',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        if (worker.isVerified)
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified, color: Colors.green, size: 14),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Verified',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                     SizedBox(height: 4),
                     Row(
@@ -95,6 +124,28 @@ class WorkerCard extends StatelessWidget {
                             style: theme.textTheme.bodyMedium,
                           ),
                         ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (worker.homesServedInArea > 0) ...[
+                          Icon(Icons.home, size: 12, color: Colors.grey[600]),
+                          SizedBox(width: 2),
+                          Text(
+                            '${worker.homesServedInArea}+ homes served',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          ),
+                          SizedBox(width: 8),
+                        ],
+                        if (worker.yearsOfExperience > 0) ...[
+                          Icon(Icons.work, size: 12, color: Colors.grey[600]),
+                          SizedBox(width: 2),
+                          Text(
+                            '${worker.yearsOfExperience} years',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          ),
+                        ],
                       ],
                     ),
                     if (!isSelectable) SizedBox(height: 4),

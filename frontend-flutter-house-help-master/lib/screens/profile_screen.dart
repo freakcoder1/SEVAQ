@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'edit_profile_screen.dart';
+import 'addresses_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -51,7 +52,11 @@ class ProfileScreen extends StatelessWidget {
               leading: Icon(Icons.location_on_outlined),
               title: Text('Manage Addresses'),
               trailing: Icon(Icons.chevron_right),
-              onTap: () {},
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => AddressesScreen()),
+                );
+              },
             ),
             ListTile(
               leading: Icon(Icons.payment_outlined),

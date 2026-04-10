@@ -14,6 +14,8 @@ class Earnings {
   final double lastMonth;
   final double todayEarnings;
   final double thisWeek;
+  final double totalEarnings;
+  final double pendingPayments;
   final int completedJobsThisMonth;
   final int completedJobsLastMonth;
   final List<EarningDetail> breakdown;
@@ -23,6 +25,8 @@ class Earnings {
     required this.lastMonth,
     required this.todayEarnings,
     required this.thisWeek,
+    required this.totalEarnings,
+    required this.pendingPayments,
     required this.completedJobsThisMonth,
     required this.completedJobsLastMonth,
     required this.breakdown,
@@ -30,17 +34,32 @@ class Earnings {
 
   factory Earnings.fromJson(Map<String, dynamic> json) {
     return Earnings(
-      thisMonth: _parseDouble(json['thisMonth'] ?? json['currentMonth'] ?? 0),
-      lastMonth: _parseDouble(json['lastMonth'] ?? json['previousMonth'] ?? 0),
-      todayEarnings: _parseDouble(json['today'] ?? json['todayEarnings'] ?? 0),
-      thisWeek: _parseDouble(json['thisWeek'] ?? json['currentWeek'] ?? 0),
+      thisMonth: _parseDouble(
+          json['thisMonth'] ?? json['currentMonth'] ?? json['this_month'] ?? 0),
+      lastMonth: _parseDouble(json['lastMonth'] ??
+          json['previousMonth'] ??
+          json['last_month'] ??
+          0),
+      todayEarnings: _parseDouble(json['today'] ??
+          json['todayEarnings'] ??
+          json['today_earnings'] ??
+          0),
+      thisWeek: _parseDouble(
+          json['thisWeek'] ?? json['currentWeek'] ?? json['this_week'] ?? 0),
+      totalEarnings:
+          _parseDouble(json['totalEarnings'] ?? json['total_earnings'] ?? 0),
+      pendingPayments: _parseDouble(
+          json['pendingPayments'] ?? json['pending_payments'] ?? 0),
       completedJobsThisMonth: _parseDouble(json['completedJobs'] ??
               json['completedJobsThisMonth'] ??
               json['jobsThisMonth'] ??
+              json['completed_jobs'] ??
               0)
           .toInt(),
-      completedJobsLastMonth: _parseDouble(
-              json['completedJobsLastMonth'] ?? json['jobsLastMonth'] ?? 0)
+      completedJobsLastMonth: _parseDouble(json['completedJobsLastMonth'] ??
+              json['jobsLastMonth'] ??
+              json['completed_jobs_last_month'] ??
+              0)
           .toInt(),
       breakdown: json['breakdown'] != null
           ? (json['breakdown'] as List)
@@ -50,7 +69,12 @@ class Earnings {
               ? (json['earnings'] as List)
                   .map((e) => EarningDetail.fromJson(e as Map<String, dynamic>))
                   .toList()
-              : [],
+              : json['transactions'] != null
+                  ? (json['transactions'] as List)
+                      .map((e) =>
+                          EarningDetail.fromJson(e as Map<String, dynamic>))
+                      .toList()
+                  : [],
     );
   }
 }

@@ -58,8 +58,8 @@ BookingAssignmentState _mapAssignmentState(String? state) {
 }
 
 class Booking {
-  // Backend uses UUID (String) for id, but we support both int and String for compatibility
-  final dynamic id; // Internal ID
+  // All ids are normalized to String type for consistent handling across all endpoints
+  final String id; // Internal ID
   final String publicId; // Public API ID
   final String? serviceRequestId;
   final User user;
@@ -295,7 +295,7 @@ class Booking {
   factory Booking.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
       return Booking(
-        id: 0,
+        id: '',
         publicId: '',
         serviceRequestId: null,
         user: User(
@@ -408,10 +408,9 @@ class Booking {
   }
 
   /// Helper to parse id from various types (int or String UUID)
-  static dynamic _parseId(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is String) return value;
-    return 0;
+  /// ALWAYS returns String type for consistent id handling across all endpoints
+  static String _parseId(dynamic value) {
+    if (value == null) return '';
+    return value.toString();
   }
 }

@@ -10,7 +10,10 @@ class Worker {
   final double rating;
   final int reviewCount;
   final List<Service> services;
-  final bool isAvailable; // Added for Worker App
+  final bool isAvailable;
+  final int yearsOfExperience;
+  final int homesServedInArea;
+  final bool isVerified;
 
   Worker({
     required this.id,
@@ -21,6 +24,9 @@ class Worker {
     required this.reviewCount,
     required this.services,
     this.isAvailable = false,
+    this.yearsOfExperience = 0,
+    this.homesServedInArea = 0,
+    this.isVerified = false,
   });
 
   factory Worker.fromJson(Map<String, dynamic>? json) {
@@ -65,6 +71,10 @@ class Worker {
                 .map((s) => Service.fromJson(s))
                 .toList()
           : [],
+      isAvailable: json['isAvailable'] ?? false,
+      yearsOfExperience: json['yearsOfExperience'] ?? 0,
+      homesServedInArea: json['homesServedInArea'] ?? 0,
+      isVerified: json['isVerified'] ?? false,
     );
   }
 

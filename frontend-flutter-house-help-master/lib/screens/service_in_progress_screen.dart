@@ -114,6 +114,12 @@ class _ServiceInProgressScreenState extends State<ServiceInProgressScreen> {
             debugPrint('Unknown service status: $status');
         }
       }
+    } on TokenExpiredException {
+      debugPrint('ServiceInProgressScreen: Token expired');
+      _pollingTimer.cancel();
+      if (mounted) {
+        await _authProvider.handleTokenExpired();
+      }
     } catch (e) {
       debugPrint('Error checking service status: $e');
       setState(() {

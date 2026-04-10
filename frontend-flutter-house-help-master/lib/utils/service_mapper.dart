@@ -6,23 +6,20 @@ import '../models/worker.dart';
 
 class ServiceMapper {
   // Backend numeric service IDs from the database
-  // Current Railway database IDs: 2, 3, 4, 5, 12
-  static const int homeCleaningId = 2; // ID 2 = Home Cleaning
-  static const int deepCleaningId = 3; // ID 3 = Deep Cleaning
-  static const int cookingId = 4; // ID 4 = Cooking
-  static const int mealPreparationId = 5; // ID 5 = Meal Preparation
-  static const int healthyMealsId = 12; // ID 12 = Healthy Meals
+  // Current database IDs: 1 (Home Cleaning), 3 (Cooking), 13 (Maid Service)
+  static const int homeCleaningId = 1; // ID 1 = Home Cleaning
+  static const int cookingId = 3; // ID 3 = Cooking
+  static const int maidServiceId = 13; // ID 13 = Maid Service
 
   /// Map frontend service option ID to backend service ID
   static String mapToFrontendId(int backendId) {
     switch (backendId) {
       case homeCleaningId:
-      case deepCleaningId:
         return 'cleaning';
       case cookingId:
-      case mealPreparationId:
-      case healthyMealsId:
         return 'cooking';
+      case maidServiceId:
+        return 'maid';
       default:
         return 'cleaning'; // Default fallback
     }
@@ -32,23 +29,16 @@ class ServiceMapper {
   static List<int> mapToBackendIds(String frontendId) {
     switch (frontendId) {
       case 'maid':
+        // Use ID 13 (Maid Service) which exists in database
+        return [maidServiceId];
       case 'cleaning':
-        // Use ID 2 (Home Cleaning) which exists in database
+        // Use ID 1 (Home Cleaning) which exists in database
         return [homeCleaningId];
       case 'cooking':
-        // Use ID 4 (Cooking) which exists in database
+        // Use ID 3 (Cooking) which exists in database
         return [cookingId];
-      case 'deep_cleaning':
-        // Use ID 3 (Deep Cleaning) which exists in database
-        return [deepCleaningId];
-      case 'meal_prep':
-        // Use ID 5 (Meal Preparation) which exists in database
-        return [mealPreparationId];
-      case 'healthy_meals':
-        // Use ID 12 (Healthy Meals) which exists in database
-        return [healthyMealsId];
       default:
-        // Default to home cleaning (ID 2) as fallback
+        // Default to home cleaning (ID 1) as fallback
         return [homeCleaningId];
     }
   }

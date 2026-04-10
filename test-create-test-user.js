@@ -1,20 +1,20 @@
-const http = require('http');
+ const http = require('http');
 
 console.log('Creating new test user...');
 
 const data = JSON.stringify({
-  email: 'test3@example.com',
+  email: 'test6@example.com',
   password: 'Test@123',
   firstName: 'Test',
   lastName: 'User',
-  phone: '9876543210',
+  phone: '9876543212',
   role: 'user'
 });
 
 const options = {
   hostname: '127.0.0.1',
   port: 45357,
-  path: '/auth/signup',
+  path: '/api/auth/signup',
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

@@ -15,8 +15,8 @@ class AppConfig {
 
   /// Development API URL used when running on iOS / web / Android via USB.
   /// Use port 45357 for local backend server (default backend port)
-  /// For Android USB debugging with ADB reverse, use 10.0.2.2 (emulator alias for localhost)
-  static const String _devLocalhostUrl = 'http://10.0.2.2:45357/api';
+  /// For Android USB debugging with ADB reverse, use localhost:45357 (physical device)
+  static const String _devLocalhostUrl = 'http://localhost:45357/api';
 
   /// Development API URL for Android physical devices over WiFi.
   /// Override at build time: --dart-define=DEV_WIFI_IP=192.168.x.x
@@ -27,11 +27,12 @@ class AppConfig {
   static String get _devWifiUrl => 'http://$_envDevWifiIp:45357/api';
 
   /// Flag to use localhost (for USB debugging with ADB reverse).
+  /// Set to false when ADB device cannot resolve localhost to host IP.
   static const bool useLocalhostForUSB = true;
 
   /// Set to TRUE to use production URL in debug mode (for testing with remote backend)
   /// Set to FALSE to use localhost URL (for USB debugging with local backend)
-  static const bool useProductionForDebug = true;
+  static const bool useProductionForDebug = false;
 
   /// Returns the appropriate API base URL for the current build mode and
   /// platform.

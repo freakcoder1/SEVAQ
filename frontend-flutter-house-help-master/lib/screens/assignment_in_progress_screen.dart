@@ -132,6 +132,11 @@ class _AssignmentInProgressScreenState
         // Still in progress - assignment will be handled by backend
         // User can wait or check back later
       }
+    } on TokenExpiredException {
+      debugPrint('AssignmentInProgressScreen: Token expired');
+      if (mounted) {
+        await _authProvider.handleTokenExpired();
+      }
     } catch (e) {
       setState(() {
         _hasError = true;

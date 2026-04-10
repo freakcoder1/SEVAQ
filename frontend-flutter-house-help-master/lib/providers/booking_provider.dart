@@ -5,6 +5,12 @@ import '../models/subscription.dart';
 import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+/// Helper function to handle TokenExpiredException
+Future<void> _handleTokenExpired(BuildContext context) async {
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  await authProvider.handleTokenExpired();
+}
+
 class BookingProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<Booking> _bookings = [];
@@ -58,7 +64,7 @@ class BookingProvider with ChangeNotifier {
     return upcomingBookings.first;
   }
 
-  Future<void> fetchBookings() async {
+  Future<void> fetchBookings({BuildContext? context}) async {
     _isLoading = true;
     notifyListeners();
     try {
@@ -69,6 +75,11 @@ class BookingProvider with ChangeNotifier {
             .toList();
         // Sort by date desc
         _bookings.sort((a, b) => b.startTime.compareTo(a.startTime));
+      }
+    } on TokenExpiredException {
+      debugPrint('BookingProvider: Token expired during fetchBookings');
+      if (context != null) {
+        await _handleTokenExpired(context);
       }
     } catch (e) {
       debugPrint('Error fetching bookings: $e');
@@ -112,6 +123,11 @@ class BookingProvider with ChangeNotifier {
             .toList();
         _subscriptions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
+    } on TokenExpiredException {
+      debugPrint(
+        'BookingProvider: Token expired during fetchBookingsAndSubscriptions',
+      );
+      await _handleTokenExpired(context);
     } catch (e) {
       debugPrint('Error fetching data: $e');
     } finally {
@@ -120,7 +136,10 @@ class BookingProvider with ChangeNotifier {
     }
   }
 
-  Future<Booking?> createBooking(Map<String, dynamic> bookingData) async {
+  Future<Booking?> createBooking(
+    Map<String, dynamic> bookingData, {
+    BuildContext? context,
+  }) async {
     try {
       final response = await _apiService.post('bookings', bookingData);
       if (response != null) {
@@ -129,13 +148,18 @@ class BookingProvider with ChangeNotifier {
         notifyListeners();
         return booking;
       }
+    } on TokenExpiredException {
+      debugPrint('BookingProvider: Token expired during createBooking');
+      if (context != null) {
+        await _handleTokenExpired(context);
+      }
     } catch (e) {
       debugPrint('Error creating booking: $e');
     }
     return null;
   }
 
-  Future<bool> cancelBooking(String bookingId) async {
+  Future<bool> cancelBooking(String bookingId, {BuildContext? context}) async {
     try {
       final response = await _apiService.patch(
         'bookings/$bookingId/cancel',
@@ -148,6 +172,11 @@ class BookingProvider with ChangeNotifier {
           notifyListeners();
           return true;
         }
+      }
+    } on TokenExpiredException {
+      debugPrint('BookingProvider: Token expired during cancelBooking');
+      if (context != null) {
+        await _handleTokenExpired(context);
       }
     } catch (e) {
       debugPrint('Error cancelling booking: $e');

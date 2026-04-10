@@ -92,40 +92,31 @@ class SoundService {
     }
   }
 
-  /// Play sound from asset
+  /// Play sound from asset or URL
   Future<void> _playSound(String assetPath) async {
+    // Skip asset playback and use URL directly for reliability
+    if (kDebugMode) {
+      print('Playing notification sound from URL');
+    }
+
+    // Use a reliable public notification sound URL
     try {
-      // Try to play from assets first
-      await _audioPlayer.play(AssetSource(assetPath));
+      await _audioPlayer.play(UrlSource(
+          'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'));
       if (kDebugMode) {
-        print('Playing sound from asset: $assetPath');
+        print('Playing notification sound from URL');
       }
     } catch (e) {
-      // If asset not found, try playing a fallback sound from URL
       if (kDebugMode) {
-        print('Sound asset not found: $assetPath, trying fallback');
+        print('Error playing sound from URL: $e');
       }
-
-      // Try fallback with a reliable public sound URL
+      // Try fallback URL
       try {
-        // Use a simple notification sound from a reliable CDN
         await _audioPlayer.play(UrlSource(
-            'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3'));
+            'https://actions.google.com/sounds/v1/alarms/beep_short.ogg'));
+      } catch (e2) {
         if (kDebugMode) {
-          print('Playing fallback sound from URL');
-        }
-      } catch (fallbackError) {
-        if (kDebugMode) {
-          print('Fallback sound also failed: $fallbackError');
-        }
-        // Last resort: use Android system default notification
-        try {
-          await _audioPlayer.play(UrlSource(
-              'https://cdn.freesound.org/previews/316/316847_4939433-lq.mp3'));
-        } catch (e2) {
-          if (kDebugMode) {
-            print('All sound playback failed');
-          }
+          print('All sound playback failed: $e2');
         }
       }
     }

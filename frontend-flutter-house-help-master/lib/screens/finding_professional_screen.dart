@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../widgets/loading_widget.dart';
+import '../providers/auth_provider.dart';
 
 class FindingProfessionalScreen extends StatefulWidget {
   final String requestId;
@@ -56,6 +57,16 @@ class _FindingProfessionalScreenState extends State<FindingProfessionalScreen> {
         if (_status == AssignmentStatus.assigned ||
             _status == AssignmentStatus.failedToAssign) {
           _pollingTimer.cancel();
+        }
+      } on TokenExpiredException {
+        debugPrint('FindingProfessionalScreen: Token expired');
+        _pollingTimer.cancel();
+        if (mounted) {
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          await authProvider.handleTokenExpired();
         }
       } catch (error) {
         setState(() {

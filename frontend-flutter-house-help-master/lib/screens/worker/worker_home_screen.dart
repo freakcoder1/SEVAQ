@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../services/api_service.dart';
 import '../../models/worker.dart';
 import '../../models/booking.dart';
+import '../../providers/auth_provider.dart';
 
 /// Worker Home Screen - Main dashboard for workers
 class WorkerHomeScreen extends StatefulWidget {
@@ -96,6 +97,12 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
           'Bookings response is not a List, it is: ${bookingsResponse.runtimeType}',
         );
         debugPrint('Bookings response: $bookingsResponse');
+      }
+    } on TokenExpiredException {
+      debugPrint('WorkerHomeScreen: Token expired');
+      if (mounted) {
+        final authProvider = AuthProvider.instance;
+        await authProvider.handleTokenExpired();
       }
     } catch (e) {
       debugPrint('Error loading worker data: $e');

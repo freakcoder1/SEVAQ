@@ -5,10 +5,12 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../models/worker.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
+import '../models/address.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/booking_status_timeline.dart';
+import '../widgets/address_input_popup.dart';
 import 'booking_confirmation_screen.dart';
 import '../config/app_config.dart';
 
@@ -43,6 +45,8 @@ class _ProfessionalAssignedScreenState
   bool _isProcessing = false;
   String? _orderId;
   Map<String, dynamic>? _pendingBookingData;
+  Address? _savedAddress;
+  bool _isLoadingAddress = true;
 
   @override
   void initState() {
@@ -57,6 +61,167 @@ class _ProfessionalAssignedScreenState
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    _loadSavedAddress();
+  }
+
+  Future<void> _loadSavedAddress() async {
+    try {
+      final response = await _apiService.getDefaultAddress();
+      if (response != null) {
+        setState(() {
+          _savedAddress = Address.fromJson(response);
+          _isLoadingAddress = false;
+        });
+      } else {
+        setState(() => _isLoadingAddress = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading saved address: $e');
+      setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  Future<void> _showAddressPopup() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AddressInputPopup(
+        onAddressSaved: (address) {
+          Navigator.of(context).pop(address.toCreateJson());
+        },
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _isProcessing = true);
+      try {
+        final savedAddress = await _apiService.saveAddress(result);
+        if (savedAddress != null) {
+          setState(() {
+            _savedAddress = Address.fromJson(savedAddress);
+          });
+        }
+        // Continue with payment
+        _proceedToPayment();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving address: ${e.toString()}')),
+        );
+      } finally {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  Future<void> _handlePayment() async {
+    if (_isProcessing) return;
+
+    // Check if user has a saved address
+    if (_savedAddress == null) {
+      // Show address popup first
+      _showAddressPopup();
+    } else {
+      // Proceed directly to payment
+      _proceedToPayment();
+    }
+  }
+
+  Future<void> _proceedToPayment() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final user = _authProvider.user;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Get the service - find valid one from worker if needed
+      Service? selectedService = widget.service;
+
+      // If widget.service is null or has invalid ID (0), find a valid service from worker
+      if (selectedService == null || selectedService.id == 0) {
+        // Find first service with valid ID (not 0)
+        final validServices = widget.worker.services
+            .where((s) => s.id != 0)
+            .toList();
+        if (validServices.isNotEmpty) {
+          selectedService = validServices.first;
+        } else {
+          throw Exception('No valid service available for this worker');
+        }
+      }
+
+      // Debug log the service being used
+      debugPrint(
+        'Using service for booking: id=${selectedService.id}, name=${selectedService.name}',
+      );
+
+      // Build location data from saved address
+      Map<String, dynamic>? locationData;
+      if (_savedAddress != null) {
+        locationData = {
+          'latitude': _savedAddress!.latitude,
+          'longitude': _savedAddress!.longitude,
+          'address': _savedAddress!.fullAddress,
+        };
+      }
+
+      // Prepare booking data (will be used after payment success)
+      _pendingBookingData = {
+        'userId': user.publicId,
+        'workerId': widget.worker.id,
+        'serviceId': selectedService.id,
+        'startTime': widget.startTime.toIso8601String(),
+        'endTime': widget.endTime.toIso8601String(),
+        'type': 'on_demand',
+        'amount': (widget.amount * 100).toInt(), // Amount in paise
+        'addressId': _savedAddress?.id,
+        'location': locationData,
+      };
+
+      // Create payment order on backend
+      final amountInPaise = (widget.amount * 100).toInt();
+      final orderResponse = await _apiService.post('payments/create-order', {
+        'amount': amountInPaise,
+        'currency': 'INR',
+        'addressId': _savedAddress?.id,
+        'location': locationData,
+      });
+
+      if (orderResponse != null && orderResponse['id'] != null) {
+        _orderId = orderResponse['id'];
+
+        // Open Razorpay payment gateway
+        var options = {
+          'key': AppConfig.razorpayTestKey,
+          'amount': amountInPaise,
+          'currency': 'INR',
+          'name': 'House Help',
+          'description': 'Payment for ${selectedService.name}',
+          'order_id': _orderId,
+          'prefill': {
+            'contact':
+                '9999999999', // Default contact - phone number not available in User model
+            'email': user.email ?? 'test@example.com',
+          },
+        };
+
+        _razorpay.open(options);
+      } else {
+        throw Exception('Failed to create payment order');
+      }
+    } catch (e) {
+      debugPrint('Payment error: ${e.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isProcessing = false);
+    }
   }
 
   @override
@@ -121,90 +286,6 @@ class _ProfessionalAssignedScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('External Wallet: ${response.walletName}')),
     );
-  }
-
-  Future<void> _handlePayment() async {
-    if (_isProcessing) return;
-
-    setState(() => _isProcessing = true);
-
-    try {
-      final user = _authProvider.user;
-      if (user == null) {
-        throw Exception('User not logged in');
-      }
-
-      // Get the service - find valid one from worker if needed
-      Service? selectedService = widget.service;
-
-      // If widget.service is null or has invalid ID (0), find a valid service from worker
-      if (selectedService == null || selectedService.id == 0) {
-        // Find first service with valid ID (not 0)
-        final validServices = widget.worker.services
-            .where((s) => s.id != 0)
-            .toList();
-        if (validServices.isNotEmpty) {
-          selectedService = validServices.first;
-        } else {
-          throw Exception('No valid service available for this worker');
-        }
-      }
-
-      // Debug log the service being used
-      debugPrint(
-        'Using service for booking: id=${selectedService.id}, name=${selectedService.name}',
-      );
-
-      // Prepare booking data (will be used after payment success)
-      _pendingBookingData = {
-        'userId': user.publicId,
-        'workerId': widget.worker.id,
-        'serviceId': selectedService.id,
-        'startTime': widget.startTime.toIso8601String(),
-        'endTime': widget.endTime.toIso8601String(),
-        'type': 'on_demand',
-        'amount': (widget.amount * 100).toInt(), // Amount in paise
-      };
-
-      // Create payment order on backend
-      final amountInPaise = (widget.amount * 100).toInt();
-      final orderResponse = await _apiService.post('payments/create-order', {
-        'amount': amountInPaise,
-        'currency': 'INR',
-      });
-
-      if (orderResponse != null && orderResponse['id'] != null) {
-        _orderId = orderResponse['id'];
-
-        // Open Razorpay payment gateway
-        var options = {
-          'key': AppConfig.razorpayTestKey,
-          'amount': amountInPaise,
-          'currency': 'INR',
-          'name': 'House Help',
-          'description': 'Payment for ${selectedService.name}',
-          'order_id': _orderId,
-          'prefill': {
-            'contact':
-                '9999999999', // Default contact - phone number not available in User model
-            'email': user.email ?? 'test@example.com',
-          },
-        };
-
-        _razorpay.open(options);
-      } else {
-        throw Exception('Failed to create payment order');
-      }
-    } catch (e) {
-      debugPrint('Payment error: ${e.toString()}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      setState(() => _isProcessing = false);
-    }
   }
 
   @override

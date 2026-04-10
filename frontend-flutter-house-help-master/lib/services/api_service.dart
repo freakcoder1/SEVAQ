@@ -124,7 +124,7 @@ class ApiService {
             body: jsonEncode(data),
           )
           .timeout(AppConfig.requestTimeout);
-      return _processResponse(response);
+      return await _processResponse(response);
     } catch (e) {
       debugPrint('POST Error to $endpoint: $e');
       debugPrint('POST Error details: baseUrl=$baseUrl, endpoint=$endpoint');
@@ -154,7 +154,7 @@ class ApiService {
       debugPrint(
         'ApiService: GET response received in ${stopwatch.elapsedMilliseconds}ms for $url',
       );
-      return _processResponse(response);
+      return await _processResponse(response);
     } catch (e) {
       debugPrint('GET Error to $endpoint: $e');
       if (e is SocketException) {
@@ -178,7 +178,7 @@ class ApiService {
             body: jsonEncode(data),
           )
           .timeout(AppConfig.requestTimeout);
-      return _processResponse(response);
+      return await _processResponse(response);
     } catch (e) {
       debugPrint('PATCH Error to $endpoint: $e');
       if (e is SocketException) {
@@ -198,7 +198,7 @@ class ApiService {
       final response = await http
           .delete(Uri.parse('$baseUrl/$endpoint'), headers: await _getHeaders())
           .timeout(AppConfig.requestTimeout);
-      return _processResponse(response);
+      return await _processResponse(response);
     } catch (e) {
       debugPrint('DELETE Error to $endpoint: $e');
       if (e is SocketException) {
@@ -213,10 +213,24 @@ class ApiService {
     }
   }
 
-  dynamic _processResponse(http.Response response) {
+  Future<dynamic> _processResponse(http.Response response) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
+    } else if (response.statusCode == 401) {
+      // Handle 401 Unauthorized - token expired or invalid
+      debugPrint(
+        'ApiService: 401 Unauthorized received - token is expired or invalid',
+      );
+      // Clear token from all storage locations
+      await clearToken();
+      await _storage.delete(key: 'user_id');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('jwt_token');
+      await prefs.remove('user_id');
+      await prefs.remove('refresh_token');
+      // Throw exception to trigger redirect to login
+      throw TokenExpiredException('Session expired. Please log in again.');
     } else if (response.statusCode == 400) {
       // Handle 400 status as business state, not error
       // Return the response data for business logic to handle
@@ -398,6 +412,36 @@ extension ServiceRequestApi on ApiService {
 
   Future<dynamic> getServiceRequestAssignments() async {
     return await get('service-requests/assignments');
+  }
+}
+
+// Address API methods
+extension AddressApi on ApiService {
+  Future<dynamic> saveAddress(Map<String, dynamic> addressData) async {
+    return await post('addresses', addressData);
+  }
+
+  Future<dynamic> getAddresses() async {
+    return await get('addresses');
+  }
+
+  Future<dynamic> getDefaultAddress() async {
+    return await get('addresses/default');
+  }
+
+  Future<dynamic> updateAddress(
+    int addressId,
+    Map<String, dynamic> addressData,
+  ) async {
+    return await patch('addresses/$addressId', addressData);
+  }
+
+  Future<dynamic> deleteAddress(String addressId) async {
+    return await delete('addresses/$addressId');
+  }
+
+  Future<dynamic> setDefaultAddress(String addressId) async {
+    return await patch('addresses/$addressId/set-default', {});
   }
 }
 

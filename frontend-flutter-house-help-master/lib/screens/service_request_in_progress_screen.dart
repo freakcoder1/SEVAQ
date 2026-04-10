@@ -190,6 +190,13 @@ class _ServiceRequestInProgressScreenState
             debugPrint('Unknown assignment status: $status');
         }
       }
+    } on TokenExpiredException {
+      debugPrint('ServiceRequestInProgressScreen: Token expired');
+      _pollingTimer.cancel();
+      if (mounted) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await authProvider.handleTokenExpired();
+      }
     } catch (e) {
       // Handle network errors gracefully
       print('Polling error: $e');

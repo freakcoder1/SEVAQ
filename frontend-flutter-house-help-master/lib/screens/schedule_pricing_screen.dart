@@ -302,8 +302,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
         child: Column(
           children: [
             // Main scrollable content area
-            Flexible(
-              fit: FlexFit.loose,
+            Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,

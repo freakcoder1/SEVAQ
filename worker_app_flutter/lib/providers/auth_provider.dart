@@ -124,6 +124,10 @@ class AuthProvider extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         debugPrint('DEBUG verifyOtpWithToken: SUCCESS');
+
+        // Register FCM token after successful login
+        _registerFcmTokenAfterLogin();
+
         return true;
       } else {
         _error = 'Invalid response from server';
@@ -180,6 +184,10 @@ class AuthProvider extends ChangeNotifier {
         _isAuthenticated = true;
         _isLoading = false;
         notifyListeners();
+
+        // Register FCM token after successful login
+        _registerFcmTokenAfterLogin();
+
         return true;
       } else {
         _error = 'Invalid response from server';
@@ -378,6 +386,46 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Update worker's display name (firstName and lastName on user entity)
+  Future<bool> updateWorkerName({
+    required String firstName,
+    required String lastName,
+  }) async {
+    if (_worker == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.patch('workers/me/name', {
+        'firstName': firstName,
+        'lastName': lastName,
+      });
+
+      debugPrint('updateWorkerName response: $response');
+
+      if (response != null) {
+        // Update the worker profile with the new name
+        await fetchWorkerProfile();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = 'Invalid response from server';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error updating worker name: $e');
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
