@@ -67,7 +67,6 @@
     "twilio": "^4.0.0",
     "typeorm": "^0.3.28",
     "uuid": "^9.0.1",
-    "@types/uuid": "^11.0.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
