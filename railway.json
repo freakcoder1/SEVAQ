@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "name": "SEVAQ Backend",
+  "rootDirectory": "flutter-nest-househelp-master",
+  "build": {
+    "builder": "NIXPACKS",
+    "watchPatterns": [
+      "flutter-nest-househelp-master/**"
+    ]
+  }
+}
