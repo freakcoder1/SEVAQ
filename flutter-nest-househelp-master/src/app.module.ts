@@ -186,7 +186,10 @@ import { Address } from './addresses/entities/address.entity';
           password: password,
           database: database,
           entities: entities,
-          synchronize: process.env.SYNCHRONIZE === 'true' || false, // Enable via SYNCHRONIZE=true env var for initial setup only
+          // ❗ PRODUCTION SAFETY: NEVER enable synchronize in production
+          // This will DESTROY all production data if enabled
+          // Only enable this locally for development, never on Railway
+          synchronize: process.env.NODE_ENV !== 'production' && process.env.SYNCHRONIZE === 'true',
           logging: ['error', 'warn'], // Reduce logging to only errors and warnings
           logger: 'advanced-console', // Use advanced console logger
         };
