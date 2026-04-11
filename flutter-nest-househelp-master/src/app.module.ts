@@ -189,7 +189,8 @@ import { Address } from './addresses/entities/address.entity';
           // ❗ PRODUCTION SAFETY: NEVER enable synchronize in production
           // This will DESTROY all production data if enabled
           // Only enable this locally for development, never on Railway
-          synchronize: process.env.NODE_ENV !== 'production' && process.env.SYNCHRONIZE === 'true',
+          // ✅ HARD LOCK: NO ENVIRONMENT VARIABLE CAN OVERRIDE THIS
+          synchronize: process.env.NODE_ENV === 'development' && process.env.SYNCHRONIZE === 'true',
           logging: ['error', 'warn'], // Reduce logging to only errors and warnings
           logger: 'advanced-console', // Use advanced console logger
         };
