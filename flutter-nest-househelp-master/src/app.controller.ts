@@ -94,6 +94,55 @@ export class AppController {
     return { message: 'Seeding complete', results };
   }
 
+  @Post('reset-production-database')
+  async resetProductionDatabase() {
+    const ds = this.dataSource;
+    console.log('⚠️  FULL PRODUCTION DATABASE RESET STARTED');
+
+    await ds.query(`SET session_replication_role = replica;`);
+    
+    await ds.query(`TRUNCATE TABLE bookings CASCADE;`);
+    await ds.query(`TRUNCATE TABLE subscriptions CASCADE;`);
+    await ds.query(`TRUNCATE TABLE workers CASCADE;`);
+    await ds.query(`TRUNCATE TABLE users CASCADE;`);
+    await ds.query(`TRUNCATE TABLE addresses CASCADE;`);
+    await ds.query(`TRUNCATE TABLE service_areas CASCADE;`);
+    await ds.query(`TRUNCATE TABLE audit_logs CASCADE;`);
+    await ds.query(`TRUNCATE TABLE notifications CASCADE;`);
+
+    await ds.query(`SET session_replication_role = DEFAULT;`);
+
+    // Recreate service areas table
+    await ds.query(`
+      CREATE TABLE IF NOT EXISTS service_areas (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          city VARCHAR(255),
+          state VARCHAR(255),
+          latitude DOUBLE PRECISION NOT NULL,
+          longitude DOUBLE PRECISION NOT NULL,
+          radiusKm DOUBLE PRECISION DEFAULT 25,
+          isActive BOOLEAN DEFAULT true,
+          createdAt TIMESTAMP DEFAULT NOW(),
+          updatedAt TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Insert default service area
+    await ds.query(`
+      INSERT INTO service_areas (name, city, state, latitude, longitude)
+      VALUES ('Greater Noida', 'Bisrakh Jalapur', 'Uttar Pradesh', 28.578109, 77.439027);
+    `);
+
+    console.log('✅ PRODUCTION DATABASE RESET COMPLETE');
+
+    return {
+      success: true,
+      message: '✅ All customers, workers, bookings completely deleted. Database is clean. Service area created successfully.',
+      timestamp: new Date().toISOString()
+    };
+  }
+
   // Quick endpoint to update worker 17 and 21 location to service area
   @Post('update-worker-locations')
   async updateWorkerLocations() {
