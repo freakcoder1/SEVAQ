@@ -18,7 +18,10 @@ import { AddMissingServiceDetailColumns1736660000002 } from './src/migrations/ad
 import { AddMissingMicroZoneColumns1736660000003 } from './src/migrations/add-missing-microzone-columns';
 import { CreateServiceRequestsTable1736660000004 } from './src/migrations/create-service-requests-table';
 import { RenameWorkerUserIdToUserId1768351862231 } from './src/migrations/1768351862231-RenameWorkerUserIdToUserId';
-import { ConvertNumericUserIdsToUUID1768351862232 } from './src/migrations/1768351862232-ConvertNumericUserIdsToUUID';
+import { AddYearsOfExperienceToWorker1768351862230 } from './src/migrations/1768351862230-AddYearsOfExperienceToWorker';
+import { AddPhoneUniqueConstraint1738467600000 } from './src/migrations/1738467600000-AddPhoneUniqueConstraint';
+import { AddBookingTypeColumn1736660000002 } from './src/migrations/add-booking-type-column';
+import { AddFcmTokenToWorker1739999999999 } from './src/migrations/add-fcm-token-to-worker';
 
 async function runMigrations() {
   const configService = new ConfigService();
@@ -39,7 +42,18 @@ async function runMigrations() {
     entities: [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist, ServiceRequest, AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric],
     synchronize: false,
     logging: true,
-    migrations: [AddMissingServiceBookingColumns1736660000001, AddMissingServiceDetailColumns1736660000002, AddMissingMicroZoneColumns1736660000003, CreateServiceRequestsTable1736660000004, RenameWorkerUserIdToUserId1768351862231, ConvertNumericUserIdsToUUID1768351862232],
+    migrations: [
+      FixWorkerLocationData1736660000000,
+      AddMissingServiceBookingColumns1736660000001,
+      AddMissingServiceDetailColumns1736660000002,
+      AddMissingMicroZoneColumns1736660000003,
+      CreateServiceRequestsTable1736660000004,
+      AddPhoneUniqueConstraint1738467600000,
+      AddYearsOfExperienceToWorker1768351862230,
+      RenameWorkerUserIdToUserId1768351862231,
+      AddBookingTypeColumn1736660000002,
+      AddFcmTokenToWorker1739999999999
+    ],
   });
 
   try {
