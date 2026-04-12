@@ -40,7 +40,7 @@ export class FirebaseAuthService {
         // Fix: ensure private key has proper formatting
         // Proper private key sanitization for DER parsing
         if (serviceAccount.private_key) {
-          // First normalize all line endings
+          // First normalize all line endings and remove ALL whitespace
           let privateKey = serviceAccount.private_key
             .replace(/\\n/g, '\n')
             .replace(/\\\\n/g, '\n')
@@ -49,23 +49,21 @@ export class FirebaseAuthService {
 
           // Extract ONLY the content between valid PEM markers
           // This removes ANY characters before header or after footer
-          const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
+          const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
           
           if (pemMatch) {
-            // Reconstruct clean properly formatted private key
-            privateKey = [
-              '-----BEGIN PRIVATE KEY-----',
-              pemMatch[1].trim(),
-              '-----END PRIVATE KEY-----'
-            ].join('\n');
+            // Get the actual base64 content only
+            const keyContent = pemMatch[1]
+              .replace(/\s+/g, '') // remove all whitespace inside key
+              .trim();
+            
+            // Reconstruct perfectly clean private key with EXACT formatting
+            privateKey = '-----BEGIN PRIVATE KEY-----\n' 
+              + keyContent.match(/.{1,64}/g).join('\n')
+              + '\n-----END PRIVATE KEY-----';
           }
 
           serviceAccount.private_key = privateKey;
-          
-          // Debug logging for private key validation
-          this.logger.debug(`Private key length: ${serviceAccount.private_key.length}`);
-          this.logger.debug(`Key has proper footer: ${serviceAccount.private_key.includes('-----END PRIVATE KEY-----')}`);
-          this.logger.debug(`Key ends with correct marker: ${serviceAccount.private_key.endsWith('-----END PRIVATE KEY-----')}`);
         }
 
         admin.initializeApp({
