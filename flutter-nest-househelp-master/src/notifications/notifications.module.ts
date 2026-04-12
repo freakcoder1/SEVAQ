@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsScheduler } from './notifications.scheduler';
+import { OnDemandNotificationScheduler } from './on-demand-notification.scheduler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
@@ -14,7 +15,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsScheduler],
+  providers: [NotificationsService, NotificationsScheduler, OnDemandNotificationScheduler],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}
