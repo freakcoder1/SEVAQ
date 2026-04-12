@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
+import { FcmHttpService } from './fcm-http.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsScheduler } from './notifications.scheduler';
 import { OnDemandNotificationScheduler } from './on-demand-notification.scheduler';
@@ -15,7 +16,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ScheduleModule.forRoot(),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsScheduler, OnDemandNotificationScheduler],
+  providers: [NotificationsService, FcmHttpService, NotificationsScheduler, OnDemandNotificationScheduler],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}
