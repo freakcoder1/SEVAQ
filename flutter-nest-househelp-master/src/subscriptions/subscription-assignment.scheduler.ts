@@ -294,7 +294,7 @@ export class SubscriptionAssignmentScheduler {
             .select('1')
             .from(Booking, 'booking')
             .where("booking.type = 'subscription'")
-            .andWhere("booking.notes LIKE '%subscription ' || subscription.id || '%'")
+            .andWhere("booking.notes LIKE CONCAT('%subscription ', subscription.id, '%')")
             .getQuery();
           return `NOT EXISTS (${subQuery})`;
         })
