@@ -256,8 +256,8 @@ export class NotificationsService {
       try {
         // Proper private key sanitization for DER parsing
         let normalizedPrivateKey = privateKey
-          .replace(/\\n/g, '\n')
           .replace(/\\\\n/g, '\n')
+          .replace(/\\n/g, '\n')
           .replace(/\r\n/g, '\n')
           .replace(/\r/g, '\n')
           .trim();
