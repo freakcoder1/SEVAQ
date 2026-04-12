@@ -255,13 +255,20 @@ export class NotificationsService {
       console.log('[Firebase Init] Step 3: Attempting initialization with individual credentials...');
       try {
         // Proper private key sanitization for DER parsing
-        const normalizedPrivateKey = privateKey
+        let normalizedPrivateKey = privateKey
           .replace(/\\n/g, '\n')
           .replace(/\\\\n/g, '\n')
           .replace(/\r\n/g, '\n')
           .replace(/\r/g, '\n')
           .trim();
         
+        // ✅ FIX: Add missing final newline character BEFORE the footer
+        // This is the actual fix for "Unparsed DER bytes remain after ASN.1 parsing"
+        const pemFooter = '-----END PRIVATE KEY-----';
+        if (normalizedPrivateKey.includes(pemFooter)) {
+          normalizedPrivateKey = normalizedPrivateKey.replace(pemFooter, '\n' + pemFooter + '\n');
+        }
+
         // Ensure proper final newline after PEM footer
         const finalPrivateKey = normalizedPrivateKey.endsWith('\n')
           ? normalizedPrivateKey
