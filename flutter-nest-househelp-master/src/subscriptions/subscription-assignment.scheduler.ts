@@ -279,28 +279,8 @@ export class SubscriptionAssignmentScheduler {
       // ✅ CATCH-ALL: Only for truly unassigned subscriptions outside time window
       // =====================================================
       const twentyFourHoursAgo = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000);
-      const unassignedSubscriptions = await this.dataSource.transaction(async transactionalEntityManager => {
-        return await transactionalEntityManager
-          .getRepository(Subscription)
-          .createQueryBuilder('subscription')
-          .setLock('pessimistic_read')
-          .where({
-          status: SubscriptionStatus.ACTIVE,
-          assignedWorkerId: IsNull(),
-          startDate: Between(twentyFourHoursAgo, new Date(nowIST.getTime() + 30 * 24 * 60 * 60 * 1000)),
-        })
-        .andWhere(qb => {
-          const subQuery = qb.subQuery()
-            .select('1')
-            .from(Booking, 'booking')
-            .where("booking.type = 'subscription'")
-            .andWhere("booking.notes LIKE CONCAT('%subscription ', subscription.id, '%')")
-            .getQuery();
-          return `NOT EXISTS (${subQuery})`;
-        })
-        .leftJoinAndSelect('subscription.serviceProfile', 'serviceProfile')
-        .leftJoinAndSelect('subscription.user', 'user')
-        .getMany();
+      // TEMPORARILY DISABLED CATCH-ALL LOGIC
+      const unassignedSubscriptions: Subscription[] = [];
 
       this.logger.log(
         `Found ${unassignedSubscriptions.length} truly unassigned subscriptions without any bookings`,
