@@ -40,17 +40,32 @@ export class FirebaseAuthService {
         // Fix: ensure private key has proper formatting
         // Proper private key sanitization for DER parsing
         if (serviceAccount.private_key) {
-          serviceAccount.private_key = serviceAccount.private_key
+          // First normalize all line endings
+          let privateKey = serviceAccount.private_key
             .replace(/\\n/g, '\n')
             .replace(/\\\\n/g, '\n')
             .replace(/\r\n/g, '\n')
-            .replace(/\r/g, '\n')
-            .trim();
+            .replace(/\r/g, '\n');
+
+          // Extract ONLY the content between valid PEM markers
+          // This removes ANY characters before header or after footer
+          const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
           
-          // Ensure proper final newline after PEM footer
-          if (!serviceAccount.private_key.endsWith('\n')) {
-            serviceAccount.private_key += '\n';
+          if (pemMatch) {
+            // Reconstruct clean properly formatted private key
+            privateKey = [
+              '-----BEGIN PRIVATE KEY-----',
+              pemMatch[1].trim(),
+              '-----END PRIVATE KEY-----'
+            ].join('\n');
           }
+
+          serviceAccount.private_key = privateKey;
+          
+          // Debug logging for private key validation
+          this.logger.debug(`Private key length: ${serviceAccount.private_key.length}`);
+          this.logger.debug(`Key has proper footer: ${serviceAccount.private_key.includes('-----END PRIVATE KEY-----')}`);
+          this.logger.debug(`Key ends with correct marker: ${serviceAccount.private_key.endsWith('-----END PRIVATE KEY-----')}`);
         }
 
         admin.initializeApp({
