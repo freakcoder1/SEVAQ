@@ -17,6 +17,7 @@ import { AssignmentsService } from '../assignments/assignments.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DataSource } from 'typeorm';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -24,7 +25,7 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 // Mapping of serviceType to possible service names for database lookup
 // These are used as fallback names when dynamic lookup fails
 const SERVICE_TYPE_TO_NAMES: Record<ServiceType, string[]> = {
-  [ServiceType.COOK]: ['Cooking', 'Cook', 'Kitchen'],
+  [ServiceType.COOK]: ['Cooking', 'Cook', 'Kitchen', 'Cooking Help'],
   [ServiceType.CLEANING]: ['Home Cleaning', 'Cleaning', 'House Cleaning'],
   [ServiceType.MAID]: ['Maid Service', 'Maid', 'Housekeeping'],
 };
@@ -48,6 +49,7 @@ export class SubscriptionAssignmentScheduler {
     private readonly bookingsService: BookingsService,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -239,115 +241,76 @@ export class SubscriptionAssignmentScheduler {
       // This prevents old subscriptions from generating spurious bookings
       const fortyEightHoursAgo = new Date(nowIST.getTime() - 48 * 60 * 60 * 1000);
 
-      // Find subscriptions that need immediate assignment (started within last 48 hours)
-      const subscriptionsToAssign = await this.subscriptionRepository.find({
+      // =====================================================
+      // ✅ PERMANENT FIX: Single query for ALL subscriptions
+      // No more duplicate processing from multiple queries
+      // =====================================================
+      const allSubscriptions = await this.subscriptionRepository.find({
         where: {
           status: SubscriptionStatus.ACTIVE,
-          startDate: Between(fortyEightHoursAgo, nowIST), // Started within last 48 hours
+          startDate: Between(fortyEightHoursAgo, new Date(nowIST.getTime() + 48 * 60 * 60 * 1000)),
         },
-        relations: ['serviceProfile', 'user', 'assignedWorker', 'assignedWorker.user'],
+        relations: ['serviceProfile', 'user', 'assignedWorker'],
       });
 
-      this.logger.log(
-        `Found ${subscriptionsToAssign.length} subscriptions needing immediate assignment (started within last 48h)`,
-      );
+      // Track processed subscriptions to ensure each is processed ONLY ONCE per run
+      const processedSubscriptionIds = new Set<number>();
 
-      // Log subscription details for debugging
-      for (const sub of subscriptionsToAssign) {
-        this.logger.log(
-          `  Sub ${sub.id}: status=${sub.status}, startDate=${sub.startDate}, ` +
-          `assignedWorkerId=${sub.assignedWorkerId}, location=${JSON.stringify(sub.location)}, ` +
-          `user.preferredLat=${sub.user?.preferredLat}, user.preferredLng=${sub.user?.preferredLng}`,
-        );
-      }
+      this.logger.log(`Found ${allSubscriptions.length} total subscriptions in valid time window`);
 
-      // Process each subscription
-      for (const subscription of subscriptionsToAssign) {
+      // Process each subscription EXACTLY ONCE
+      for (const subscription of allSubscriptions) {
+        if (processedSubscriptionIds.has(subscription.id)) {
+          continue;
+        }
+
+        processedSubscriptionIds.add(subscription.id);
+        
         try {
           await this.assignWorkerForSubscription(subscription);
         } catch (error) {
           this.logger.error(
             `Error assigning worker for subscription ${subscription.id}: ${error.message}`,
-          );
-        }
-      }
-
-      // Find subscriptions that need pre-start assignment (starting within the next 0-24 hours)
-      const twentyFourHoursFromNow = new Date(
-        nowIST.getTime() + 24 * 60 * 60 * 1000,
-      );
-
-      const preStartSubscriptions = await this.subscriptionRepository.find({
-        where: {
-          status: SubscriptionStatus.ACTIVE,
-          startDate: Between(nowIST, twentyFourHoursFromNow),
-        },
-        relations: ['serviceProfile', 'user'],
-      });
-
-      this.logger.log(
-        `Found ${preStartSubscriptions.length} subscriptions needing pre-start assignment (0-24h window)`,
-      );
-
-      for (const subscription of preStartSubscriptions) {
-        try {
-          // Assign workers for subscriptions starting soon
-          await this.assignWorkerForSubscription(subscription);
-        } catch (error) {
-          this.logger.error(
-            `Error assigning worker for subscription ${subscription.id}: ${error.message}`,
-          );
-        }
-      }
-
-      // Find subscriptions that need just-in-time assignment (starting in 24-48 hours)
-      const fortyEightHoursFromNow = new Date(
-        nowIST.getTime() + 48 * 60 * 60 * 1000,
-      );
-
-      const upcomingSubscriptions = await this.subscriptionRepository.find({
-        where: {
-          status: SubscriptionStatus.ACTIVE,
-          startDate: Between(twentyFourHoursFromNow, fortyEightHoursFromNow),
-        },
-        relations: ['serviceProfile', 'user'],
-      });
-
-      this.logger.log(
-        `Found ${upcomingSubscriptions.length} subscriptions needing just-in-time assignment (24-48h window)`,
-      );
-
-      for (const subscription of upcomingSubscriptions) {
-        try {
-          // Pre-assign workers for upcoming subscriptions
-          await this.assignWorkerForSubscription(subscription);
-        } catch (error) {
-          this.logger.error(
-            `Error pre-assigning worker for subscription ${subscription.id}: ${error.message}`,
           );
         }
       }
 
       // =====================================================
-      // CATCH-ALL: Assign workers to active subscriptions without a worker
-      // Only includes subscriptions that started within the last 24 hours or start in the future
-      // This prevents old subscriptions from generating spurious bookings
+      // ✅ CATCH-ALL: Only for truly unassigned subscriptions outside time window
       // =====================================================
       const twentyFourHoursAgo = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000);
-      const unassignedSubscriptions = await this.subscriptionRepository.find({
-        where: {
+      const unassignedSubscriptions = await this.subscriptionRepository
+        .createQueryBuilder('subscription')
+        .setLock('pessimistic_read')
+        .where({
           status: SubscriptionStatus.ACTIVE,
           assignedWorkerId: IsNull(),
-          startDate: Between(twentyFourHoursAgo, new Date(nowIST.getTime() + 30 * 24 * 60 * 60 * 1000)), // Last 24h to next 30 days
-        },
-        relations: ['serviceProfile', 'user'],
-      });
+          startDate: Between(twentyFourHoursAgo, new Date(nowIST.getTime() + 30 * 24 * 60 * 60 * 1000)),
+        })
+        .andWhere(qb => {
+          const subQuery = qb.subQuery()
+            .select('1')
+            .from(Booking, 'booking')
+            .where("booking.type = 'subscription'")
+            .andWhere("booking.notes LIKE '%subscription ' || subscription.id || '%'")
+            .getQuery();
+          return `NOT EXISTS (${subQuery})`;
+        })
+        .leftJoinAndSelect('subscription.serviceProfile', 'serviceProfile')
+        .leftJoinAndSelect('subscription.user', 'user')
+        .getMany();
 
       this.logger.log(
-        `Found ${unassignedSubscriptions.length} active subscriptions without assigned workers (catch-all, within valid date range)`,
+        `Found ${unassignedSubscriptions.length} truly unassigned subscriptions without any bookings`,
       );
 
       for (const subscription of unassignedSubscriptions) {
+        if (processedSubscriptionIds.has(subscription.id)) {
+          continue;
+        }
+
+        processedSubscriptionIds.add(subscription.id);
+        
         try {
           this.logger.log(
             `Assigning worker to subscription ${subscription.id} (startDate: ${subscription.startDate}) - catch-all assignment`,
@@ -360,6 +323,7 @@ export class SubscriptionAssignmentScheduler {
         }
       }
 
+      this.logger.log(`Processed ${processedSubscriptionIds.size} unique subscriptions`);
       this.logger.log('Subscription assignment scheduler completed');
     } catch (error) {
       this.logger.error(
@@ -463,23 +427,55 @@ export class SubscriptionAssignmentScheduler {
         return { success: true, reason: 'Notification cooldown active' };
       }
 
-      // Idempotency check: skip if ANY booking already exists for this subscription
-      // (not just today's date - subscriptions can have future dates)
-      const existingBooking = await this.getAnyBookingForSubscription(
-        subscription.id,
-      );
-      if (existingBooking) {
-        // If booking exists and notification was already sent, skip
-        if (existingBooking.notificationSent) {
-          this.logger.log(
-            `Skipping subscription ${subscription.id}: booking ${existingBooking.id} exists and notification already sent`,
-          );
-          return { success: true, reason: 'Booking exists with notification sent' };
+      // =====================================================
+      // ✅ PERMANENT FIX: Atomic idempotency check with pessimistic locking
+      // =====================================================
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // Lock the subscription row to prevent concurrent processing
+        const lockedSubscription = await queryRunner.manager
+          .getRepository(Subscription)
+          .createQueryBuilder('subscription')
+          .setLock('pessimistic_write')
+          .where('subscription.id = :id', { id: subscription.id })
+          .getOne();
+
+        if (!lockedSubscription) {
+          await queryRunner.rollbackTransaction();
+          return { success: false, reason: 'Subscription no longer exists' };
         }
-        // Booking exists but notification wasn't sent - continue to assign worker
-        this.logger.log(
-          `Subscription ${subscription.id}: booking ${existingBooking.id} exists but notification not sent, continuing with worker assignment`,
-        );
+
+        // Check for ANY existing booking for this subscription
+        const existingBooking = await queryRunner.manager
+          .getRepository(Booking)
+          .findOne({
+            where: {
+              type: 'subscription' as any,
+              notes: Like(`%subscription ${subscription.id}%`),
+            },
+            order: { createdAt: 'DESC' },
+          });
+
+        if (existingBooking) {
+          this.logger.log(
+            `✅ Idempotent: Subscription ${subscription.id} already has booking ${existingBooking.id}, skipping creation`,
+          );
+          await queryRunner.commitTransaction();
+          return { success: true, reason: 'Booking already exists' };
+        }
+
+        // ✅ SAFE: No booking exists. We hold an exclusive lock so no other process can create one.
+
+        await queryRunner.commitTransaction();
+      } catch (lockError) {
+        await queryRunner.rollbackTransaction();
+        this.logger.warn(`Lock contention for subscription ${subscription.id}, will retry next run`);
+        return { success: false, reason: 'Lock contention, retry later' };
+      } finally {
+        await queryRunner.release();
       }
 
       // Validate subscription has required data
