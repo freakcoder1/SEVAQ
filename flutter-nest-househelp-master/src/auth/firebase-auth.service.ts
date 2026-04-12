@@ -38,8 +38,19 @@ export class FirebaseAuthService {
         const serviceAccount = JSON.parse(fixedServiceAccountJson);
         
         // Fix: ensure private key has proper formatting
+        // Proper private key sanitization for DER parsing
         if (serviceAccount.private_key) {
-          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n').trim();
+          serviceAccount.private_key = serviceAccount.private_key
+            .replace(/\\n/g, '\n')
+            .replace(/\\\\n/g, '\n')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+          
+          // Ensure proper final newline after PEM footer
+          if (!serviceAccount.private_key.endsWith('\n')) {
+            serviceAccount.private_key += '\n';
+          }
         }
 
         admin.initializeApp({

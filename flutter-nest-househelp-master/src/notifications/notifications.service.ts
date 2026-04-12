@@ -198,6 +198,21 @@ export class NotificationsService {
         console.log(`  - Client Email: ${serviceAccount.client_email}`);
         console.log(`  - Token URI: ${serviceAccount.token_uri}`);
 
+        // Proper private key sanitization for DER parsing
+        if (serviceAccount.private_key) {
+          serviceAccount.private_key = serviceAccount.private_key
+            .replace(/\\n/g, '\n')
+            .replace(/\\\\n/g, '\n')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+          
+          // Ensure proper final newline after PEM footer
+          if (!serviceAccount.private_key.endsWith('\n')) {
+            serviceAccount.private_key += '\n';
+          }
+        }
+
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
         });
@@ -232,14 +247,26 @@ export class NotificationsService {
     ) {
       console.log('[Firebase Init] Step 3: Attempting initialization with individual credentials...');
       try {
-        const normalizedPrivateKey = privateKey.replace(/\\n/g, '\n');
+        // Proper private key sanitization for DER parsing
+        const normalizedPrivateKey = privateKey
+          .replace(/\\n/g, '\n')
+          .replace(/\\\\n/g, '\n')
+          .replace(/\r\n/g, '\n')
+          .replace(/\r/g, '\n')
+          .trim();
+        
+        // Ensure proper final newline after PEM footer
+        const finalPrivateKey = normalizedPrivateKey.endsWith('\n')
+          ? normalizedPrivateKey
+          : normalizedPrivateKey + '\n';
+          
         console.log(`[Firebase Init] Using individual credentials for project: ${projectId}`);
 
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId,
             clientEmail,
-            privateKey: normalizedPrivateKey,
+            privateKey: finalPrivateKey,
           }),
         });
 
