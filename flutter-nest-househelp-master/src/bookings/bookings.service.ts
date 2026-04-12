@@ -497,6 +497,41 @@ export class BookingsService {
         // Don't fail the booking if notification fails
       }
 
+      // ============================================
+      // NEW: Notify assigned worker about new booking
+      // ============================================
+      if (workerToAssign) {
+        try {
+          // Load worker with user relation to get fcmToken
+          const workerWithUser = await this.workersRepository.findOne({
+            where: { id: workerToAssign.id },
+            relations: ['user']
+          });
+          
+          if (workerWithUser?.user) {
+            // Reload booking with service for notification
+            const savedBookingWithService = await this.bookingsRepository.findOne({
+              where: { id: bookingToReturn.id },
+              relations: ['service'],
+            });
+            
+            if (savedBookingWithService) {
+              await this.notificationsService.notifyWorkerNewBooking(workerWithUser, savedBookingWithService);
+              
+              // Mark notification as sent in database
+              await this.bookingsRepository.update(bookingToReturn.id, {
+                notificationSent: true
+              });
+              
+              console.log('🔍 NOTIFICATION: Worker notification sent successfully for booking', bookingToReturn.id);
+            }
+          }
+        } catch (workerNotifyError) {
+          console.error('🔍 ERROR: Failed to send worker notification:', workerNotifyError);
+          // Don't fail the booking if notification fails
+        }
+      }
+
       // FIX: Ensure assignmentState is correctly set for bookings with worker assigned
       // If worker is assigned but assignmentState is not ASSIGNED, update it
       if (bookingToReturn.workerId && bookingToReturn.assignmentState !== AssignmentState.ASSIGNED) {

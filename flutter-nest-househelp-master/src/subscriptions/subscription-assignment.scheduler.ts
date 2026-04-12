@@ -279,10 +279,12 @@ export class SubscriptionAssignmentScheduler {
       // ✅ CATCH-ALL: Only for truly unassigned subscriptions outside time window
       // =====================================================
       const twentyFourHoursAgo = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000);
-      const unassignedSubscriptions = await this.subscriptionRepository
-        .createQueryBuilder('subscription')
-        .setLock('pessimistic_read')
-        .where({
+      const unassignedSubscriptions = await this.dataSource.transaction(async transactionalEntityManager => {
+        return await transactionalEntityManager
+          .getRepository(Subscription)
+          .createQueryBuilder('subscription')
+          .setLock('pessimistic_read')
+          .where({
           status: SubscriptionStatus.ACTIVE,
           assignedWorkerId: IsNull(),
           startDate: Between(twentyFourHoursAgo, new Date(nowIST.getTime() + 30 * 24 * 60 * 60 * 1000)),
