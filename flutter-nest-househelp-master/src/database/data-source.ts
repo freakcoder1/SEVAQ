@@ -145,4 +145,6 @@ export const AppDataSource = new DataSource({
   database: configService.get('DB_NAME', 'sevaq_db'),
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/migrations/*.ts'],
+  synchronize: false,
+  migrationsRun: true,
 });

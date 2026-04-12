@@ -12,6 +12,19 @@ import { ServiceArea } from './src/locations/entities/service_area.entity';
 import { Waitlist } from './src/locations/entities/waitlist.entity';
 import { ServiceRequest } from './src/service-requests/entities/service-request.entity';
 import { AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric } from './src/metrics/entities/metric.entity';
+import { ServiceProfile } from './src/service-profiles/entities/service-profile.entity';
+import { Subscription } from './src/subscriptions/entities/subscription.entity';
+import { AdminUser } from './src/admin/entities/admin-user.entity';
+import { AuditLog } from './src/audit/entities/audit-log.entity';
+import { SupportTicket } from './src/support/entities/support-ticket.entity';
+import { CommunicationLog } from './src/support/entities/communication-log.entity';
+import { NotificationTemplate } from './src/config/entities/notification-template.entity';
+import { BusinessHours } from './src/config/entities/business-hours.entity';
+import { ServiceArea as ConfigServiceArea } from './src/config/entities/service-area.entity';
+import { PricingRule } from './src/config/entities/pricing-rule.entity';
+import { Payout } from './src/finance/entities/payout.entity';
+import { Refund } from './src/finance/entities/refund.entity';
+import { Address } from './src/addresses/entities/address.entity';
 import { AddMissingServiceBookingColumns1736660000001 } from './src/migrations/add-missing-service-booking-columns';
 import { FixWorkerLocationData1736660000000 } from './src/migrations/fix-worker-location-data';
 import { AddMissingServiceDetailColumns1736660000002 } from './src/migrations/add-missing-service-detail-columns';
@@ -26,11 +39,46 @@ import { AddFcmTokenToWorker1739999999999 } from './src/migrations/add-fcm-token
 async function runMigrations() {
   const configService = new ConfigService();
 
-  const host = configService.get('DB_HOST', 'localhost');
-  const port = configService.get<number>('DB_PORT', 5432);
-  const username = configService.get('DB_USERNAME', 'postgres');
-  const password = configService.get('DB_PASSWORD', 'postgres');
-  const database = configService.get('DB_NAME', 'sevaq_db');
+  // Support both DATABASE_URL (Railway) and individual DB_* variables
+  const databaseUrl = configService.get('DATABASE_URL');
+  
+  let host = '';
+  let port = 5432;
+  let username = '';
+  let password = '';
+  let database = '';
+  
+  // Use DATABASE_URL only if it's a Railway URL (contains .railway)
+  const isRailwayUrl = databaseUrl && (databaseUrl.includes('.railway') || databaseUrl.includes('.rlwy.net'));
+  
+  if (isRailwayUrl) {
+    // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
+    console.log('🔍 Railway DATABASE_URL detected, parsing...');
+    try {
+      const url = new URL(databaseUrl);
+      host = url.hostname;
+      port = parseInt(url.port) || 5432;
+      username = url.username;
+      password = url.password;
+      let dbPath = url.pathname.replace('/', '');
+      if (dbPath && !dbPath.includes('.')) {
+        database = dbPath;
+      } else {
+        database = configService.get('DB_NAME', 'railway');
+      }
+      console.log('📊 Parsed Railway DB config:', { host, port, username, database: '***', hasPassword: !!password });
+    } catch (e) {
+      console.error('❌ Failed to parse DATABASE_URL:', e.message);
+      database = configService.get('DB_NAME', 'railway');
+      host = configService.get('DB_HOST', 'localhost');
+    }
+  } else {
+    host = configService.get('DB_HOST', 'localhost');
+    port = configService.get<number>('DB_PORT', 5432);
+    username = configService.get('DB_USERNAME', 'sevaq_user');
+    password = configService.get('DB_PASSWORD', 'sevaq_password');
+    database = configService.get('DB_NAME', 'sevaq_db');
+  }
 
   const dataSource = new DataSource({
     type: 'postgres',
@@ -39,7 +87,36 @@ async function runMigrations() {
     username: username,
     password: password,
     database: database,
-    entities: [User, Service, Worker, Slot, Booking, Payment, Review, MicroZone, ServiceArea, Waitlist, ServiceRequest, AssignmentMetric, WorkerPerformanceMetric, UserBehaviorMetric, SystemPerformanceMetric],
+    entities: [
+      User,
+      Service,
+      Worker,
+      Slot,
+      Booking,
+      Payment,
+      Review,
+      MicroZone,
+      ServiceArea,
+      ConfigServiceArea,
+      Waitlist,
+      ServiceRequest,
+      AssignmentMetric,
+      WorkerPerformanceMetric,
+      UserBehaviorMetric,
+      SystemPerformanceMetric,
+      ServiceProfile,
+      Subscription,
+      AdminUser,
+      AuditLog,
+      SupportTicket,
+      CommunicationLog,
+      NotificationTemplate,
+      BusinessHours,
+      PricingRule,
+      Payout,
+      Refund,
+      Address,
+    ],
     synchronize: false,
     logging: true,
     migrations: [
@@ -58,14 +135,29 @@ async function runMigrations() {
 
   try {
     await dataSource.initialize();
-    console.log('Data Source has been initialized!');
+    console.log('✅ Data Source has been initialized!');
 
     await dataSource.runMigrations();
-    console.log('Migrations have been run successfully!');
+    console.log('✅ All migrations have been run successfully!');
+
+    // Verify tables exist
+    const tables = await dataSource.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name;
+    `);
+    
+    console.log('\n📋 Created tables:');
+    tables.forEach((table: any) => console.log(`  - ${table.table_name}`));
+    console.log(`\n✅ Total tables created: ${tables.length}`);
 
     await dataSource.destroy();
+    console.log('\n✅ Database schema initialization completed successfully!');
+    console.log('✅ Database is ready for application usage.');
+    
   } catch (error) {
-    console.error('Error during migration:', error);
+    console.error('❌ Error during migration:', error);
     process.exit(1);
   }
 }

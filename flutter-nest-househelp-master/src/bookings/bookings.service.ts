@@ -498,6 +498,37 @@ export class BookingsService {
       }
 
       // ============================================
+      // ✅ FIX: Notify assigned worker about new booking
+      // ============================================
+      if (workerToAssign) {
+        try {
+          // Reload worker with user relation
+          const workerWithUser = await this.workersRepository.findOne({
+            where: { id: workerToAssign.id },
+            relations: ['user']
+          });
+          
+          if (workerWithUser?.user) {
+            const savedBookingWithService = await this.bookingsRepository.findOne({
+              where: { id: bookingToReturn.id },
+              relations: ['service'],
+            });
+            
+            if (savedBookingWithService) {
+              await this.notificationsService.notifyWorkerNewBooking(workerWithUser, savedBookingWithService);
+              
+              // Mark notification as sent
+              await this.bookingsRepository.update(bookingToReturn.id, {
+                notificationSent: true
+              });
+            }
+          }
+        } catch (workerNotifyError) {
+          console.error('🔍 ERROR: Failed to send worker notification:', workerNotifyError);
+          // Don't fail the booking if notification fails
+        }
+      }
+      // ============================================
       // NEW: Notify assigned worker about new booking
       // ============================================
       if (workerToAssign) {

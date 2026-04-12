@@ -193,6 +193,16 @@ import { Address } from './addresses/entities/address.entity';
           synchronize: process.env.NODE_ENV === 'development' && process.env.SYNCHRONIZE === 'true',
           logging: ['error', 'warn'], // Reduce logging to only errors and warnings
           logger: 'advanced-console', // Use advanced console logger
+          // Railway Postgres SSL configuration - required for external connections
+          ssl: process.env.DB_SSL_REQUIRE === 'true' ? {
+            rejectUnauthorized: false
+          } : false,
+          // Connection pool configuration for Railway
+          extra: {
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 10000,
+          },
         };
       },
       inject: [ConfigService],
