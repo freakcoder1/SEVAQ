@@ -201,12 +201,19 @@ export class NotificationsService {
         // Proper private key sanitization for DER parsing
         if (serviceAccount.private_key) {
           serviceAccount.private_key = serviceAccount.private_key
-            .replace(/\\n/g, '\n')
             .replace(/\\\\n/g, '\n')
+            .replace(/\\n/g, '\n')
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
             .trim();
           
+          // ✅ FIX: Add missing final newline character BEFORE the footer
+          // This is the actual fix for "Unparsed DER bytes remain after ASN.1 parsing"
+          const pemFooter = '-----END PRIVATE KEY-----';
+          if (serviceAccount.private_key.includes(pemFooter)) {
+            serviceAccount.private_key = serviceAccount.private_key.replace(pemFooter, '\n' + pemFooter + '\n');
+          }
+
           // Ensure proper final newline after PEM footer
           if (!serviceAccount.private_key.endsWith('\n')) {
             serviceAccount.private_key += '\n';
