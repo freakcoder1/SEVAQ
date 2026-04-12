@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Worker } from '../workers/entities/worker.entity';
-import * as admin from 'firebase-admin';
+import { FcmHttpService } from './fcm-http.service';
 
 /**
  * Firebase initialization status interface for diagnostics
@@ -51,6 +51,7 @@ export class NotificationsService {
 
   constructor(
     private configService: ConfigService,
+    private fcmHttpService: FcmHttpService,
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
     @InjectRepository(User)
