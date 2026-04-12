@@ -62,7 +62,7 @@ export class FcmHttpService {
   private async getAccessToken(): Promise<string> {
     // Return cached token if still valid
     if (this.accessToken && Date.now() < this.tokenExpiry - 60000) {
-      return this.accessToken;
+      return this.accessToken as string;
     }
 
     const serviceAccount = this.getServiceAccount();
@@ -92,11 +92,11 @@ export class FcmHttpService {
     this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
     
     this.logger.log('✅ FCM access token obtained successfully');
-    return this.accessToken;
+    return this.accessToken as string;
   }
 
   private getServiceAccount() {
-    const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT || '';
     let serviceAccount;
     
     try {
