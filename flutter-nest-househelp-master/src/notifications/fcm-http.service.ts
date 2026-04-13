@@ -77,7 +77,9 @@ export class FcmHttpService {
       iat: now
     };
 
-    const assertion = jwt.sign(claim, Buffer.from(serviceAccount.private_key), { algorithm: 'RS256' });
+    // For jsonwebtoken v9+, pass key must be PEM string with proper headers/footers intact
+    // Buffer wrapping causes key validation issues in v9+, use raw string directly
+    const assertion = jwt.sign(claim, serviceAccount.private_key, { algorithm: 'RS256' });
 
     // Exchange JWT for access token
     const response = await axios.post('https://oauth2.googleapis.com/token', new URLSearchParams({
