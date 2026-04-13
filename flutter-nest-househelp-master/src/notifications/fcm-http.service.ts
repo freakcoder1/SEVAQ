@@ -100,23 +100,39 @@ export class FcmHttpService {
     let serviceAccount;
     
     try {
-      serviceAccount = JSON.parse(serviceAccountRaw.replace(/\\n/g, '\n'));
-    } catch (e) {
+      // First parse JSON, THEN fix escaped newlines on private key ONLY
       serviceAccount = JSON.parse(serviceAccountRaw);
+      
+      // Now fix escaped newlines on the actual private key string
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
+    } catch (e) {
+      this.logger.error(`Failed to parse service account JSON: ${e.message}`);
+      throw e;
     }
 
-    // Clean private key - remove all extra characters that cause parsing issues
+    // Clean private key - properly format PEM for RS256 signing
     if (serviceAccount.private_key) {
-      const pemMatch = serviceAccount.private_key.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
+      // Remove all whitespace
+      const cleanKey = serviceAccount.private_key.replace(/\s+/g, '');
+      
+      // Extract actual base64 key data
+      const pemMatch = cleanKey.match(/BEGINPRIVATEKEY([a-zA-Z0-9+/=]+)ENDPRIVATEKEY/);
+      
       if (pemMatch) {
+        // Reconstruct properly formatted PEM with correct line breaks
+        // This is required for jsonwebtoken library RS256 algorithm
         serviceAccount.private_key = [
           '-----BEGIN PRIVATE KEY-----',
-          pemMatch[1].replace(/\s+/g, '').match(/.{1,64}/g).join('\n'),
-          '-----END PRIVATE KEY-----'
+          pemMatch[1].match(/.{1,64}/g).join('\n'),
+          '-----END PRIVATE KEY-----',
+          '' // Final newline required at end of PEM
         ].join('\n');
       }
     }
 
+    this.logger.debug(`Private key formatted successfully, length: ${serviceAccount.private_key?.length || 0}`);
     return serviceAccount;
   }
 }
