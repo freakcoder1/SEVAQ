@@ -52,9 +52,13 @@ export class FcmHttpService {
       );
 
       this.logger.log(`FCM notification sent successfully: ${response.data.name}`);
+      this.logger.log(`FCM response details: ${JSON.stringify(response.data)}`);
       return true;
     } catch (error: any) {
-      this.logger.error(`Failed to send FCM notification: ${error.message}`, error.response?.data);
+      this.logger.error(`Failed to send FCM notification: ${error.message}`);
+      this.logger.error(`FCM Error Response Status: ${error.response?.status}`);
+      this.logger.error(`FCM Error Response Data: ${JSON.stringify(error.response?.data)}`);
+      this.logger.error(`FCM Error Details:`, error.response?.data?.error);
       return false;
     }
   }
@@ -124,15 +128,13 @@ export class FcmHttpService {
       // Ensure the key starts and ends properly with correct line breaks
       key = key.trim();
       
-      // Remove any existing BEGIN/END markers to avoid duplication
-      key = key.replace(/-----BEGIN PRIVATE KEY-----/g, '');
-      key = key.replace(/-----END PRIVATE KEY-----/g, '');
-      
-      // Add proper PEM formatting with exactly one newline after BEGIN and before END
-      key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
-      
       // Normalize line endings to just \n (Unix-style)
       key = key.replace(/\r\n/g, '\n');
+      
+      // ONLY add BEGIN/END markers if they are NOT already present
+      if (!key.includes('-----BEGIN PRIVATE KEY-----')) {
+        key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+      }
       
       serviceAccount.private_key = key;
     }
