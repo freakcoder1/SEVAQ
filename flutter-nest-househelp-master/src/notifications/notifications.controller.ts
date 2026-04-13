@@ -148,17 +148,14 @@ export class NotificationsController {
   @Post('test-fcm')
   // @UseGuards(JwtAuthGuard) // Temporarily disabled for testing
   async testFcmNotification(
-    @Body('fcmToken') fcmToken: string,
-    @Body('title') title: string,
-    @Body('body') bodyText: string,
-    @Body('data') data?: Record<string, any>,
+    @Body() body: { fcmToken: string; title: string; body: string; data?: Record<string, any> },
   ) {
     try {
       await this.notificationsService.sendPushNotification(
-        fcmToken,
-        title,
-        bodyText,
-        data,
+        body.fcmToken,
+        body.title,
+        body.body,
+        body.data,
       );
       return {
         success: true,
