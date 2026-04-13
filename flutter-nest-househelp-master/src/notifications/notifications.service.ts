@@ -363,63 +363,29 @@ export class NotificationsService {
     dataPayload?: Record<string, string>,
   ): Promise<void> {
     try {
-      // Check if Firebase Admin SDK is initialized
-      if (!this.firebaseInitialized) {
-        console.error(
-          '[NOTIFICATION FAILURE] Firebase Admin SDK NOT initialized - push notifications will NOT work!',
-        );
-        return;
-      } else {
-        console.log('[NOTIFICATION] Firebase Admin SDK is initialized, ready to send push');
-      }
-
       // Check if FCM token is provided
       if (!fcmToken) {
         console.error('[NOTIFICATION FAILURE] No FCM token provided, cannot send push notification');
         return;
       } else {
-        console.log(`[NOTIFICATION] FCM token present (${fcmToken.substring(0, 20)}...), ready to send`);
+        console.log(`[NOTIFICATION] FCM token present (${fcmToken.substring(0, 20)}...), ready to send via direct HTTP API`);
       }
 
-      // Send FCM message with both android.notification and data blocks.
-      // - android.notification: Shows system tray notification with sound (background/terminated)
-      // - data: Flutter processes to show in-app dialog (foreground)
-      // The notificationSent flag prevents duplicate notifications.
-      const message: admin.messaging.Message = {
-        token: fcmToken,
-        data: {
-          ...dataPayload,
-          // Include title and body in data payload for Flutter to use
-          notification_title: title,
-          notification_body: body,
-          // Channel ID for Android notification channel
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          id: '1',
-          status: 'done',
-        },
-        android: {
-          priority: 'high' as const,
-          notification: {
-            defaultSound: true,
-            defaultVibrateTimings: true,
-            title: title,
-            body: body,
-            // Link to Android notification channel for sound customization
-            channelId: 'new_booking_channel',
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              contentAvailable: true,
-              sound: 'default',
-            },
-          },
-        },
-      };
+      // Use direct FCM HTTP API implementation (bypasses broken Firebase Admin SDK parser)
+      const success = await this.fcmHttpService.sendNotification(fcmToken, title, body, {
+        ...dataPayload,
+        notification_title: title,
+        notification_body: body,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        id: '1',
+        status: 'done',
+      });
 
-      const response = await admin.messaging().send(message);
-      console.log(`Successfully sent push notification: ${response}`);
+      if (success) {
+        console.log(`✅ Successfully sent push notification via direct FCM HTTP API`);
+      } else {
+        console.error('❌ Failed to send push notification via direct FCM HTTP API');
+      }
     } catch (error) {
       console.error('Error sending push notification:', error);
     }
@@ -439,63 +405,32 @@ export class NotificationsService {
     dataPayload?: Record<string, string>,
   ): Promise<void> {
     try {
-      if (!this.firebaseInitialized) {
-        console.error(
-          '[NOTIFICATION FAILURE] Firebase Admin SDK NOT initialized - push notifications will NOT work!',
-        );
-        return;
-      }
-
+      // Check if FCM token is provided
       if (!fcmToken) {
         console.error('[NOTIFICATION FAILURE] No FCM token provided');
         return;
+      } else {
+        console.log(`[NOTIFICATION] FCM token present (${fcmToken.substring(0, 20)}...), ready to send full screen via direct HTTP API`);
       }
 
-      // Send BOTH notification and data blocks:
-      // - notification: Shows system tray notification when app is terminated
-      // - data: Flutter processes the payload when app is in foreground/background
-      // - high priority ensures immediate delivery
-      const message: admin.messaging.Message = {
-        token: fcmToken,
-        data: {
-          ...dataPayload,
-          notification_title: title,
-          notification_body: body,
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          id: '1',
-          status: 'done',
-          fullScreen: 'true',
-        },
-        notification: {
-          title: title,
-          body: body,
-        },
-        android: {
-          priority: 'high' as const,
-          ttl: 0, // immediate delivery
-          notification: {
-            channelId: 'full_screen_booking_channel',
-            defaultSound: true,
-            defaultVibrateTimings: true,
-            title: title,
-            body: body,
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              contentAvailable: true,
-              sound: 'default',
-              interruptionLevel: 'critical',
-            },
-          },
-        },
-      };
+      // Use direct FCM HTTP API implementation (bypasses broken Firebase Admin SDK parser)
+      const success = await this.fcmHttpService.sendNotification(fcmToken, title, body, {
+        ...dataPayload,
+        notification_title: title,
+        notification_body: body,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        id: '1',
+        status: 'done',
+        fullScreen: 'true',
+      });
 
-      const response = await admin.messaging().send(message);
-      console.log(`Successfully sent full-screen push notification: ${response}`);
+      if (success) {
+        console.log(`✅ Successfully sent full screen push notification via direct FCM HTTP API`);
+      } else {
+        console.error('❌ Failed to send full screen push notification via direct FCM HTTP API');
+      }
     } catch (error) {
-      console.error('Error sending full-screen push notification:', error);
+      console.error('Error sending full screen push notification:', error);
     }
   }
 
