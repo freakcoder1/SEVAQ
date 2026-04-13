@@ -53,7 +53,7 @@ export class FcmHttpService {
 
       this.logger.log(`FCM notification sent successfully: ${response.data.name}`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send FCM notification: ${error.message}`, error.response?.data);
       return false;
     }
@@ -107,13 +107,13 @@ export class FcmHttpService {
       // Fallback: try to fix escaped newlines before parsing
       try {
         serviceAccount = JSON.parse(serviceAccountRaw.replace(/\\n/g, '\n'));
-      } catch (e2) {
+      } catch (e2: any) {
         this.logger.error(`Failed to parse service account JSON: ${e2.message}`);
         throw e2;
       }
     }
 
-    // Clean private key - fix all levels of escaping, preserve PEM format exactly
+    // Clean private key - ensure proper PEM format for RS256
     if (serviceAccount.private_key) {
       // Handle any level of newline escaping
       let key = serviceAccount.private_key;
@@ -121,12 +121,18 @@ export class FcmHttpService {
         key = key.replace(/\\n/g, '\n');
       }
       
-      // Ensure proper PEM formatting with line breaks after headers
-      key = key
-        .replace(/-----BEGIN PRIVATE KEY-----/, '-----BEGIN PRIVATE KEY-----\n')
-        .replace(/-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----')
-        .replace(/\n\n+/g, '\n')
-        .trim();
+      // Ensure the key starts and ends properly with correct line breaks
+      key = key.trim();
+      
+      // Remove any existing BEGIN/END markers to avoid duplication
+      key = key.replace(/-----BEGIN PRIVATE KEY-----/g, '');
+      key = key.replace(/-----END PRIVATE KEY-----/g, '');
+      
+      // Add proper PEM formatting with exactly one newline after BEGIN and before END
+      key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+      
+      // Normalize line endings to just \n (Unix-style)
+      key = key.replace(/\r\n/g, '\n');
       
       serviceAccount.private_key = key;
     }
