@@ -77,7 +77,7 @@ export class FcmHttpService {
       iat: now
     };
 
-    const assertion = jwt.sign(claim, serviceAccount.private_key, { algorithm: 'RS256' });
+    const assertion = jwt.sign(claim, Buffer.from(serviceAccount.private_key), { algorithm: 'RS256' });
 
     // Exchange JWT for access token
     const response = await axios.post('https://oauth2.googleapis.com/token', new URLSearchParams({
@@ -111,29 +111,11 @@ export class FcmHttpService {
       }
     }
 
-    // Clean private key
+    // Clean private key - only fix escaped newlines, jsonwebtoken handles proper parsing
     if (serviceAccount.private_key) {
-      // ✅ FINAL FIX: Correct private key normalization
-      let privateKey = serviceAccount.private_key;
-      
-      // Fix all escaped newlines
-      privateKey = privateKey
+      serviceAccount.private_key = serviceAccount.private_key
         .replace(/\\\\n/g, '\n')
-        .replace(/\\n/g, '\n')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n');
-
-      // Extract key content
-      privateKey = privateKey
-        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-        .replace(/-----END PRIVATE KEY-----/g, '')
-        .replace(/\s+/g, '');
-
-      // Reconstruct EXACT valid PEM format
-      serviceAccount.private_key =
-        '-----BEGIN PRIVATE KEY-----\n' +
-        privateKey.match(/.{1,64}/g).join('\n') +
-        '\n-----END PRIVATE KEY-----\n';
+        .replace(/\\n/g, '\n');
     }
 
     this.logger.log(`✅ Private key formatted successfully, length: ${serviceAccount.private_key?.length || 0}`);
