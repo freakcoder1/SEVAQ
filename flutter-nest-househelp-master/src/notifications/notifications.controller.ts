@@ -139,4 +139,35 @@ export class NotificationsController {
       }),
     };
   }
+
+  /**
+   * POST /notifications/test-fcm
+   * Test FCM notification delivery (for diagnostics)
+   */
+  @Post('test-fcm')
+  @UseGuards(JwtAuthGuard)
+  async testFcmNotification(
+    @Request() req: JwtRequest,
+    @Body() body: { fcmToken: string; title: string; body: string; data?: Record<string, any> },
+  ) {
+    try {
+      await this.notificationsService.sendPushNotification(
+        body.fcmToken,
+        body.title,
+        body.body,
+        body.data,
+      );
+      return {
+        success: true,
+        message: 'Test FCM notification sent successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Error sending test FCM notification: ${error.message}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
 }
