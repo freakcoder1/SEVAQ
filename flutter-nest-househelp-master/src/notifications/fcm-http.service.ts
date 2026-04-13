@@ -24,7 +24,7 @@ export class FcmHttpService {
             priority: 'high',
             notification: {
               channel_id: 'default',
-              priority: 'max',
+              notification_priority: 'PRIORITY_MAX',
               sound: 'default'
             }
           },
