@@ -100,39 +100,43 @@ export class FcmHttpService {
     let serviceAccount;
     
     try {
-      // First parse JSON, THEN fix escaped newlines on private key ONLY
       serviceAccount = JSON.parse(serviceAccountRaw);
-      
-      // Now fix escaped newlines on the actual private key string
-      if (serviceAccount.private_key) {
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-      }
     } catch (e) {
-      this.logger.error(`Failed to parse service account JSON: ${e.message}`);
-      throw e;
-    }
-
-    // Clean private key - properly format PEM for RS256 signing
-    if (serviceAccount.private_key) {
-      // Remove all whitespace
-      const cleanKey = serviceAccount.private_key.replace(/\s+/g, '');
-      
-      // Extract actual base64 key data
-      const pemMatch = cleanKey.match(/BEGINPRIVATEKEY([a-zA-Z0-9+/=]+)ENDPRIVATEKEY/);
-      
-      if (pemMatch) {
-        // Reconstruct properly formatted PEM with correct line breaks
-        // This is required for jsonwebtoken library RS256 algorithm
-        serviceAccount.private_key = [
-          '-----BEGIN PRIVATE KEY-----',
-          pemMatch[1].match(/.{1,64}/g).join('\n'),
-          '-----END PRIVATE KEY-----',
-          '' // Final newline required at end of PEM
-        ].join('\n');
+      // Fallback: try to fix escaped newlines before parsing
+      try {
+        serviceAccount = JSON.parse(serviceAccountRaw.replace(/\\n/g, '\n'));
+      } catch (e2) {
+        this.logger.error(`Failed to parse service account JSON: ${e2.message}`);
+        throw e2;
       }
     }
 
-    this.logger.debug(`Private key formatted successfully, length: ${serviceAccount.private_key?.length || 0}`);
+    // Clean private key
+    if (serviceAccount.private_key) {
+      // ✅ FINAL FIX: Correct private key normalization
+      let privateKey = serviceAccount.private_key;
+      
+      // Fix all escaped newlines
+      privateKey = privateKey
+        .replace(/\\\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+
+      // Extract key content
+      privateKey = privateKey
+        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+        .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/\s+/g, '');
+
+      // Reconstruct EXACT valid PEM format
+      serviceAccount.private_key =
+        '-----BEGIN PRIVATE KEY-----\n' +
+        privateKey.match(/.{1,64}/g).join('\n') +
+        '\n-----END PRIVATE KEY-----\n';
+    }
+
+    this.logger.log(`✅ Private key formatted successfully, length: ${serviceAccount.private_key?.length || 0}`);
     return serviceAccount;
   }
 }
