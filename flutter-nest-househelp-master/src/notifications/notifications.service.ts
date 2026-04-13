@@ -361,12 +361,12 @@ export class NotificationsService {
     title: string,
     body: string,
     dataPayload?: Record<string, string>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       // Check if FCM token is provided
       if (!fcmToken) {
         console.error('[NOTIFICATION FAILURE] No FCM token provided, cannot send push notification');
-        return;
+        return false;
       } else {
         console.log(`[NOTIFICATION] FCM token present (${fcmToken.substring(0, 20)}...), ready to send via direct HTTP API`);
       }
@@ -383,11 +383,14 @@ export class NotificationsService {
 
       if (success) {
         console.log(`✅ Successfully sent push notification via direct FCM HTTP API`);
+        return true;
       } else {
         console.error('❌ Failed to send push notification via direct FCM HTTP API');
+        return false;
       }
     } catch (error) {
       console.error('Error sending push notification:', error);
+      return false;
     }
   }
 

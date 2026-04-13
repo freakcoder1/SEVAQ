@@ -151,17 +151,25 @@ export class NotificationsController {
     @Body() body: { fcmToken: string; title: string; body: string; data?: Record<string, any> },
   ) {
     try {
-      await this.notificationsService.sendPushNotification(
+      const success = await this.notificationsService.sendPushNotification(
         body.fcmToken,
         body.title,
         body.body,
         body.data,
       );
-      return {
-        success: true,
-        message: 'Test FCM notification sent successfully',
-        timestamp: new Date().toISOString(),
-      };
+      if (success) {
+        return {
+          success: true,
+          message: 'Test FCM notification sent successfully',
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Failed to send test FCM notification - check FCM credentials and token',
+          timestamp: new Date().toISOString(),
+        };
+      }
     } catch (error: any) {
       return {
         success: false,
