@@ -113,11 +113,22 @@ export class FcmHttpService {
       }
     }
 
-    // Clean private key - only fix escaped newlines, jsonwebtoken handles proper parsing
+    // Clean private key - fix all levels of escaping, preserve PEM format exactly
     if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key
-        .replace(/\\\\n/g, '\n')
-        .replace(/\\n/g, '\n');
+      // Handle any level of newline escaping
+      let key = serviceAccount.private_key;
+      while (key.includes('\\n')) {
+        key = key.replace(/\\n/g, '\n');
+      }
+      
+      // Ensure proper PEM formatting with line breaks after headers
+      key = key
+        .replace(/-----BEGIN PRIVATE KEY-----/, '-----BEGIN PRIVATE KEY-----\n')
+        .replace(/-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----')
+        .replace(/\n\n+/g, '\n')
+        .trim();
+      
+      serviceAccount.private_key = key;
     }
 
     this.logger.log(`✅ Private key formatted successfully, length: ${serviceAccount.private_key?.length || 0}`);
