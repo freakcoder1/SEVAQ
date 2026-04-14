@@ -1,22 +1,27 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "name": "SEVAQ",
-  "rootDirectory": "./flutter-nest-househelp-master",
+  "watchPatterns": [
+    "flutter-nest-househelp-master/**/*"
+  ],
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",
-    "buildCommand": "npm install && npm run build"
+    "buildCommand": "cd flutter-nest-househelp-master && npm install && npx tsc && npm run seed:railway",
+    "workingDirectory": "flutter-nest-househelp-master"
   },
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
     "sleepApplication": false,
-    "startCommand": "node dist/main"
+    "startCommand": "cd flutter-nest-househelp-master && node dist/run-migration.js && node dist/database/seed.js && node dist/main"
   },
   "env": {
-    "SYNCHRONIZE": "true",
+    "SYNCHRONIZE": "false",
     "NODE_ENV": "production",
-    "LOG_LEVEL": "info"
+    "LOG_LEVEL": "info",
+    "DB_SSL_REQUIRE": "true",
+    "NIXPACKS_START_COMMAND": "cd flutter-nest-househelp-master && node dist/run-migration.js && node dist/database/seed.js && node dist/main"
   }
 }

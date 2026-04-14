@@ -1,0 +1,10 @@
+{
+  "fcmToken": "eve47_C-Tt6v8aSOhQXTLq:APA91bH3-wl8wK37A1of2A6ZRIMOlzdrNrAgLC7paie4fnaEn7OHr2Io9dKI4LhRHrTcQ9EGWi062pfqCBMX73wGureBOQhsjdCQeb45nA3D-rLxUO-Jukk",
+  "title": "Test Notification",
+  "body": "Testing FCM delivery to worker app on device 21b9bbc9",
+  "data": {
+    "type": "test_notification",
+    "testId": "manual-test-001",
+    "timestamp": "2026-04-13T07:32:00.000Z"
+  }
+}

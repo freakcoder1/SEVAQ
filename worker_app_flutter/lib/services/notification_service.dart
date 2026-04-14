@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -44,27 +46,38 @@ class NotificationService {
   /// Initialize notification service
   Future<void> initialize() async {
     try {
-      debugPrint('=== NotificationService: Starting initialization ===');
+      debugPrint('=== FCM DEBUG: NotificationService initializing ===');
+      debugPrint('FCM DEBUG: Platform: ${Platform.operatingSystem}');
+      debugPrint('FCM DEBUG: Firebase.apps length: ${Firebase.apps.length}');
 
       // Initialize local notifications for Android channel with sound
+      debugPrint('FCM DEBUG: Initializing local notifications...');
       await _initializeLocalNotifications();
+      debugPrint('FCM DEBUG: Local notifications initialized');
 
-      // Request permission for iOS
+      // Request permission for iOS/Android 13+
+      debugPrint('FCM DEBUG: Requesting notification permission...');
       final settings = await _firebaseMessaging.requestPermission();
-
       debugPrint(
-          'Notification permission status: ${settings.authorizationStatus}');
+          'FCM DEBUG: Permission status: ${settings.authorizationStatus}');
 
       // Get FCM token
-      debugPrint('NotificationService: Requesting FCM token from Firebase...');
+      debugPrint('FCM DEBUG: Requesting FCM token from Firebase...');
       _fcmToken = await _firebaseMessaging.getToken();
+      debugPrint('FCM DEBUG: FCM token result: $_fcmToken');
 
       if (_fcmToken != null) {
         debugPrint(
-            'FCM Token obtained successfully: ${_fcmToken!.substring(0, 20)}...');
+            'FCM DEBUG: ✅ FCM Token obtained successfully: ${_fcmToken!.substring(0, 20)}...');
+        debugPrint('FCM DEBUG: 🔑 FULL FCM TOKEN: $_fcmToken');
+        debugPrint('FCM DEBUG: 📏 Token length: ${_fcmToken!.length}');
       } else {
         debugPrint(
-            'WARNING: FCM Token is NULL - Firebase may not be configured correctly');
+            'FCM DEBUG: ❌ ERROR: FCM Token is NULL - Firebase may not be configured correctly');
+        debugPrint('FCM DEBUG: This could be due to:');
+        debugPrint('FCM DEBUG: - Incorrect google-services.json');
+        debugPrint('FCM DEBUG: - Missing Firebase project configuration');
+        debugPrint('FCM DEBUG: - Release build issues');
       }
 
       // Handle foreground messages
@@ -80,7 +93,16 @@ class NotificationService {
             'Initial message stored for later processing: ${_initialMessage!.messageId}');
       }
 
-      debugPrint('=== NotificationService: Initialization complete ===');
+      debugPrint(
+          'FCM DEBUG: === NotificationService initialization complete ===');
+      debugPrint('FCM DEBUG: Summary:');
+      debugPrint(
+          'FCM DEBUG: - FCM Token: ${_fcmToken != null ? "✅ Obtained" : "❌ NULL"}');
+      debugPrint(
+          'FCM DEBUG: - Permission Status: ${settings.authorizationStatus}');
+      debugPrint('FCM DEBUG: - Message listeners: ✅ Set up');
+      debugPrint(
+          'FCM DEBUG: Next step: registerTokenWithBackend() should be called after login');
     } catch (e) {
       debugPrint('Error initializing notifications: $e');
     }
@@ -326,30 +348,40 @@ class NotificationService {
 
   /// Send FCM token to backend for this worker
   Future<void> registerTokenWithBackend() async {
-    debugPrint('=== registerTokenWithBackend: Starting ===');
+    debugPrint('=== FCM DEBUG: registerTokenWithBackend starting ===');
 
     if (_fcmToken == null) {
-      debugPrint('ERROR: No FCM token to register - _fcmToken is null');
+      debugPrint(
+          'FCM DEBUG: ❌ ERROR: No FCM token to register - _fcmToken is null');
+      debugPrint(
+          'FCM DEBUG: This means FCM token was not obtained during initialization');
       return;
     }
 
-    debugPrint('FCM Token to register: ${_fcmToken!.substring(0, 30)}...');
+    debugPrint(
+        'FCM DEBUG: ✅ FCM Token to register: ${_fcmToken!.substring(0, 30)}...');
+    debugPrint(
+        'FCM DEBUG: 📡 API URL: ${AppConfig.apiBaseUrl}/workers/me/fcm-token');
 
     try {
       // Get token from secure storage
+      debugPrint('FCM DEBUG: 🔐 Reading JWT token from secure storage...');
       final token = await _storage.read(key: 'worker_jwt_token');
 
       debugPrint(
-          'JWT token from storage: ${token != null ? "Found" : "NOT FOUND"}');
+          'FCM DEBUG: JWT token status: ${token != null ? "✅ Found" : "❌ NOT FOUND"}');
       if (token != null) {
-        debugPrint('JWT token preview: ${token.substring(0, 20)}...');
+        debugPrint(
+            'FCM DEBUG: JWT token preview: ${token.substring(0, 20)}...');
+        debugPrint('FCM DEBUG: JWT token length: ${token.length}');
       }
 
       if (token == null) {
+        debugPrint('FCM DEBUG: ❌ ERROR: No JWT token found in secure storage');
         debugPrint(
-            'ERROR: No JWT token found in secure storage - cannot register FCM token');
+            'FCM DEBUG: This means user is not logged in or token was not saved properly');
         debugPrint(
-            'This means user is not logged in or token was not saved properly');
+            'FCM DEBUG: FCM token registration will be skipped until user logs in');
         return;
       }
 
@@ -359,7 +391,13 @@ class NotificationService {
 
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          debugPrint('FCM token registration attempt $attempt of $maxRetries');
+          debugPrint(
+              'FCM DEBUG: 🔄 Registration attempt $attempt of $maxRetries');
+          debugPrint(
+              'FCM DEBUG: 📤 Making PATCH request to: ${AppConfig.apiBaseUrl}/workers/me/fcm-token');
+          debugPrint('FCM DEBUG: 📦 Request body: ${jsonEncode({
+                "fcmToken": _fcmToken!.substring(0, 30) + "..."
+              })}');
 
           final response = await http
               .patch(
@@ -372,19 +410,25 @@ class NotificationService {
               )
               .timeout(const Duration(seconds: 10));
 
-          debugPrint('Response status code: ${response.statusCode}');
-          debugPrint('Response body: ${response.body}');
+          debugPrint(
+              'FCM DEBUG: 📥 Response status code: ${response.statusCode}');
+          debugPrint('FCM DEBUG: 📄 Response body: ${response.body}');
 
           if (response.statusCode == 200) {
             _tokenRegistered = true;
-            debugPrint('SUCCESS: FCM token registered successfully');
+            debugPrint(
+                'FCM DEBUG: ✅ SUCCESS: FCM token registered successfully with backend');
             return;
           } else {
             debugPrint(
-                'ERROR: Failed to register FCM token - status ${response.statusCode}');
+                'FCM DEBUG: ❌ ERROR: Failed to register FCM token - status ${response.statusCode}');
+            debugPrint(
+                'FCM DEBUG: This could be due to: invalid JWT token, network issues, or backend problems');
           }
         } catch (e) {
-          debugPrint('ERROR on attempt $attempt: $e');
+          debugPrint('FCM DEBUG: 💥 ERROR on attempt $attempt: $e');
+          debugPrint(
+              'FCM DEBUG: This could be a network timeout, DNS issue, or connection problem');
         }
 
         // Wait before retry (except on last attempt)
@@ -403,17 +447,27 @@ class NotificationService {
 
   /// Retry registration - call this when network becomes available
   Future<void> retryRegisterToken() async {
-    debugPrint('=== retryRegisterToken: Called ===');
+    debugPrint('=== FCM DEBUG: retryRegisterToken called ===');
     _tokenRegistered = false;
 
     // Check current token state
+    debugPrint('FCM DEBUG: 🔄 Checking current FCM token...');
     final currentFcmToken = await _firebaseMessaging.getToken();
+    debugPrint(
+        'FCM DEBUG: Current FCM token: ${currentFcmToken?.substring(0, 30) ?? "null"}...');
+
     if (currentFcmToken != null && currentFcmToken != _fcmToken) {
+      debugPrint('FCM DEBUG: 📝 FCM token has changed, updating stored token');
       debugPrint(
-          'FCM token has changed, updating from ${_fcmToken?.substring(0, 20) ?? "null"} to ${currentFcmToken.substring(0, 20)}...');
+          'FCM DEBUG: Old token: ${_fcmToken?.substring(0, 20) ?? "null"}...');
+      debugPrint(
+          'FCM DEBUG: New token: ${currentFcmToken.substring(0, 20)}...');
       _fcmToken = currentFcmToken;
+    } else {
+      debugPrint('FCM DEBUG: ✅ FCM token unchanged');
     }
 
+    debugPrint('FCM DEBUG: 🚀 Calling registerTokenWithBackend...');
     await registerTokenWithBackend();
   }
 

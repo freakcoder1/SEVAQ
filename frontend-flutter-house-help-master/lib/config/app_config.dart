@@ -40,7 +40,7 @@ class AppConfig {
 
   /// Set to FALSE to use production URL even in debug mode.
   /// When FALSE, overrides WiFi IP to use production URL instead.
-  static const bool useProductionForDebug = false;
+  static const bool useProductionForDebug = true;
 
   /// Returns the appropriate API base URL for the current build mode and
   /// platform.
