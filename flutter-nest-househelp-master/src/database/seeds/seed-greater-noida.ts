@@ -98,6 +98,7 @@ export class SeedGreaterNoidaAreas {
     for (const zoneData of microZones) {
       const microZone = microZoneRepository.create({
         ...zoneData,
+        serviceArea: serviceAreaGN,
         boundaries: {
           type: 'Polygon',
           coordinates: [
