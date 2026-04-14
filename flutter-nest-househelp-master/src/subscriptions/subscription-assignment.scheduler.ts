@@ -450,14 +450,13 @@ export class SubscriptionAssignmentScheduler {
         }
 
         // ✅ SAFE: No booking exists. We hold an exclusive lock so no other process can create one.
+        // ✅ BUGFIX: KEEP LOCK HELD DURING BOOKING CREATION - DO NOT COMMIT HERE
 
-        await queryRunner.commitTransaction();
       } catch (lockError) {
         await queryRunner.rollbackTransaction();
+        await queryRunner.release();
         this.logger.warn(`Lock contention for subscription ${subscription.id}, will retry next run`);
         return { success: false, reason: 'Lock contention, retry later' };
-      } finally {
-        await queryRunner.release();
       }
 
       // Validate subscription has required data
