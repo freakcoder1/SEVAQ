@@ -681,6 +681,24 @@ export class SubscriptionAssignmentScheduler {
           );
         }
         
+        // ✅ BUGFIX: Update booking status to CONFIRMED so customer app stops showing "finding your match"
+        // Customer interface checks for BookingStatus not AssignmentState
+        await this.bookingRepository.update(booking.id, {
+          status: BookingStatus.CONFIRMED,
+          assignmentState: AssignmentState.ASSIGNED,
+          workerId: assignmentResult.worker.id,
+        });
+
+        // ✅ BUGFIX: Reload booking with FULL user relations (user, addresses)
+        // This ensures customer name and location are available in the worker app
+        const updatedBooking = await this.bookingRepository.findOne({
+          where: { id: booking.id },
+          relations: ['user', 'user.addresses', 'worker', 'service'],
+        });
+
+        // Send notification with full booking data
+        await this.notificationsService.sendBookingAssignedToWorker(assignmentResult.worker, updatedBooking);
+        
         // Notification is already sent inside directlyAssignWorker(), no need to send again
       } else {
         this.logger.warn(
