@@ -762,7 +762,10 @@ export class SubscriptionAssignmentScheduler {
         }
 
         // VERIFICATION: Reload from database to 100% confirm changes were persisted
-        const verifiedBooking = await this.bookingRepository.findOne({ where: { id: booking.id } });
+        const verifiedBooking = await this.bookingRepository.findOne({
+          where: { id: booking.id },
+          relations: ['user', 'user.addresses', 'service']
+        });
         
         if (!verifiedBooking) {
           throw new Error(`Booking ${booking.id} not found after save - critical persistence failure`);
