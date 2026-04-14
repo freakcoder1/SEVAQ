@@ -141,7 +141,7 @@ export class FirebaseAuthService {
         const createUserDto = {
           email: `user_${phone.replace(/[^0-9]/g, '')}@phone.auth`,
           password: securePassword,
-          firstName: 'Worker',
+          firstName: 'User',
           lastName: phone.replace('+', ''),
           phone: phone,
           role: UserRole.USER,
@@ -161,7 +161,7 @@ export class FirebaseAuthService {
         if (isDefaultName) {
           this.logger.log(`Updating default name for user: ${user!.publicId}`);
           await this.usersService.update(user!.publicId, {
-            firstName: 'Worker',
+            firstName: 'User',
             lastName: phone.replace('+', ''),
           } as any);
           // Update local user object for subsequent checks
