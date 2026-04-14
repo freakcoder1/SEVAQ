@@ -66,9 +66,12 @@ export class FirebaseAuthService {
           serviceAccount.private_key = privateKey;
         }
 
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-        });
+        // Check if app already exists before initializing
+        if (admin.apps.length === 0) {
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+          });
+        }
         this.firebaseInitialized = true;
         this.logger.log('✅ [Firebase Init] Firebase Admin SDK initialized successfully');
       } catch (error) {
