@@ -222,9 +222,12 @@ export class NotificationsService {
           }
         }
 
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-        });
+        // Check if app already exists before initializing
+        if (admin.apps.length === 0) {
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+          });
+        }
 
         this.firebaseInitialized = true;
         this.firebaseStatus.initialized = true;
