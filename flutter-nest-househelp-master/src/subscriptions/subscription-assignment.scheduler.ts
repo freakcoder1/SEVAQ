@@ -9,6 +9,7 @@ import {
 import {
   Booking,
   AssignmentState,
+  BookingStatus,
 } from '../bookings/entities/booking.entity';
 import { ServiceProfile, ServiceType } from '../service-profiles/entities/service-profile.entity';
 import { Service } from '../services/entities/service.entity';
@@ -748,6 +749,8 @@ export class SubscriptionAssignmentScheduler {
       booking.worker = nearestWorker;
       booking.assignedWorkerId = nearestWorker.id;
       booking.assignmentState = AssignmentState.ASSIGNED;
+      booking.status = BookingStatus.CONFIRMED;
+      booking.assignmentTimestamp = new Date();
 
       // CRITICAL FIX: Save booking with proper verification and error handling
       try {
