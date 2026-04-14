@@ -37,27 +37,32 @@ export class DatabaseMonitoringService implements OnModuleInit {
     try {
       console.log('Updating database connection pool metrics...');
       const queryRunner = this.dataSource.createQueryRunner();
+      
+      try {
+        await queryRunner.connect();
 
-      // Get active connections
-      const activeConnections = this.dataSource.queryResultCache
-        ? Object.keys(this.dataSource.queryResultCache).length
-        : 0;
-      this.activeConnections.set(activeConnections);
+        // Get active connections
+        const activeConnections = this.dataSource.queryResultCache
+          ? Object.keys(this.dataSource.queryResultCache).length
+          : 0;
+        this.activeConnections.set(activeConnections);
 
-      // Get idle connections (approximation)
-      const idleConnections = Math.max(
-        0,
-        (this.dataSource.options.poolSize || 10) - activeConnections,
-      );
-      this.idleConnections.set(idleConnections);
+        // Get idle connections (approximation)
+        const idleConnections = Math.max(
+          0,
+          (this.dataSource.options.poolSize || 10) - activeConnections,
+        );
+        this.idleConnections.set(idleConnections);
 
-      // Total connections
-      this.totalConnections.set(activeConnections + idleConnections);
+        // Total connections
+        this.totalConnections.set(activeConnections + idleConnections);
 
-      console.log(
-        `Database metrics updated: active=${activeConnections}, idle=${idleConnections}`,
-      );
-      await queryRunner.release();
+        console.log(
+          `Database metrics updated: active=${activeConnections}, idle=${idleConnections}`,
+        );
+      } finally {
+        await queryRunner.release();
+      }
     } catch (error) {
       console.error('Error updating connection pool metrics:', error);
     }
