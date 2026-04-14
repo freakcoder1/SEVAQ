@@ -32,7 +32,7 @@ export class WorkersService {
     longitude: number,
   ) {
     const worker = this.workersRepository.create({
-      user: { id: userId as any },
+      userId: userId as any,
       bio,
       services: serviceIds.map((id) => ({ id })),
       latitude,
@@ -40,6 +40,7 @@ export class WorkersService {
       currentLat: latitude,
       currentLng: longitude,
       isAvailable: true,
+      availabilitySchedule: [],
     });
     return this.workersRepository.save(worker);
   }
