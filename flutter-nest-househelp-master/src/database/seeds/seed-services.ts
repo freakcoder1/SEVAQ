@@ -195,6 +195,28 @@ export class SeedServices {
         estimatedWaitTime: 25,
         workerCount: 9,
       },
+      {
+        publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
+        name: 'Cooking',
+        description: 'Home cooking service',
+        basePrice: 1200,
+        reassuranceText: 'Professional home cooked meals',
+        whatWillHappen: [
+          'Cook will arrive with required ingredients',
+          'Prepare fresh healthy meals',
+          'Clean up kitchen after cooking',
+        ],
+        whatWillNotHappen: [
+          'No extra items without approval',
+          'No unhygienic food preparation',
+        ],
+        ifSomethingGoesWrong: 'Sevaq will replace cook or refund immediately',
+        category: 'Cooking',
+        isAvailable: true,
+        isFastBooking: false,
+        estimatedWaitTime: 120,
+        workerCount: 6,
+      },
     ];
 
     // Create services with publicId
