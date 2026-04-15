@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Booking } from './entities/booking.entity';
 import { SlotsService } from '../slots/slots.service';
 import { Worker } from '../workers/entities/worker.entity';
@@ -31,6 +31,7 @@ export class BookingsService {
     private serviceRequestsRepository: Repository<ServiceRequest>,
     private slotsService: SlotsService,
     private notificationsService: NotificationsService,
+    private dataSource: DataSource,
   ) {}
 
   async findBestWorker(
@@ -498,38 +499,7 @@ export class BookingsService {
       }
 
       // ============================================
-      // ✅ FIX: Notify assigned worker about new booking
-      // ============================================
-      if (workerToAssign) {
-        try {
-          // Reload worker with user relation
-          const workerWithUser = await this.workersRepository.findOne({
-            where: { id: workerToAssign.id },
-            relations: ['user']
-          });
-          
-          if (workerWithUser?.user) {
-            const savedBookingWithService = await this.bookingsRepository.findOne({
-              where: { id: bookingToReturn.id },
-              relations: ['service'],
-            });
-            
-            if (savedBookingWithService) {
-              await this.notificationsService.notifyWorkerNewBooking(workerWithUser, savedBookingWithService);
-              
-              // Mark notification as sent
-              await this.bookingsRepository.update(bookingToReturn.id, {
-                notificationSent: true
-              });
-            }
-          }
-        } catch (workerNotifyError) {
-          console.error('🔍 ERROR: Failed to send worker notification:', workerNotifyError);
-          // Don't fail the booking if notification fails
-        }
-      }
-      // ============================================
-      // NEW: Notify assigned worker about new booking
+      // ✅ Notify assigned worker about new booking
       // ============================================
       if (workerToAssign) {
         try {
@@ -978,34 +948,50 @@ export class BookingsService {
   }
 
   async assignWorker(id: string, workerId: number) {
-    const booking = await this.findOne(id);
+    return await this.dataSource.transaction(async (transactionalEntityManager) => {
+      // ✅ Implement PESSIMISTIC WRITE LOCK to prevent race conditions
+      // This ensures only one worker can modify this booking at a time
+      const booking = await transactionalEntityManager.findOne(Booking, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' }
+      });
 
-    // Validate worker exists
-    const worker = await this.workersRepository.findOne({
-      where: { id: workerId },
-      relations: ['user'],
+      if (!booking) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      // Validate booking is still unassigned
+      if (booking.assignedWorkerId) {
+        throw new BadRequestException('Booking has already been assigned to another worker');
+      }
+
+      // Validate worker exists
+      const worker = await transactionalEntityManager.findOne(Worker, {
+        where: { id: workerId },
+        relations: ['user'],
+      });
+
+      if (!worker) {
+        throw new BadRequestException('Worker not found');
+      }
+
+      // Log the worker's fcmToken for debugging
+      this.logger.log(`Worker ${worker.id} FCM token: ${worker.fcmToken ? worker.fcmToken.substring(0, 30) + '...' : 'NULL'}`);
+
+      booking.worker = worker;
+      booking.assignedWorkerId = workerId;
+      booking.assignmentState = AssignmentState.ASSIGNED;
+      booking.assignmentTimestamp = new Date();
+      booking.assignmentReason = 'Manual assignment by admin';
+
+      const savedBooking = await transactionalEntityManager.save(booking);
+
+      // NOTE: Worker notification is intentionally NOT sent here.
+      // The notification will be sent after payment is confirmed in payments.service.ts
+      // This ensures workers only get notified about paid bookings.
+
+      return savedBooking;
     });
-
-    if (!worker) {
-      throw new BadRequestException('Worker not found');
-    }
-
-    // Log the worker's fcmToken for debugging
-    this.logger.log(`Worker ${worker.id} FCM token: ${worker.fcmToken ? worker.fcmToken.substring(0, 30) + '...' : 'NULL'}`);
-
-    booking.worker = worker;
-    booking.assignedWorkerId = workerId;
-    booking.assignmentState = AssignmentState.ASSIGNED;
-    booking.assignmentTimestamp = new Date();
-    booking.assignmentReason = 'Manual assignment by admin';
-
-    const savedBooking = await this.bookingsRepository.save(booking);
-
-    // NOTE: Worker notification is intentionally NOT sent here.
-    // The notification will be sent after payment is confirmed in payments.service.ts
-    // This ensures workers only get notified about paid bookings.
-
-    return savedBooking;
   }
 
   // Missing methods for controller compatibility

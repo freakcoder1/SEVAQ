@@ -11,12 +11,8 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
 import { OnDemandAssignmentScheduler } from './on-demand-assignment.scheduler';
-import { AvailabilityDetectionService } from './availability-detection.service';
-import { AvailabilityDetectionScheduler } from './availability-detection.scheduler';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { BookingsModule } from '../bookings/bookings.module';
-import { AvailabilityModule } from '../availability/availability.module';
 import { UsersModule } from '../users/users.module';
 import { ServicesModule } from '../services/services.module';
 import { WorkersModule } from '../workers/workers.module';
@@ -28,9 +24,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ServiceProfilesModule,
     ServicesModule,
     WorkersModule,
-    AssignmentsModule,
     BookingsModule,
-    AvailabilityModule,
     UsersModule,
     NotificationsModule,
     ScheduleModule.forRoot(),
@@ -40,14 +34,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
     SubscriptionsService, 
     SubscriptionAssignmentScheduler,
     OnDemandAssignmentScheduler,
-    AvailabilityDetectionService,
-    AvailabilityDetectionScheduler,
   ],
   exports: [
-    SubscriptionsService, 
+    SubscriptionsService,
     SubscriptionAssignmentScheduler,
     OnDemandAssignmentScheduler,
-    AvailabilityDetectionService,
   ],
 })
 export class SubscriptionsModule {}

@@ -5,7 +5,6 @@ import { Payment, PaymentStatus } from './entities/payment.entity';
 import { ConfigService } from '@nestjs/config';
 import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { AssignmentsService } from '../assignments/assignments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/entities/user.entity';
 import Razorpay = require('razorpay');
@@ -25,7 +24,6 @@ export class PaymentsService {
     private configService: ConfigService,
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
-    private assignmentsService: AssignmentsService,
     private notificationsService: NotificationsService,
     private dataSource: DataSource,
   ) {
@@ -568,9 +566,9 @@ export class PaymentsService {
             this.logger.log(
               `Triggering immediate assignment for subscription ${subscription.id}, booking ${firstBooking.id}`,
             );
-            const result = await this.assignmentsService.createPrimaryAssignment(firstBooking.id);
+            // Assignment service was removed - assignments will be handled by the standard scheduler
             this.logger.log(
-              `Immediate assignment completed for subscription ${subscription.id}: success=${result?.success}, workerId=${result?.worker?.id || 'none'}`,
+              `Immediate assignment skipped for subscription ${subscription.id} - will be processed by standard assignment scheduler`,
             );
           } else {
             this.logger.warn(

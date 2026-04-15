@@ -40,22 +40,7 @@ export class LocationData {
   @IsString()
   address: string;
 
-  constructor() {
-    // Auto synchronize property formats
-    Object.defineProperty(this, 'latitude', {
-      get() { return this.lat; },
-      set(v) { this.lat = v; },
-      enumerable: true,
-      configurable: true
-    });
-
-    Object.defineProperty(this, 'longitude', {
-      get() { return this.lng; },
-      set(v) { this.lng = v; },
-      enumerable: true,
-      configurable: true
-    });
-  }
+  constructor() {}
 }
 
 export enum BookingStatus {

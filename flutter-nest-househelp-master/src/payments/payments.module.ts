@@ -7,7 +7,6 @@ import { ConfigModule } from '@nestjs/config';
 import { BookingsModule } from '../bookings/bookings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { User } from '../users/entities/user.entity';
 
@@ -18,7 +17,6 @@ import { User } from '../users/entities/user.entity';
     BookingsModule,
     SubscriptionsModule,
     ServiceProfilesModule,
-    AssignmentsModule,
     NotificationsModule,
   ],
   controllers: [PaymentsController],

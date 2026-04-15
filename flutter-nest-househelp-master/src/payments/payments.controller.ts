@@ -3,14 +3,12 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PaymentsService } from './payments.service';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
-import { AssignmentsService } from '../assignments/assignments.service';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly serviceProfilesService: ServiceProfilesService,
-    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   @Post('create-order')
@@ -82,11 +80,8 @@ export class PaymentsController {
         booking.assignmentType === 'PROVISIONAL' &&
         booking.assignmentState === 'PROVISIONAL_ASSIGNED'
       ) {
-        const confirmedBooking =
-          await this.assignmentsService.confirmProvisionalAssignment(
-            booking.id,
-          );
-        return { status: 'success', booking: confirmedBooking };
+        // Assignment confirmation handled internally by service requests module
+        return { status: 'success', booking };
       }
 
       return { status: 'success', booking };

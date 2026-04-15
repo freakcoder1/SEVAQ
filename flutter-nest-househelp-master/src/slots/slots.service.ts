@@ -252,10 +252,10 @@ export class SlotsService {
         },
       });
 
-      // Only skip if we have slots covering most of the day (at least 16 slots = full day coverage)
+      // Only skip if we have slots covering full day (22 slots = full day coverage)
       // Otherwise, add more slots to fill gaps
-      if (existingSlots.length >= 16) {
-        this.logger.warn(
+      if (existingSlots.length >= 22) {
+        this.logger.log(
           `Worker ${workerId} already has ${existingSlots.length} slots for ${date}. Skipping slot creation.`,
         );
         return existingSlots;

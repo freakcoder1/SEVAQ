@@ -14,7 +14,6 @@ import {
 import { ServiceProfile, ServiceType } from '../service-profiles/entities/service-profile.entity';
 import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
-import { AssignmentsService } from '../assignments/assignments.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -46,7 +45,6 @@ export class SubscriptionAssignmentScheduler {
     private readonly serviceRepository: Repository<Service>,
     @InjectRepository(Worker)
     private readonly workerRepository: Repository<Worker>,
-    private readonly assignmentsService: AssignmentsService,
     private readonly bookingsService: BookingsService,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,

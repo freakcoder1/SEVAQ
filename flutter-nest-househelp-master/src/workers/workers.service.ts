@@ -308,6 +308,26 @@ export class WorkersService {
     };
   }
 
+  private validateStateTransition(currentStatus: BookingStatus, targetStatus: BookingStatus): void {
+    // All valid booking status transitions defined in single source of truth
+    const validTransitions: Partial<Record<BookingStatus, BookingStatus[]>> = {
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.REQUESTED]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.CONFIRMED]: [BookingStatus.IN_PROGRESS, BookingStatus.CANCELLED],
+      [BookingStatus.IN_PROGRESS]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
+      [BookingStatus.COMPLETED]: [],
+      [BookingStatus.CANCELLED]: []
+    };
+
+    const allowedTransitions = validTransitions[currentStatus] || [];
+
+    if (!allowedTransitions.includes(targetStatus)) {
+      throw new BadRequestException(
+        `Invalid state transition: Cannot change booking status from ${currentStatus} to ${targetStatus}`
+      );
+    }
+  }
+
   /**
    * Accept a booking assignment
    */
@@ -326,9 +346,8 @@ export class WorkersService {
     if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
-    if (booking.status !== BookingStatus.REQUESTED && booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
-      throw new BadRequestException('Booking cannot be accepted in current status');
-    }
+
+    this.validateStateTransition(booking.status, BookingStatus.CONFIRMED);
 
     booking.status = BookingStatus.CONFIRMED;
     return this.bookingsRepository.save(booking);

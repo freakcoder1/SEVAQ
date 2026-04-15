@@ -14,14 +14,11 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { LocationsModule } from './locations/locations.module';
-import { AssignmentsModule } from './assignments/assignments.module';
-import { AvailabilityModule } from './availability/availability.module';
 import { CitiesModule } from './cities/cities.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { SystemStatusModule } from './system-status/system-status.module';
 import { HomeModule } from './home/home.module';
 import { HealthModule } from './health/health.module';
-import { MonitoringDashboardModule } from './monitoring-dashboard/monitoring-dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import {
   PrometheusModule,
@@ -33,7 +30,6 @@ import { ServiceProfilesModule } from './service-profiles/service-profiles.modul
 import { AdminModule } from './admin/admin.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AddressesModule } from './addresses/addresses.module';
-import { MetricsModule } from './metrics/metrics.module';
 import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
 import { Worker } from './workers/entities/worker.entity';
@@ -45,12 +41,6 @@ import { MicroZone } from './locations/entities/micro_zone.entity';
 import { ServiceArea } from './locations/entities/service_area.entity';
 import { Waitlist } from './locations/entities/waitlist.entity';
 import { ServiceRequest } from './service-requests/entities/service-request.entity';
-import {
-  AssignmentMetric,
-  WorkerPerformanceMetric,
-  UserBehaviorMetric,
-  SystemPerformanceMetric,
-} from './metrics/entities/metric.entity';
 import { ServiceProfile } from './service-profiles/entities/service-profile.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
 import { AuditModule } from './audit/audit.module';
@@ -160,10 +150,6 @@ import { Address } from './addresses/entities/address.entity';
           ConfigServiceArea,
           Waitlist,
           ServiceRequest,
-          AssignmentMetric,
-          WorkerPerformanceMetric,
-          UserBehaviorMetric,
-          SystemPerformanceMetric,
           ServiceProfile,
           Subscription,
           AdminUser,
@@ -220,17 +206,15 @@ import { Address } from './addresses/entities/address.entity';
     PaymentsModule,
     ReviewsModule,
     LocationsModule,
-    AssignmentsModule,
     ServiceRequestsModule,
     SystemStatusModule,
     HealthModule,
-    MonitoringDashboardModule,
     NotificationsModule,
     HomeModule,
     ServiceProfilesModule,
     SubscriptionsModule,
     AdminModule,
-    // MetricsModule - DISABLED: Broken driver connection
+    // MetricsModule - DISABLED: Broken driver connection causing constant warning logs
     AuditModule,
     // AnalyticsModule - DISABLED: Empty unused module
     // MonitoringModule - DISABLED: Duplicate monitoring

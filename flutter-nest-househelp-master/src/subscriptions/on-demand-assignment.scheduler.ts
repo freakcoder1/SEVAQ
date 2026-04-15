@@ -11,7 +11,6 @@ import {
 import { User } from '../users/entities/user.entity';
 import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
-import { AssignmentsService } from '../assignments/assignments.service';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -32,7 +31,6 @@ export class OnDemandAssignmentScheduler {
     private readonly serviceRepository: Repository<Service>,
     @InjectRepository(Worker)
     private readonly workerRepository: Repository<Worker>,
-    private readonly assignmentsService: AssignmentsService,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,
   ) {}
