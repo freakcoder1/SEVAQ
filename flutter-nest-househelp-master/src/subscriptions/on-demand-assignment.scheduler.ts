@@ -105,49 +105,28 @@ export class OnDemandAssignmentScheduler {
         `Found ${bookingsToAssign.length} on-demand bookings needing worker assignment`,
       );
 
-      // Process each booking
+      // Process each booking and track outcomes
+      let successfulAssignments = 0;
+      let failedAssignments = 0;
       for (const booking of bookingsToAssign) {
         try {
-          await this.assignWorkerForBooking(booking);
+          const result = await this.assignWorkerForBooking(booking);
+          if (result.success) {
+            successfulAssignments++;
+          } else {
+            failedAssignments++;
+          }
         } catch (error) {
+          failedAssignments++;
           this.logger.error(
             `Error assigning worker for on-demand booking ${booking.id}: ${error.message}`,
           );
         }
       }
 
-      // Also handle bookings where assignedWorkerId is set but workerId is not
-      // (these might have been assigned but not saved properly)
-      const unprocessedBookings = await this.bookingRepository.find({
-        where: {
-          type: BookingType.ON_DEMAND,
-          status: In([BookingStatus.REQUESTED, BookingStatus.CONFIRMED]),
-        },
-        relations: ['service', 'user'],
-        take: 50,
-      });
-
-      let additionalAssignments = 0;
-      for (const booking of unprocessedBookings) {
-        if (!booking.workerId && booking.status === BookingStatus.REQUESTED) {
-          try {
-            await this.assignWorkerForBooking(booking);
-            additionalAssignments++;
-          } catch (error) {
-            this.logger.error(
-              `Error in secondary assignment for booking ${booking.id}: ${error.message}`,
-            );
-          }
-        }
-      }
-
-      if (additionalAssignments > 0) {
-        this.logger.log(
-          `Made ${additionalAssignments} additional worker assignments`,
-        );
-      }
-
-      this.logger.log('On-demand assignment scheduler completed');
+      this.logger.log(
+        `On-demand assignment scheduler completed: ${successfulAssignments} assigned, ${failedAssignments} failed out of ${bookingsToAssign.length} bookings`,
+      );
     } catch (error) {
       this.logger.error(
         `Error in on-demand assignment scheduler: ${error.message}`,
