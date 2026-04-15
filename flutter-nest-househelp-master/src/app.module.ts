@@ -230,10 +230,10 @@ import { Address } from './addresses/entities/address.entity';
     ServiceProfilesModule,
     SubscriptionsModule,
     AdminModule,
-    MetricsModule,
+    // MetricsModule - DISABLED: Broken driver connection
     AuditModule,
-    AnalyticsModule,
-    MonitoringModule,
+    // AnalyticsModule - DISABLED: Empty unused module
+    // MonitoringModule - DISABLED: Duplicate monitoring
     FinanceModule,
     SupportModule,
     SystemConfigModule,
