@@ -22,16 +22,15 @@ export class AddressesService {
    * @returns Internal user id string for database queries
    */
   private async resolveUserId(userId: string): Promise<string | null> {
-    // If it's a UUID (publicId), look up the user to get internal id
+    // userId is already public UUID from JWT token, address table uses publicId for userId
     try {
+      // Verify user exists by publicId
       const user = await this.usersRepository.findOneBy({ publicId: userId } as any);
       if (user) {
-        // Return the actual database userId field value converted to string
-        return String(user.id);
+        // Return the public UUID directly, this is what address table expects
+        return user.publicId;
       }
-      // If not found as publicId, check if it's already the internal userId
-      const existingUser = await this.usersRepository.findOneBy({ id: userId } as any);
-      return existingUser ? String(existingUser.id) : null;
+      return null;
     } catch (error: any) {
       this.logger.error(`Error resolving userId: ${error.message}`);
       return userId; // fallback to original value on error
