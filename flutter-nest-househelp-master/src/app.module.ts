@@ -199,9 +199,13 @@ import { Address } from './addresses/entities/address.entity';
           } : false,
           // Connection pool configuration for Railway
           extra: {
-            max: process.env.NODE_ENV === 'production' ? 4 : 10,
-            idleTimeoutMillis: 15000,
-            connectionTimeoutMillis: 20000,
+            max: process.env.NODE_ENV === 'production' ? 3 : 6,
+            idleTimeoutMillis: 20000, // 20 seconds - aggressively close before Railway kills
+            connectionTimeoutMillis: 8000,
+            keepAlive: true,
+            keepAliveInitialDelayMillis: 5000,
+            statement_timeout: 15000,
+            query_timeout: 15000,
           },
         };
       },
