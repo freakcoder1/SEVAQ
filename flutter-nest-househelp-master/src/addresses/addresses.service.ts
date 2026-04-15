@@ -64,7 +64,7 @@ export class AddressesService {
     }
 
     return this.addressesRepository.find({
-      where: { userId: parseInt(resolvedUserId, 10) as any },
+      where: { userId: resolvedUserId },
       order: { isDefault: 'DESC', createdAt: 'DESC' },
     });
   }
@@ -76,7 +76,7 @@ export class AddressesService {
     }
 
     const address = await this.addressesRepository.findOne({
-      where: { id, userId: parseInt(resolvedUserId, 10) as any },
+      where: { id, userId: resolvedUserId },
     });
 
     if (!address) {
@@ -93,7 +93,7 @@ export class AddressesService {
     }
 
     return this.addressesRepository.findOne({
-      where: { userId: parseInt(resolvedUserId, 10) as any, isDefault: true },
+      where: { userId: resolvedUserId, isDefault: true },
     });
   }
 
@@ -132,15 +132,9 @@ export class AddressesService {
   }
 
   private async unsetUserDefault(userId: string): Promise<void> {
-    // Always cast to number for integer id column
-    const userIdNum = parseInt(userId, 10);
-    if (isNaN(userIdNum)) {
-      this.logger.warn(`Invalid userId format in unsetUserDefault: ${userId}`);
-      return;
-    }
-    
+    // userId is public UUID, address table uses uuid type
     await this.addressesRepository.update(
-      { userId: userIdNum as any, isDefault: true },
+      { userId, isDefault: true },
       { isDefault: false },
     );
   }
