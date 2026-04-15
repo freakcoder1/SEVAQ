@@ -132,8 +132,15 @@ export class AddressesService {
   }
 
   private async unsetUserDefault(userId: string): Promise<void> {
+    // Always cast to number for integer id column
+    const userIdNum = parseInt(userId, 10);
+    if (isNaN(userIdNum)) {
+      this.logger.warn(`Invalid userId format in unsetUserDefault: ${userId}`);
+      return;
+    }
+    
     await this.addressesRepository.update(
-      { userId, isDefault: true },
+      { userId: userIdNum as any, isDefault: true },
       { isDefault: false },
     );
   }
