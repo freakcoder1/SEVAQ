@@ -64,7 +64,7 @@ export class AddressesService {
     }
 
     return this.addressesRepository.find({
-      where: { userId: resolvedUserId },
+      where: { userId: parseInt(resolvedUserId, 10) as any },
       order: { isDefault: 'DESC', createdAt: 'DESC' },
     });
   }
@@ -76,7 +76,7 @@ export class AddressesService {
     }
 
     const address = await this.addressesRepository.findOne({
-      where: { id, userId: resolvedUserId },
+      where: { id, userId: parseInt(resolvedUserId, 10) as any },
     });
 
     if (!address) {
@@ -93,7 +93,7 @@ export class AddressesService {
     }
 
     return this.addressesRepository.findOne({
-      where: { userId: resolvedUserId, isDefault: true },
+      where: { userId: parseInt(resolvedUserId, 10) as any, isDefault: true },
     });
   }
 
