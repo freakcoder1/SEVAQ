@@ -28,9 +28,11 @@ export class DatabaseMonitoringService implements OnModuleInit {
 
   private async startMonitoring() {
     // Start monitoring connection pool metrics
+    const monitoringInterval = process.env.NODE_ENV === 'production' ? 60000 : 15000;
+    
     setInterval(async () => {
       await this.updateConnectionPoolMetrics();
-    }, 5000); // Update every 5 seconds
+    }, monitoringInterval); // Update every 60s in production, 15s locally
   }
 
   private async updateConnectionPoolMetrics() {

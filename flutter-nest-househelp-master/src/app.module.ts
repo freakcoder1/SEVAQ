@@ -199,9 +199,9 @@ import { Address } from './addresses/entities/address.entity';
           } : false,
           // Connection pool configuration for Railway
           extra: {
-            max: 10,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 10000,
+            max: process.env.NODE_ENV === 'production' ? 4 : 10,
+            idleTimeoutMillis: 15000,
+            connectionTimeoutMillis: 20000,
           },
         };
       },
