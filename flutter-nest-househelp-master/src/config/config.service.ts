@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotificationTemplate } from './entities/notification-template.entity';
 import { BusinessHours } from './entities/business-hours.entity';
-import { ServiceArea } from './entities/service-area.entity';
 import { PricingRule } from './entities/pricing-rule.entity';
+import { ServiceArea } from '../locations/entities/service_area.entity';
 
 export interface CreateNotificationTemplateDto {
   name: string;
@@ -129,7 +129,7 @@ export class SystemConfigService {
     return this.serviceAreasRepository.save(area);
   }
 
-  async updateServiceArea(id: number, dto: UpdateServiceAreaDto): Promise<ServiceArea> {
+  async updateServiceArea(id: string, dto: UpdateServiceAreaDto): Promise<ServiceArea> {
     const area = await this.serviceAreasRepository.findOne({ where: { id } });
     if (!area) {
       throw new NotFoundException(`Service area with ID ${id} not found`);
@@ -138,7 +138,7 @@ export class SystemConfigService {
     return this.serviceAreasRepository.save(area);
   }
 
-  async deleteServiceArea(id: number): Promise<void> {
+  async deleteServiceArea(id: string): Promise<void> {
     const area = await this.serviceAreasRepository.findOne({ where: { id } });
     if (!area) {
       throw new NotFoundException(`Service area with ID ${id} not found`);

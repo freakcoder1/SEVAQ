@@ -47,7 +47,7 @@ export class BookingsService {
       .createQueryBuilder('worker')
       .leftJoinAndSelect('worker.user', 'user')
       .leftJoinAndSelect('worker.services', 'services')
-      .where('services.id = :serviceId', { serviceId: Number(serviceId) })
+      .where('services.id = :serviceId', { serviceId: serviceId })
       .andWhere('user.latitude IS NOT NULL')
       .andWhere('user.longitude IS NOT NULL')
       .getMany();

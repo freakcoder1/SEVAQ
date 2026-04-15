@@ -14,7 +14,6 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { LocationsModule } from './locations/locations.module';
-import { CitiesModule } from './cities/cities.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { SystemStatusModule } from './system-status/system-status.module';
 import { HomeModule } from './home/home.module';
@@ -44,8 +43,7 @@ import { ServiceRequest } from './service-requests/entities/service-request.enti
 import { ServiceProfile } from './service-profiles/entities/service-profile.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
 import { AuditModule } from './audit/audit.module';
-import { AnalyticsModule } from './analytics/analytics.module';
-import { MonitoringModule } from './monitoring/monitoring.module';
+
 import { AdminUser } from './admin/entities/admin-user.entity';
 import { AuditLog } from './audit/entities/audit-log.entity';
 import { FinanceModule } from './finance/finance.module';
@@ -57,7 +55,6 @@ import { SupportTicket } from './support/entities/support-ticket.entity';
 import { CommunicationLog } from './support/entities/communication-log.entity';
 import { NotificationTemplate } from './config/entities/notification-template.entity';
 import { BusinessHours } from './config/entities/business-hours.entity';
-import { ServiceArea as ConfigServiceArea } from './config/entities/service-area.entity';
 import { PricingRule } from './config/entities/pricing-rule.entity';
 import { Payout } from './finance/entities/payout.entity';
 import { Refund } from './finance/entities/refund.entity';
@@ -89,11 +86,9 @@ import { Address } from './addresses/entities/address.entity';
         let password = '';
         let database = '';
         
-        // Use DATABASE_URL only if it's a Railway URL (contains .railway)
-        // Otherwise fallback to individual DB_* variables (for local dev)
-        const isRailwayUrl = databaseUrl && (databaseUrl.includes('.railway') || databaseUrl.includes('.rlwy.net'));
-        
-        if (isRailwayUrl) {
+        // Always try to parse valid DATABASE_URL first when provided
+        // Fallback to individual DB_* variables only if parsing fails
+        if (databaseUrl) {
           // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
           console.log('🔍 Railway DATABASE_URL detected, parsing...');
           try {
@@ -117,9 +112,9 @@ import { Address } from './addresses/entities/address.entity';
             database = configService.get('DB_NAME', 'railway');
             host = configService.get('DB_HOST', 'localhost');
           }
-        } else if (databaseUrl) {
-          console.log('🔍 Non-Railway DATABASE_URL detected, skipping (using DB_* vars)');
-          // Use individual DB_* variables
+        }
+        // Fallback to individual DB_* variables only if no DATABASE_URL was provided or parsing failed
+        if (!host || !database) {
           host = configService.get('DB_HOST', 'localhost');
           port = configService.get<number>('DB_PORT', 5432);
           username = configService.get('DB_USERNAME', 'sevaq_user');
@@ -147,7 +142,6 @@ import { Address } from './addresses/entities/address.entity';
           Review,
           MicroZone,
           ServiceArea,
-          ConfigServiceArea,
           Waitlist,
           ServiceRequest,
           ServiceProfile,

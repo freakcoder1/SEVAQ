@@ -21,6 +21,16 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 export class OnDemandAssignmentScheduler {
   private readonly logger = new Logger(OnDemandAssignmentScheduler.name);
   private isRunning = false;
+  private idleCounter = 0;
+  private currentIntervalMs = 60 * 1000; // Start with 1 minute
+  
+  private readonly BACKOFF_LEVELS = [
+    60 * 1000,   // 1 minute
+    2 * 60 * 1000, // 2 minutes
+    5 * 60 * 1000, // 5 minutes
+    15 * 60 * 1000, // 15 minutes
+    30 * 60 * 1000, // 30 minutes (max)
+  ];
 
   constructor(
     @InjectRepository(Booking)
@@ -106,6 +116,17 @@ export class OnDemandAssignmentScheduler {
       // Process each booking and track outcomes
       let successfulAssignments = 0;
       let failedAssignments = 0;
+
+      // Intelligent backoff logic
+      if (bookingsToAssign.length === 0) {
+        this.idleCounter = Math.min(this.idleCounter + 1, this.BACKOFF_LEVELS.length - 1);
+        this.currentIntervalMs = this.BACKOFF_LEVELS[this.idleCounter];
+        this.logger.log(`No bookings found, increasing interval to ${this.currentIntervalMs / 60000} minutes`);
+      } else {
+        this.idleCounter = 0;
+        this.currentIntervalMs = this.BACKOFF_LEVELS[0];
+        this.logger.log(`Found bookings, resetting interval to 1 minute`);
+      }
       for (const booking of bookingsToAssign) {
         try {
           const result = await this.assignWorkerForBooking(booking);

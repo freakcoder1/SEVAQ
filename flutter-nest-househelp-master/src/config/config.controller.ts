@@ -42,12 +42,12 @@ export class SystemConfigController {
 
   @Patch('service-areas/:id')
   async updateServiceArea(@Param('id') id: string, @Body() dto: UpdateServiceAreaDto) {
-    return this.configService.updateServiceArea(Number(id), dto);
+    return this.configService.updateServiceArea(id, dto);
   }
 
   @Delete('service-areas/:id')
   async deleteServiceArea(@Param('id') id: string) {
-    return this.configService.deleteServiceArea(Number(id));
+    return this.configService.deleteServiceArea(id);
   }
 
   // Pricing Rules

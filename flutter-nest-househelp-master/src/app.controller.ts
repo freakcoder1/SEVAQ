@@ -29,7 +29,7 @@ export class AppController {
   }
 
   @Post('seed')
-  // @UseGuards(AdminGuard) // Removed for Railway deployment - call without auth
+  @UseGuards(AdminGuard)
   async runSeed() {
     const ds = this.dataSource;
     console.log('🌱 Starting database seeding...');
@@ -95,7 +95,14 @@ export class AppController {
   }
 
   @Post('reset-production-database')
+  @UseGuards(AdminGuard)
   async resetProductionDatabase() {
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        success: false,
+        message: '❌ This endpoint is disabled in production environment'
+      };
+    }
     const ds = this.dataSource;
     console.log('⚠️  FULL PRODUCTION DATABASE RESET STARTED');
 
@@ -145,6 +152,7 @@ export class AppController {
 
   // Quick endpoint to update worker 17 and 21 location to service area
   @Post('update-worker-locations')
+  @UseGuards(AdminGuard)
   async updateWorkerLocations() {
     const ds = this.dataSource;
     try {

@@ -33,6 +33,14 @@ const SERVICE_TYPE_TO_NAMES: Record<ServiceType, string[]> = {
 @Injectable()
 export class SubscriptionAssignmentScheduler {
   private readonly logger = new Logger(SubscriptionAssignmentScheduler.name);
+  
+  // Intelligent backoff configuration
+  private currentIntervalMs = 10 * 60 * 1000; // Start at 10 minutes
+  private readonly MIN_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes minimum
+  private readonly MAX_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes maximum
+  private backoffMultiplier = 1;
+  private timeoutRef: NodeJS.Timeout | null = null;
+  private isRunning = false;
 
   constructor(
     @InjectRepository(Subscription)
@@ -226,9 +234,27 @@ export class SubscriptionAssignmentScheduler {
   }
 
   /**
-   * Main scheduler method that runs every 10 minutes
+   * Initialize dynamic scheduler on module start
    */
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  onModuleInit() {
+    this.scheduleNextRun();
+  }
+
+  /**
+   * Schedule next run with current interval
+   */
+  private scheduleNextRun() {
+    if (this.timeoutRef) {
+      clearTimeout(this.timeoutRef);
+    }
+    
+    this.logger.log(`Next subscription assignment check scheduled in ${Math.round(this.currentIntervalMs / 60000)} minutes`);
+    this.timeoutRef = setTimeout(() => this.handleSubscriptionAssignments(), this.currentIntervalMs);
+  }
+
+  /**
+   * Main scheduler method
+   */
   async handleSubscriptionAssignments(): Promise<void> {
     this.logger.log('Running subscription assignment scheduler...');
 
@@ -305,12 +331,32 @@ export class SubscriptionAssignmentScheduler {
       }
 
       this.logger.log(`Processed ${processedSubscriptionIds.size} unique subscriptions`);
+      
+      // Intelligent backoff adjustment
+      if (allSubscriptions.length === 0 && unassignedSubscriptions.length === 0) {
+        // No work found - increase interval
+        const newInterval = Math.min(this.currentIntervalMs * 1.5, this.MAX_INTERVAL_MS);
+        if (newInterval !== this.currentIntervalMs) {
+          this.currentIntervalMs = newInterval;
+          this.logger.log(`No subscriptions found, increasing interval to ${Math.round(this.currentIntervalMs / 60000)} minutes`);
+        }
+      } else {
+        // Work found - reset to minimum interval
+        if (this.currentIntervalMs !== this.MIN_INTERVAL_MS) {
+          this.currentIntervalMs = this.MIN_INTERVAL_MS;
+          this.logger.log(`Resetting interval to ${Math.round(this.currentIntervalMs / 60000)} minutes (activity detected)`);
+        }
+      }
+      
       this.logger.log('Subscription assignment scheduler completed');
     } catch (error) {
       this.logger.error(
-        `Error in subscription assignment scheduler: ${error.message}`,
+        `Error in subscription assignment scheduler: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+    
+    // Schedule next run
+    this.scheduleNextRun();
   }
 
   /**
