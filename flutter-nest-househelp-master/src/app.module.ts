@@ -199,8 +199,8 @@ import { Address } from './addresses/entities/address.entity';
           } : false,
           // Connection pool configuration for Railway
           extra: {
-            max: process.env.NODE_ENV === 'production' ? 3 : 6,
-            idleTimeoutMillis: 20000, // 20 seconds - aggressively close before Railway kills
+            max: process.env.NODE_ENV === 'production' ? 15 : 10,
+            idleTimeoutMillis: 30000, // 30 seconds - give more time before closing idle connections
             connectionTimeoutMillis: 8000,
             keepAlive: true,
             keepAliveInitialDelayMillis: 5000,

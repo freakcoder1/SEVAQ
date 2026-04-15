@@ -15,12 +15,20 @@ export class OnDemandNotificationScheduler {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private isRunning = false;
+
   /**
-   * Scheduler that runs EVERY 30 SECONDS for on-demand booking notifications
-   * This is much faster than subscription scheduler since on-demand bookings need immediate delivery
+   * Scheduler that runs every 5 minutes for on-demand booking notifications
+   * Reduced from every 30 seconds to prevent connection pool exhaustion
    */
-  @Cron('*/30 * * * * *')
+  @Cron('0 */5 * * * *')
   async handleOnDemandNotifications(): Promise<void> {
+    if (this.isRunning) {
+      this.logger.warn('Previous on-demand notification run still in progress, skipping...');
+      return;
+    }
+
+    this.isRunning = true;
     this.logger.debug('Checking pending on-demand bookings for notifications...');
 
     try {
@@ -91,6 +99,8 @@ export class OnDemandNotificationScheduler {
         `Error in on-demand notification scheduler: ${errorMessage}`,
         errorStack,
       );
+    } finally {
+      this.isRunning = false;
     }
   }
 }

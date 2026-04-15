@@ -28,11 +28,12 @@ export class DatabaseMonitoringService implements OnModuleInit {
 
   private async startMonitoring() {
     // Start monitoring connection pool metrics
-    const monitoringInterval = process.env.NODE_ENV === 'production' ? 60000 : 15000;
+    // Reduced production frequency to 120s to lower connection churn
+    const monitoringInterval = process.env.NODE_ENV === 'production' ? 120000 : 15000;
     
     setInterval(async () => {
       await this.updateConnectionPoolMetrics();
-    }, monitoringInterval); // Update every 60s in production, 15s locally
+    }, monitoringInterval); // Update every 120s in production, 15s locally
   }
 
   private async updateConnectionPoolMetrics() {
@@ -66,7 +67,7 @@ export class DatabaseMonitoringService implements OnModuleInit {
         await queryRunner.release();
       }
     } catch (error) {
-      console.error('Error updating connection pool metrics:', error);
+      console.error('Error updating connection pool metrics — possible connection leak or pool exhaustion:', error);
     }
   }
 
