@@ -11,11 +11,12 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { Response } from 'express';
 import { SerializeInterceptor } from './common/interceptors/serialize.interceptor';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import * as path from 'path';
+import helmet from 'helmet';
+import { Request, Response, NextFunction } from 'express';
 
 // Configure Winston logger
 const winstonLogger = WinstonModule.createLogger({
@@ -151,6 +152,39 @@ async function bootstrap() {
   // Global exception filter for better error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  // Production Security Headers (Helmet)
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' },
+    xssFilter: true,
+    noSniff: true,
+    ieNoOpen: true,
+    permittedCrossDomainPolicies: true,
+    hidePoweredBy: true,
+  }));
+
+  // Prevent clickjacking
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.header('X-Frame-Options', 'DENY');
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-XSS-Protection', '1; mode=block');
+    res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+  });
+
   // Swagger API Documentation (only in non-production)
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
@@ -163,6 +197,15 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
+  // Runtime Environment Validation
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+  const missingEnv = requiredEnvVars.filter(v => !process.env[v]);
+  
+  if (missingEnv.length > 0) {
+    winstonLogger.error('Missing required environment variables', { missing: missingEnv });
+    process.exit(1);
+  }
+
   const port = process.env.PORT ?? 45357;
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: http://0.0.0.0:${port}/api`);
@@ -172,6 +215,36 @@ async function bootstrap() {
     environment: process.env.NODE_ENV || 'development',
     apiPrefix: '/api',
     timestamp: new Date().toISOString(),
+  });
+
+  // Graceful Shutdown Handlers
+  process.on('SIGTERM', async () => {
+    winstonLogger.log('info', 'SIGTERM received, starting graceful shutdown');
+    await app.close();
+    winstonLogger.log('info', 'Application shutdown completed successfully');
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    winstonLogger.log('info', 'SIGINT received, starting graceful shutdown');
+    await app.close();
+    winstonLogger.log('info', 'Application shutdown completed successfully');
+    process.exit(0);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    winstonLogger.error('Unhandled Rejection at:', {
+      promise: promise.toString(),
+      reason: reason instanceof Error ? reason.message : reason
+    });
+  });
+
+  process.on('uncaughtException', (error) => {
+    winstonLogger.error('Uncaught Exception:', {
+      error: error.message,
+      stack: error.stack
+    });
+    process.exit(1);
   });
 }
 bootstrap();

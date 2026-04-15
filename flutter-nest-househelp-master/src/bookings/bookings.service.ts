@@ -189,17 +189,7 @@ export class BookingsService {
         createBookingDto.serviceId = serviceRequest.serviceId;
         createBookingDto.workerId = serviceRequest.assignedWorkerId;
         
-        // DEBUG: Log service request date and price
-        console.log('🔍 DEBUG: Service Request details:', {
-          id: serviceRequest.id,
-          date: serviceRequest.date,
-          dateType: typeof serviceRequest.date,
-          priceSnapshot: serviceRequest.priceSnapshot,
-          priceSnapshotType: typeof serviceRequest.priceSnapshot
-        });
-        
         // Use priceSnapshot from service request for booking amount
-        console.log('🔍 DEBUG create: serviceRequest.priceSnapshot =', serviceRequest.priceSnapshot);
         createBookingDto.amount = serviceRequest.priceSnapshot || createBookingDto.amount;
         
         // Extract just the date portion (YYYY-MM-DD) from the service request date
@@ -207,7 +197,6 @@ export class BookingsService {
           const serviceReqDate = new Date(serviceRequest.date);
           // Keep as Date object for DTO validation
           createBookingDto.date = new Date(serviceReqDate.toISOString().split('T')[0] + 'T00:00:00.000Z');
-          console.log('🔍 DEBUG: Converted date for booking:', createBookingDto.date);
         } else {
           createBookingDto.date = serviceRequest.date;
         }
@@ -440,7 +429,7 @@ export class BookingsService {
             startTime: createBookingDto.startTime,
             serviceRequestId: createBookingDto.serviceRequestId
           }));
-          throw new Error(errorMsg);
+          throw new BadRequestException(errorMsg);
         })(),
         // Ensure we have service relation
         service: await this.servicesRepository.findOne({
@@ -560,12 +549,14 @@ export class BookingsService {
       return fullBooking || bookingToReturn;
     } catch (error) {
       // Log the error for debugging
-      console.error('Booking creation error:', error.message, {
-        userId: createBookingDto.userId,
-        serviceId: createBookingDto.serviceId,
-        startTime: createBookingDto.startTime,
-        endTime: createBookingDto.endTime,
-      });
+      if (error instanceof Error) {
+        console.error('Booking creation error:', error.message, {
+          userId: createBookingDto.userId,
+          serviceId: createBookingDto.serviceId,
+          startTime: createBookingDto.startTime,
+          endTime: createBookingDto.endTime,
+        });
+      }
 
       // Re-throw the error with context
       throw error;
@@ -600,7 +591,7 @@ export class BookingsService {
     const fullUser = await this.usersRepository.findOne({
       where: { publicId: booking.userId } as any,
     });
-    console.log('🔍 Full user data:', {
+    this.logger.debug('🔍 Full user data:', {
       id: fullUser?.id,
       latitude: fullUser?.latitude,
       longitude: fullUser?.longitude,
@@ -617,7 +608,7 @@ export class BookingsService {
     let userLat = userData?.latitude;
     let userLng = userData?.longitude;
 
-    console.log('🔍 Initial user location:', { userLat, userLng });
+    this.logger.debug('🔍 Initial user location:', { userLat, userLng });
 
     // Fallback to service request location if user location is null
     // Need to fetch service request separately since relation may not work
@@ -635,7 +626,7 @@ export class BookingsService {
           const srLocation = serviceRequest.metadata.location;
           userLat = srLocation.lat;
           userLng = srLocation.lng;
-          console.log('🔍 Using service request location:', { userLat, userLng });
+          this.logger.debug('🔍 Using service request location:', { userLat, userLng });
         }
       }
     }
@@ -644,7 +635,7 @@ export class BookingsService {
     if ((!userLat || !userLng) && booking.location) {
       userLat = booking.location.latitude;
       userLng = booking.location.longitude;
-      console.log('🔍 Using booking location:', { userLat, userLng });
+      this.logger.debug('🔍 Using booking location:', { userLat, userLng });
     }
 
     if (!userLat || !userLng) {
@@ -693,24 +684,34 @@ export class BookingsService {
         endTimeDate,
       );
 
-      // Book the slot atomically (prevents race conditions)
-      const slotBooked = await this.slotsService.markAsBooked((bestMatch.slot as any).id);
-      if (!slotBooked) {
-        // Slot was already booked by another concurrent request
-        this.logger.warn(
-          `Slot ${(bestMatch.slot as any).id} was already booked (race condition). Booking remains in REQUESTED state.`,
-        );
-        return booking;
-      }
+      // ✅ Run slot booking + booking update inside transaction
+      const savedBooking = await this.dataSource.transaction(async (transactionalEntityManager) => {
+        // Book the slot atomically (prevents race conditions)
+        const slotBooked = await this.slotsService.markAsBooked((bestMatch.slot as any).id);
+        if (!slotBooked) {
+          // Slot was already booked by another concurrent request
+          this.logger.warn(
+            `Slot ${(bestMatch.slot as any).id} was already booked (race condition). Booking remains in REQUESTED state.`,
+          );
+          return booking;
+        }
 
-      // Update booking with assigned worker
-      booking.worker = bestMatch.worker;
-      booking.status = BookingStatus.PENDING; // Ready for confirmation
-      booking.assignmentState = AssignmentState.ASSIGNED;
-      booking.assignedWorkerId = bestMatch.worker.id;
-      booking.assignmentTimestamp = new Date();
-      booking.assignmentReason = 'Best match found';
-      const savedBooking = await this.bookingsRepository.save(booking);
+        try {
+          // Update booking with assigned worker
+          booking.worker = bestMatch.worker;
+          booking.status = BookingStatus.PENDING; // Ready for confirmation
+          booking.assignmentState = AssignmentState.ASSIGNED;
+          booking.assignedWorkerId = bestMatch.worker.id;
+          booking.assignmentTimestamp = new Date();
+          booking.assignmentReason = 'Best match found';
+          return await transactionalEntityManager.save(booking);
+        } catch (bookingSaveError) {
+          // ✅ Rollback slot booking if booking save fails
+          this.logger.error(`Failed to save booking after slot was booked, releasing slot`, bookingSaveError);
+          await this.slotsService.markAsAvailable((bestMatch.slot as any).id);
+          throw bookingSaveError;
+        }
+      });
 
       // NOTE: Worker notification is intentionally NOT sent here.
       // The notification will be sent after payment is confirmed in payments.service.ts
@@ -740,10 +741,14 @@ export class BookingsService {
       await this.attemptAssignment(savedBooking.id);
     } catch (error) {
       // Assignment failed, but booking was created successfully
-      console.log(
-        `[Booking ${savedBooking.id}] Assignment attempt failed (booking still created):`,
-        error.message,
-      );
+      if (error instanceof Error) {
+        console.log(
+          `[Booking ${savedBooking.id}] Assignment attempt failed (booking still created):`,
+          error.message,
+        );
+      } else {
+        this.logger.debug(`[Booking ${savedBooking.id}] Assignment attempt failed with unknown error type (booking still created)`);
+      }
     }
 
     return savedBooking;
@@ -781,8 +786,8 @@ export class BookingsService {
   private serializeBooking(booking: any): any {
     if (!booking) return null;
     
-    console.log('🔍 DEBUG serializeBooking: booking.totalAmount =', booking.totalAmount);
-    console.log('🔍 DEBUG serializeBooking: booking.amount =', booking.amount);
+    this.logger.debug('🔍 DEBUG serializeBooking: booking.totalAmount =', booking.totalAmount);
+    this.logger.debug('🔍 DEBUG serializeBooking: booking.amount =', booking.amount);
     
     // FIX: Don't divide by 100 - frontend sends amount in rupees, not paise
     // Previously we were dividing by 100 which caused 1200 → 12 rupees
@@ -912,6 +917,17 @@ export class BookingsService {
       throw new BadRequestException(
         'Only REQUESTED or PENDING bookings can be cancelled',
       );
+    }
+
+    // ✅ Release booked slot when booking is cancelled
+    if (booking.slotId) {
+      try {
+        await this.slotsService.markAsAvailable(booking.slotId);
+        this.logger.log(`Released slot ${booking.slotId} for cancelled booking ${id}`);
+      } catch (slotError) {
+        this.logger.warn(`Failed to release slot ${booking.slotId} for cancelled booking ${id}`, slotError);
+        // Don't fail cancel operation if slot release fails
+      }
     }
 
     booking.status = BookingStatus.CANCELLED;
@@ -1128,7 +1144,11 @@ export class BookingsService {
       const user = await this.usersRepository.findOneBy({ publicId: userId } as any);
       return user?.id ?? null;
     } catch (error) {
-      this.logger.error(`Error resolving userId: ${error.message}`);
+      if (error instanceof Error) {
+        this.logger.error(`Error resolving userId: ${error.message}`);
+      } else {
+        this.logger.error(`Error resolving userId with unknown error type`);
+      }
       return null;
     }
   }

@@ -1,40 +1,82 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from './entities/address.entity';
 import { CreateAddressDto, UpdateAddressDto } from './dto/address.dto';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AddressesService {
+  private readonly logger = new Logger(AddressesService.name);
+
   constructor(
     @InjectRepository(Address)
     private addressesRepository: Repository<Address>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
+  /**
+   * Resolve user ID from various formats (publicId/UUID or internal id)
+   * @param userId - Could be publicId (UUID) or internal user id
+   * @returns Internal user id string for database queries
+   */
+  private async resolveUserId(userId: string): Promise<string | null> {
+    // If it's a UUID (publicId), look up the user to get internal id
+    try {
+      const user = await this.usersRepository.findOneBy({ publicId: userId } as any);
+      if (user) {
+        // Return the actual database userId field value converted to string
+        return String(user.id);
+      }
+      // If not found as publicId, check if it's already the internal userId
+      const existingUser = await this.usersRepository.findOneBy({ id: userId } as any);
+      return existingUser ? String(existingUser.id) : null;
+    } catch (error: any) {
+      this.logger.error(`Error resolving userId: ${error.message}`);
+      return userId; // fallback to original value on error
+    }
+  }
+
   async create(userId: string, createAddressDto: CreateAddressDto): Promise<Address> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      throw new BadRequestException('User not found');
+    }
+
     // If this is set as default, unset other defaults for this user
     if (createAddressDto.isDefault) {
-      await this.unsetUserDefault(userId);
+      await this.unsetUserDefault(resolvedUserId);
     }
 
     const address = this.addressesRepository.create({
       ...createAddressDto,
-      userId,
+      userId: resolvedUserId,
     });
 
     return this.addressesRepository.save(address);
   }
 
   async findAllByUser(userId: string): Promise<Address[]> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      return [];
+    }
+
     return this.addressesRepository.find({
-      where: { userId },
+      where: { userId: resolvedUserId },
       order: { isDefault: 'DESC', createdAt: 'DESC' },
     });
   }
 
   async findOne(id: string, userId: string): Promise<Address> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      throw new NotFoundException('Address not found');
+    }
+
     const address = await this.addressesRepository.findOne({
-      where: { id, userId },
+      where: { id, userId: resolvedUserId },
     });
 
     if (!address) {
@@ -45,17 +87,27 @@ export class AddressesService {
   }
 
   async findDefault(userId: string): Promise<Address | null> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      return null;
+    }
+
     return this.addressesRepository.findOne({
-      where: { userId, isDefault: true },
+      where: { userId: resolvedUserId, isDefault: true },
     });
   }
 
   async update(id: string, userId: string, updateAddressDto: UpdateAddressDto): Promise<Address> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      throw new BadRequestException('User not found');
+    }
+
     const address = await this.findOne(id, userId);
 
     // If setting this as default, unset others
     if (updateAddressDto.isDefault) {
-      await this.unsetUserDefault(userId);
+      await this.unsetUserDefault(resolvedUserId);
     }
 
     Object.assign(address, updateAddressDto);
@@ -68,8 +120,13 @@ export class AddressesService {
   }
 
   async setAsDefault(id: string, userId: string): Promise<Address> {
+    const resolvedUserId = await this.resolveUserId(userId);
+    if (!resolvedUserId) {
+      throw new BadRequestException('User not found');
+    }
+
     const address = await this.findOne(id, userId);
-    await this.unsetUserDefault(userId);
+    await this.unsetUserDefault(resolvedUserId);
     address.isDefault = true;
     return this.addressesRepository.save(address);
   }

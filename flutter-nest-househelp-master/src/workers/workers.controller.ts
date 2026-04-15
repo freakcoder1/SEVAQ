@@ -275,7 +275,7 @@ export class WorkersController {
   async updateMyProfile(@Request() req: JwtRequest, @Body() updateData: Record<string, unknown>) {
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
-      throw new Error('Worker profile not found');
+      throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
     }
     return this.workersService.updateWorkerProfile(worker.id, updateData);
   }
@@ -336,7 +336,7 @@ export class WorkersController {
   async updateMyServices(@Request() req: JwtRequest, @Body('serviceCategories') serviceCategories: string[]) {
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
-      throw new Error('Worker profile not found');
+      throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
     }
     return this.workersService.updateWorkerServices(worker.id, serviceCategories);
   }
@@ -353,7 +353,7 @@ export class WorkersController {
   ) {
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
-      throw new Error('Worker profile not found');
+      throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
     }
     return this.workersService.updateWorkerServiceArea(worker.id, serviceArea);
   }
@@ -372,7 +372,7 @@ export class WorkersController {
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
       this.logger.error(`Worker not found for user: ${req.user.userId}`);
-      throw new NotFoundException('Worker profile not found');
+      throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
     }
     return this.workersService.updateFcmToken(worker.id, fcmToken);
   }

@@ -60,6 +60,14 @@ import { Payout } from './finance/entities/payout.entity';
 import { Refund } from './finance/entities/refund.entity';
 import { Address } from './addresses/entities/address.entity';
 
+// Reliability Services
+import { IdempotencyGuard } from './common/guards/idempotency.guard';
+import { CircuitBreakerService } from './common/services/circuit-breaker.service';
+import { CacheService } from './common/services/cache.service';
+import { DistributedLockService } from './common/services/distributed-lock.service';
+import { AsyncWorkerPoolService } from './common/services/async-worker-pool.service';
+import { ObservabilityService } from './common/services/observability.service';
+
 @Module({
   imports: [
     ThrottlerModule.forRoot({
@@ -221,6 +229,11 @@ import { Address } from './addresses/entities/address.entity';
   controllers: [AppController],
   providers: [
     AppService,
+    CircuitBreakerService,
+    CacheService,
+    DistributedLockService,
+    AsyncWorkerPoolService,
+    ObservabilityService,
     {
       provide: 'APP_FILTER',
       useClass: ValidationExceptionFilter,
