@@ -21,6 +21,7 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 @Injectable()
 export class OnDemandAssignmentScheduler {
   private readonly logger = new Logger(OnDemandAssignmentScheduler.name);
+  private isRunning = false;
 
   constructor(
     @InjectRepository(Booking)
@@ -77,6 +78,12 @@ export class OnDemandAssignmentScheduler {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleOnDemandAssignments(): Promise<void> {
+    if (this.isRunning) {
+      this.logger.warn('Previous on-demand assignment run still in progress, skipping...');
+      return;
+    }
+
+    this.isRunning = true;
     this.logger.log('Running on-demand assignment scheduler...');
 
     try {
@@ -91,7 +98,7 @@ export class OnDemandAssignmentScheduler {
           workerId: IsNull(),
         },
         relations: ['service', 'user'],
-        take: 100, // Process max 100 at a time to avoid overwhelming the system
+        take: 25, // Process max 25 at a time to avoid overwhelming the connection pool
       });
 
       this.logger.log(
@@ -145,6 +152,8 @@ export class OnDemandAssignmentScheduler {
       this.logger.error(
         `Error in on-demand assignment scheduler: ${error.message}`,
       );
+    } finally {
+      this.isRunning = false;
     }
   }
 
