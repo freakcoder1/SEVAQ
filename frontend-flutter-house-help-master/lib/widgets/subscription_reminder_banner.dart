@@ -32,8 +32,9 @@ class _SubscriptionReminderBannerState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchSubscriptions();
-      // Start periodic refresh every 30 seconds
-      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (
+      // Start periodic refresh every 120 seconds
+      // Changed from 30s to reduce server load - assignment system runs only once per minute
+      _refreshTimer = Timer.periodic(const Duration(seconds: 120), (
         Timer timer,
       ) {
         _fetchSubscriptions();
@@ -70,6 +71,8 @@ class _SubscriptionReminderBannerState
       debugPrint(
         'Error fetching subscriptions in SubscriptionReminderBanner: $e',
       );
+      // Silent fail - do not crash widget tree on network errors
+      // Next timer tick will retry automatically
     }
   }
 
@@ -121,12 +124,7 @@ class _SubscriptionReminderBannerState
 
           // Check if any subscription is awaiting worker assignment
           final awaitingWorker = activeSubscriptions
-              .where(
-                (s) =>
-                    s.workerName == null ||
-                    s.workerName!.isEmpty ||
-                    s.workerAssignmentFailed,
-              )
+              .where((s) => s.workerId == null || s.workerAssignmentFailed)
               .toList();
 
           debugPrint('=== SubscriptionReminderBanner Debug ===');

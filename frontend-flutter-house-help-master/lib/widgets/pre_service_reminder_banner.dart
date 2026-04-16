@@ -11,6 +11,7 @@
 ///
 /// Changes to this widget must comply with these principles and require
 /// architectural review.
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/worker.dart';
 import '../providers/booking_provider.dart';
@@ -35,13 +36,27 @@ class PreServiceReminderBanner extends StatefulWidget {
 }
 
 class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     // Defer fetching to after the widget tree is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchBookings();
+      // Refresh bookings every 120 seconds only when widget is mounted
+      _refreshTimer = Timer.periodic(const Duration(seconds: 120), (timer) {
+        if (mounted) {
+          _fetchBookings();
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchBookings() async {
