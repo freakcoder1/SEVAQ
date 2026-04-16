@@ -100,6 +100,8 @@ export class FirebaseAuthService {
   async verifyPhoneAndLogin(
     phone: string,
     idToken: string,
+    firstName?: string,
+    lastName?: string,
   ): Promise<{ access_token: string; user: any }> {
     this.logger.log(`Verifying phone login for: ${phone}`);
 
@@ -111,13 +113,13 @@ export class FirebaseAuthService {
 
     // Bypass Firebase for development - always use fallback mode
     this.logger.warn('Development mode - using fallback without Firebase verification');
-    return this._handleDevLogin(phone);
+    return this._handleDevLogin(phone, firstName, lastName);
   }
 
   /**
    * Development fallback login - creates/updates user without Firebase verification
    */
-  private async _handleDevLogin(phone: string): Promise<{ access_token: string; user: any }> {
+  private async _handleDevLogin(phone: string, firstName?: string, lastName?: string): Promise<{ access_token: string; user: any }> {
     this.logger.log(`Dev login for phone: ${phone}`);
 
     try {
@@ -138,11 +140,16 @@ export class FirebaseAuthService {
         // Create new user
         this.logger.log(`Creating new user with phone: ${phone}`);
         const securePassword = this.generateSecurePassword();
+        
+        // Sanitize incoming names
+        const sanitizedFirstName = firstName?.trim() || '';
+        const sanitizedLastName = lastName?.trim() || '';
+        
         const createUserDto = {
           email: `user_${phone.replace(/[^0-9]/g, '')}@phone.auth`,
           password: securePassword,
-          firstName: 'User',
-          lastName: phone.replace('+', ''),
+          firstName: sanitizedFirstName || 'User',
+          lastName: sanitizedLastName || phone.replace('+', ''),
           phone: phone,
           role: UserRole.USER,
         };
@@ -165,7 +172,7 @@ export class FirebaseAuthService {
             lastName: phone.replace('+', ''),
           } as any);
           // Update local user object for subsequent checks
-          user!.firstName = 'Worker';
+          user!.firstName = 'User';
           user!.lastName = phone.replace('+', '');
         }
       }

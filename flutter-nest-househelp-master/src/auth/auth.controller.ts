@@ -170,6 +170,8 @@ export class AuthController {
       const result = await this.firebaseAuthService.verifyPhoneAndLogin(
         verifyOtpLoginDto.phone,
         verifyOtpLoginDto.idToken,
+        verifyOtpLoginDto.firstName,
+        verifyOtpLoginDto.lastName,
       );
       this.logger.log(`OTP login successful for phone: ${verifyOtpLoginDto.phone}`);
       return result;

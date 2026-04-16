@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, IsOptional, MaxLength, MinLength } from 'class-validator';
 
 export class VerifyOtpLoginDto {
   @IsString({ message: 'Phone number must be a string' })
@@ -12,4 +12,16 @@ export class VerifyOtpLoginDto {
   @IsString({ message: 'ID token must be a string' })
   @IsNotEmpty({ message: 'ID token is required' })
   idToken: string;
+
+  @IsOptional()
+  @IsString({ message: 'First name must be a string' })
+  @MinLength(2, { message: 'First name must be at least 2 characters' })
+  @MaxLength(50, { message: 'First name must be maximum 50 characters' })
+  firstName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Last name must be a string' })
+  @MinLength(2, { message: 'Last name must be at least 2 characters' })
+  @MaxLength(50, { message: 'Last name must be maximum 50 characters' })
+  lastName?: string;
 }
