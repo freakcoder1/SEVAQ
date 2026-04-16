@@ -80,80 +80,119 @@ export class OnDemandAssignmentScheduler {
     return deg * (Math.PI / 180);
   }
 
-  /**
-   * Main scheduler method that runs every minute
-   * Assigns workers to on-demand bookings that don't have workers
-   */
-  @Cron(CronExpression.EVERY_MINUTE)
-  async handleOnDemandAssignments(): Promise<void> {
-    if (this.isRunning) {
-      this.logger.warn('Previous on-demand assignment run still in progress, skipping...');
-      return;
-    }
+   private timeoutRef: NodeJS.Timeout | null = null;
+   private readonly MAX_EXECUTION_TIME_MS = 45 * 1000; // 45 seconds hard limit
 
-    this.isRunning = true;
-    this.logger.log('Running on-demand assignment scheduler...');
+   onModuleInit() {
+     this.scheduleNextRun();
+   }
 
-    try {
-      // Find on-demand bookings that need worker assignment
-      // - type is 'on_demand'
-      // - status is 'requested' or 'confirmed' (not completed/cancelled)
-      // - no worker assigned (workerId is null)
-      const bookingsToAssign = await this.bookingRepository.find({
-        where: {
-          type: BookingType.ON_DEMAND,
-          status: In([BookingStatus.REQUESTED, BookingStatus.CONFIRMED]),
-          workerId: IsNull(),
-        },
-        relations: ['service', 'user'],
-        take: 25, // Process max 25 at a time to avoid overwhelming the connection pool
-      });
+   onModuleDestroy() {
+     if (this.timeoutRef) {
+       clearTimeout(this.timeoutRef);
+     }
+   }
 
-      this.logger.log(
-        `Found ${bookingsToAssign.length} on-demand bookings needing worker assignment`,
-      );
+   private scheduleNextRun() {
+     if (this.timeoutRef) {
+       clearTimeout(this.timeoutRef);
+     }
+     
+     this.logger.log(`Next on-demand assignment check scheduled in ${Math.round(this.currentIntervalMs / 60000)} minutes`);
+     this.timeoutRef = setTimeout(() => this.handleOnDemandAssignments(), this.currentIntervalMs);
+   }
 
-      // Process each booking and track outcomes
-      let successfulAssignments = 0;
-      let failedAssignments = 0;
+   /**
+    * Main scheduler method with proper timeout safety
+    * Assigns workers to on-demand bookings that don't have workers
+    */
+   async handleOnDemandAssignments(): Promise<void> {
+     if (this.isRunning) {
+       this.logger.warn('Previous on-demand assignment run still in progress, skipping...');
+       this.scheduleNextRun();
+       return;
+     }
 
-      // Intelligent backoff logic
-      if (bookingsToAssign.length === 0) {
-        this.idleCounter = Math.min(this.idleCounter + 1, this.BACKOFF_LEVELS.length - 1);
-        this.currentIntervalMs = this.BACKOFF_LEVELS[this.idleCounter];
-        this.logger.log(`No bookings found, increasing interval to ${this.currentIntervalMs / 60000} minutes`);
-      } else {
-        this.idleCounter = 0;
-        this.currentIntervalMs = this.BACKOFF_LEVELS[0];
-        this.logger.log(`Found bookings, resetting interval to 1 minute`);
-      }
-      for (const booking of bookingsToAssign) {
-        try {
-          const result = await this.assignWorkerForBooking(booking);
-          if (result.success) {
-            successfulAssignments++;
-          } else {
-            failedAssignments++;
-          }
-        } catch (error) {
-          failedAssignments++;
-          this.logger.error(
-            `Error assigning worker for on-demand booking ${booking.id}: ${error.message}`,
-          );
-        }
-      }
+     this.isRunning = true;
+     this.logger.log('Running on-demand assignment scheduler...');
 
-      this.logger.log(
-        `On-demand assignment scheduler completed: ${successfulAssignments} assigned, ${failedAssignments} failed out of ${bookingsToAssign.length} bookings`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error in on-demand assignment scheduler: ${error.message}`,
-      );
-    } finally {
-      this.isRunning = false;
-    }
-  }
+     // ✅ GUARANTEED RESET: Hard timeout that will ALWAYS reset isRunning even if everything else fails
+     const hardResetTimeout = setTimeout(() => {
+       this.logger.error('⚠️ ON-DEMAND SCHEDULER HARD TIMEOUT TRIGGERED - FORCING RESET');
+       this.isRunning = false;
+       this.idleCounter = Math.min(this.idleCounter + 1, this.BACKOFF_LEVELS.length - 1);
+       this.currentIntervalMs = this.BACKOFF_LEVELS[this.idleCounter];
+       this.scheduleNextRun();
+     }, this.MAX_EXECUTION_TIME_MS);
+
+     try {
+       // Find on-demand bookings that need worker assignment
+       // - type is 'on_demand'
+       // - status is 'requested' or 'confirmed' (not completed/cancelled)
+       // - no worker assigned (workerId is null)
+       const bookingsToAssign = await this.bookingRepository.find({
+         where: {
+           type: BookingType.ON_DEMAND,
+           status: In([BookingStatus.REQUESTED, BookingStatus.CONFIRMED]),
+           workerId: IsNull(),
+         },
+         relations: ['service', 'user'],
+         take: 25, // Process max 25 at a time to avoid overwhelming the connection pool
+       });
+
+       this.logger.log(
+         `Found ${bookingsToAssign.length} on-demand bookings needing worker assignment`,
+       );
+
+       // Process each booking and track outcomes
+       let successfulAssignments = 0;
+       let failedAssignments = 0;
+
+       // Intelligent backoff logic
+       if (bookingsToAssign.length === 0) {
+         this.idleCounter = Math.min(this.idleCounter + 1, this.BACKOFF_LEVELS.length - 1);
+         this.currentIntervalMs = this.BACKOFF_LEVELS[this.idleCounter];
+         this.logger.log(`No bookings found, increasing interval to ${this.currentIntervalMs / 60000} minutes`);
+       } else {
+         this.idleCounter = 0;
+         this.currentIntervalMs = this.BACKOFF_LEVELS[0];
+         this.logger.log(`Found bookings, resetting interval to 1 minute`);
+       }
+       for (const booking of bookingsToAssign) {
+         try {
+           const result = await this.assignWorkerForBooking(booking);
+           if (result.success) {
+             successfulAssignments++;
+           } else {
+             failedAssignments++;
+           }
+         } catch (error) {
+           failedAssignments++;
+           this.logger.error(
+             `Error assigning worker for on-demand booking ${booking.id}: ${error.message}`,
+           );
+         }
+       }
+
+       this.logger.log(
+         `On-demand assignment scheduler completed: ${successfulAssignments} assigned, ${failedAssignments} failed out of ${bookingsToAssign.length} bookings`,
+       );
+     } catch (error) {
+       this.logger.error(
+         `Error in on-demand assignment scheduler: ${error.message}`,
+       );
+       // On error backoff more aggressively
+       this.idleCounter = Math.min(this.idleCounter + 2, this.BACKOFF_LEVELS.length - 1);
+       this.currentIntervalMs = this.BACKOFF_LEVELS[this.idleCounter];
+     } finally {
+       // Always clear the hard timeout and reset running flag
+       clearTimeout(hardResetTimeout);
+       this.isRunning = false;
+     }
+
+     // Schedule next run only after completion
+     this.scheduleNextRun();
+   }
 
   /**
    * Assign a worker to an on-demand booking
