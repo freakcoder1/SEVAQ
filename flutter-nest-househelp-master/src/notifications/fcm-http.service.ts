@@ -1,12 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import axios from 'axios';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { Worker } from '../workers/entities/worker.entity';
 
 @Injectable()
 export class FcmHttpService {
   private readonly logger = new Logger(FcmHttpService.name);
   private accessToken: string | null = null;
   private tokenExpiry: number = 0;
+
+  constructor(
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+    @InjectRepository(Worker)
+    private workersRepository: Repository<Worker>,
+  ) {}
 
   async sendNotification(token: string, title: string, body: string, data?: Record<string, string>) {
     try {
@@ -59,6 +70,26 @@ export class FcmHttpService {
       this.logger.error(`FCM Error Response Status: ${error.response?.status}`);
       this.logger.error(`FCM Error Response Data: ${JSON.stringify(error.response?.data)}`);
       this.logger.error(`FCM Error Details:`, error.response?.data?.error);
+
+      // Handle invalid token errors - automatically clean up stale tokens
+      const errorCode = error.response?.data?.error?.status;
+      if (errorCode === 'INVALID_ARGUMENT' || errorCode === 'NOT_FOUND' || errorCode === 'PERMISSION_DENIED') {
+        const errorMessage = error.response?.data?.error?.message || '';
+        if (errorMessage.includes('InvalidRegistration') ||
+            errorMessage.includes('NotRegistered') ||
+            errorMessage.includes('InvalidApnsToken') ||
+            errorMessage.includes('token is not registered')) {
+          
+          this.logger.warn(`⚠️ Invalid FCM token detected, removing from database: ${token.substring(0, 30)}...`);
+          
+          // Clear token from both user and worker tables
+          await this.usersRepository.update({ fcmToken: token }, { fcmToken: '' });
+          await this.workersRepository.update({ fcmToken: token }, { fcmToken: '' });
+          
+          this.logger.log(`✅ Removed invalid FCM token from database`);
+        }
+      }
+
       return false;
     }
   }

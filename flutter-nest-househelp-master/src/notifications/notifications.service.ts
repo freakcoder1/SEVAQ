@@ -553,8 +553,8 @@ export class NotificationsService {
     console.log(`[notifyUserBookingConfirmation] User has FCM token: ${user.fcmToken.substring(0, 20)}...`);
     
     const serviceName = booking.service?.name || 'Service';
-    const notificationTitle = 'बुकिंग पुष्टि!';
-    const notificationBody = `आपकी ${serviceName} बुकिंग पुष्टि हो गई है!`;
+    const notificationTitle = 'Booking Confirmed!';
+    const notificationBody = `Your ${serviceName} booking has been confirmed successfully!`;
 
     console.log(`[notifyUserBookingConfirmation] Sending push notification: title="${notificationTitle}", body="${notificationBody}"`);
     
