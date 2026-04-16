@@ -371,10 +371,21 @@ export class WorkersController {
     this.logger.log(`Updating FCM token for user: ${req.user.userId}, token: ${fcmToken?.substring(0, 30)}...`);
     const worker = await this.workersService.findByUserId(req.user.userId);
     if (!worker) {
-      this.logger.error(`Worker not found for user: ${req.user.userId}`);
-      throw new NotFoundException('Worker profile not found. Please complete your worker registration.');
+      // Graceful handling: Regular customers are allowed to register FCM tokens too
+      // This is not an error, user just doesn't have a worker profile yet
+      this.logger.warn(`Regular user (not a worker) registering FCM token: ${req.user.userId}`);
+      return { 
+        success: true, 
+        isWorker: false, 
+        message: 'FCM token registered for user account' 
+      };
     }
-    return this.workersService.updateFcmToken(worker.id, fcmToken);
+    await this.workersService.updateFcmToken(worker.id, fcmToken);
+    return { 
+      success: true, 
+      isWorker: true, 
+      message: 'FCM token registered for worker account' 
+    };
   }
 
   /**

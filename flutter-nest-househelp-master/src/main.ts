@@ -82,7 +82,16 @@ class GlobalExceptionFilter implements ExceptionFilter {
   }
 }
 
+let BOOTSTRAP_RUNNING = false;
+
 async function bootstrap() {
+  // SINGLE INSTANCE GUARD: Prevent dual bootstrap
+  if (BOOTSTRAP_RUNNING) {
+    winstonLogger.warn('⚠️  Bootstrap already in progress, skipping duplicate execution');
+    return;
+  }
+  BOOTSTRAP_RUNNING = true;
+
   // Ensure logs directory exists
   const fs = require('fs');
   const logsDir = path.join(process.cwd(), 'logs');

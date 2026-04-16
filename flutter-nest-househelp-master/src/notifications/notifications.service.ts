@@ -281,13 +281,16 @@ export class NotificationsService {
           
         console.log(`[Firebase Init] Using individual credentials for project: ${projectId}`);
 
-        admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId,
-            clientEmail,
-            privateKey: finalPrivateKey,
-          }),
-        });
+        // Singleton guard: Only initialize if not already running
+        if (admin.apps.length === 0) {
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey: finalPrivateKey,
+            }),
+          });
+        }
 
         this.firebaseInitialized = true;
         this.firebaseStatus.initialized = true;
