@@ -158,23 +158,8 @@ export class FirebaseAuthService {
           phone,
         );
       } else {
-        // FIX: If user has default "User" name (e.g., "User 917870603149"), update it
-        // This handles the case where users were created with old code
-        const isDefaultName =
-          user!.firstName === 'User' &&
-          user!.lastName &&
-          /^\d{10,15}$/.test(user!.lastName.replace(/\+/, ''));
-        
-        if (isDefaultName) {
-          this.logger.log(`Updating default name for user: ${user!.publicId}`);
-          await this.usersService.update(user!.publicId, {
-            firstName: 'User',
-            lastName: phone.replace('+', ''),
-          } as any);
-          // Update local user object for subsequent checks
-          user!.firstName = 'User';
-          user!.lastName = phone.replace('+', '');
-        }
+        // Existing user - preserve their saved profile data
+        // Never overwrite user entered names
       }
 
       const needsProfileCompletion =
