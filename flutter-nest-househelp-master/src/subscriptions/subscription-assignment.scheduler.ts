@@ -36,8 +36,8 @@ export class SubscriptionAssignmentScheduler {
   
   // Intelligent backoff configuration
   private currentIntervalMs = 10 * 60 * 1000; // Start at 10 minutes
-  private readonly MIN_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes minimum
-  private readonly MAX_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes maximum
+  private readonly MIN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum
+  private readonly MAX_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes maximum
   private backoffMultiplier = 1;
   private timeoutRef: NodeJS.Timeout | null = null;
   private isRunning = false;
@@ -273,7 +273,6 @@ export class SubscriptionAssignmentScheduler {
       const allSubscriptions = await this.subscriptionRepository.find({
         where: {
           status: SubscriptionStatus.ACTIVE,
-          startDate: Between(fortyEightHoursAgo, new Date(nowIST.getTime() + 48 * 60 * 60 * 1000)),
         },
         relations: ['serviceProfile', 'user', 'assignedWorker'],
       });
