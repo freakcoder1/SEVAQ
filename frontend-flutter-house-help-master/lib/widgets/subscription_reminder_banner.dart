@@ -26,18 +26,21 @@ class SubscriptionReminderBanner extends StatefulWidget {
 class _SubscriptionReminderBannerState
     extends State<SubscriptionReminderBanner> {
   Timer? _refreshTimer;
+  bool _isFetching = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchSubscriptions();
-      // Start periodic refresh every 120 seconds
-      // Changed from 30s to reduce server load - assignment system runs only once per minute
-      _refreshTimer = Timer.periodic(const Duration(seconds: 120), (
+      // Start periodic refresh every 300 seconds (5 minutes)
+      // Backend scheduler only runs every 5-15 minutes, faster polling is useless
+      _refreshTimer = Timer.periodic(const Duration(seconds: 300), (
         Timer timer,
       ) {
-        _fetchSubscriptions();
+        if (mounted) {
+          _fetchSubscriptions();
+        }
       });
     });
   }
@@ -49,7 +52,12 @@ class _SubscriptionReminderBannerState
   }
 
   Future<void> _fetchSubscriptions() async {
+    // Prevent concurrent duplicate requests
+    if (_isFetching || !mounted) return;
+
     try {
+      _isFetching = true;
+
       BookingProvider? resolvedBookingProvider = widget.bookingProvider;
 
       if (resolvedBookingProvider == null) {
@@ -73,6 +81,10 @@ class _SubscriptionReminderBannerState
       );
       // Silent fail - do not crash widget tree on network errors
       // Next timer tick will retry automatically
+    } finally {
+      if (mounted) {
+        _isFetching = false;
+      }
     }
   }
 
@@ -123,8 +135,14 @@ class _SubscriptionReminderBannerState
           }
 
           // Check if any subscription is awaiting worker assignment
+          // Use proper workerState getter from Subscription model
           final awaitingWorker = activeSubscriptions
-              .where((s) => s.workerId == null || s.workerAssignmentFailed)
+              .where(
+                (s) =>
+                    s.workerState == WorkerState.pending ||
+                    s.workerState == WorkerState.availableDetected ||
+                    s.workerState == WorkerState.failed,
+              )
               .toList();
 
           debugPrint('=== SubscriptionReminderBanner Debug ===');

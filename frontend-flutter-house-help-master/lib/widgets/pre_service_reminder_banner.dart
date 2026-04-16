@@ -37,6 +37,7 @@ class PreServiceReminderBanner extends StatefulWidget {
 
 class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
   Timer? _refreshTimer;
+  bool _isFetching = false;
 
   @override
   void initState() {
@@ -44,8 +45,9 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
     // Defer fetching to after the widget tree is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchBookings();
-      // Refresh bookings every 120 seconds only when widget is mounted
-      _refreshTimer = Timer.periodic(const Duration(seconds: 120), (timer) {
+      // ✅ FIX: Increase refresh interval to 5 minutes (300 seconds)
+      // Prevent infinite polling loop and server overload
+      _refreshTimer = Timer.periodic(const Duration(seconds: 300), (timer) {
         if (mounted) {
           _fetchBookings();
         }
@@ -60,7 +62,12 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
   }
 
   Future<void> _fetchBookings() async {
+    // Prevent concurrent duplicate requests
+    if (_isFetching || !mounted) return;
+
     try {
+      _isFetching = true;
+
       // Try to get providers from parameters first, then from context
       BookingProvider? resolvedBookingProvider = widget.bookingProvider;
 
@@ -80,6 +87,10 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
       await resolvedBookingProvider.fetchBookings();
     } catch (e) {
       debugPrint('Error fetching bookings in PreServiceReminderBanner: $e');
+    } finally {
+      if (mounted) {
+        _isFetching = false;
+      }
     }
   }
 

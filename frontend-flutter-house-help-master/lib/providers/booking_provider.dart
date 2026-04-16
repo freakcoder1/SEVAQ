@@ -16,6 +16,7 @@ class BookingProvider with ChangeNotifier {
   List<Booking> _bookings = [];
   List<Subscription> _subscriptions = [];
   bool _isLoading = false;
+  bool _isFetching = false;
 
   List<Booking> get bookings => _bookings;
   List<Subscription> get subscriptions => _subscriptions;
@@ -65,6 +66,10 @@ class BookingProvider with ChangeNotifier {
   }
 
   Future<void> fetchBookings({BuildContext? context}) async {
+    // Prevent concurrent duplicate requests from multiple widgets
+    if (_isFetching) return;
+
+    _isFetching = true;
     _isLoading = true;
     notifyListeners();
     try {
@@ -85,6 +90,7 @@ class BookingProvider with ChangeNotifier {
       debugPrint('Error fetching bookings: $e');
     } finally {
       _isLoading = false;
+      _isFetching = false;
       notifyListeners();
     }
   }
@@ -93,6 +99,10 @@ class BookingProvider with ChangeNotifier {
   Future<void> fetchBookingsAndSubscriptions({
     required BuildContext context,
   }) async {
+    // Prevent concurrent duplicate requests from multiple widgets
+    if (_isFetching) return;
+
+    _isFetching = true;
     _isLoading = true;
     notifyListeners();
 
@@ -132,6 +142,7 @@ class BookingProvider with ChangeNotifier {
       debugPrint('Error fetching data: $e');
     } finally {
       _isLoading = false;
+      _isFetching = false;
       notifyListeners();
     }
   }
