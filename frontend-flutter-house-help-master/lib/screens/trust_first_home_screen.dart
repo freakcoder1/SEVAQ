@@ -479,8 +479,24 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
             SizedBox(height: 16),
 
             // Compact booking status indicator - shows active booking progress
-            CompactBookingStatusIndicator(
-              currentState: BookingAssignmentState.confirmed,
+            Consumer<BookingProvider>(
+              builder: (context, bookingProvider, child) {
+                final activeBooking = bookingProvider.upcomingBooking;
+
+                if (activeBooking == null) {
+                  return const SizedBox.shrink();
+                }
+
+                return CompactBookingStatusIndicator(
+                  bookingStatus: activeBooking.status,
+                  onTap: () {
+                    // Navigation will be implemented later, for now just log tap
+                    debugPrint(
+                      'Booking status indicator tapped for booking: ${activeBooking.publicId}',
+                    );
+                  },
+                );
+              },
             ),
 
             SizedBox(height: 16),
