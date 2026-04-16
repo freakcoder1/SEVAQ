@@ -10,6 +10,7 @@ import {
   ManyToMany,
   JoinTable,
   BeforeInsert,
+  VersionColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Slot } from '../../slots/entities/slot.entity';
@@ -137,4 +138,7 @@ export class Worker {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @VersionColumn()
+  version: number;
 }

@@ -8,6 +8,7 @@ import {
   ManyToOne,
   JoinColumn,
   BeforeInsert,
+  VersionColumn,
 } from 'typeorm';
 import { ServiceProfile } from '../../service-profiles/entities/service-profile.entity';
 import { User } from '../../users/entities/user.entity';
@@ -115,4 +116,7 @@ export class Subscription {
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'assignedWorkerId' })
   assignedWorker: Worker | null;
+
+  @VersionColumn()
+  version: number;
 }

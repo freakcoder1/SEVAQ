@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToOne,
+  VersionColumn,
 } from 'typeorm';
 import { Expose, Type } from 'class-transformer';
 import { IsOptional, IsNumber, IsString } from 'class-validator';
@@ -201,4 +202,7 @@ export class Booking {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @VersionColumn()
+  version: number;
 }
