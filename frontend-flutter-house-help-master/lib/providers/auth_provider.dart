@@ -683,6 +683,8 @@ class AuthProvider with ChangeNotifier {
   Future<bool> loginWithFirebase({
     required String phone,
     required String idToken,
+    String? firstName,
+    String? lastName,
   }) async {
     // PRODUCTION FIX: Prevent race conditions - skip if auth operation in progress
     if (!_canPerformAuthOperation) {
@@ -701,6 +703,10 @@ class AuthProvider with ChangeNotifier {
       final response = await _apiService.post('auth/otp/verify-login', {
         'phone': phone,
         'idToken': idToken,
+        if (firstName != null && firstName.trim().isNotEmpty)
+          'firstName': firstName.trim(),
+        if (lastName != null && lastName.trim().isNotEmpty)
+          'lastName': lastName.trim(),
       });
 
       if (response != null) {

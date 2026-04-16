@@ -10,11 +10,15 @@ import 'profile_completion_screen.dart';
 class OtpLoginScreen extends StatefulWidget {
   final String phoneNumber;
   final String? verificationId;
+  final String? firstName;
+  final String? lastName;
 
   const OtpLoginScreen({
     Key? key,
     required this.phoneNumber,
     this.verificationId,
+    this.firstName,
+    this.lastName,
   }) : super(key: key);
 
   @override
@@ -126,10 +130,13 @@ class _OtpLoginScreenState extends State<OtpLoginScreen> {
       debugPrint('Got Firebase ID token');
 
       // Login with backend using Firebase credentials
-      final success = await Provider.of<AuthProvider>(
-        context,
-        listen: false,
-      ).loginWithFirebase(phone: widget.phoneNumber, idToken: idToken);
+      final success = await Provider.of<AuthProvider>(context, listen: false)
+          .loginWithFirebase(
+            phone: widget.phoneNumber,
+            idToken: idToken,
+            firstName: widget.firstName,
+            lastName: widget.lastName,
+          );
 
       if (!mounted) return;
 

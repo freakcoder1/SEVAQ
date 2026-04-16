@@ -377,7 +377,9 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
       final auth = context.read<AuthProvider>();
       if (auth.isAuthenticated) {
         auth.fetchWorkerProfile();
-        context.read<BookingProvider>().fetchBookings();
+
+        // BookingProvider lifecycle handler already does fetch silently
+        // Removed duplicate fetch call - no double requests
 
         // Also try to register FCM token (in case it failed during login)
         _registerFcmTokenIfNeeded();

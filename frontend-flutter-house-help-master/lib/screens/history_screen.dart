@@ -84,7 +84,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(title: Text('Your services')),
       body: Column(
         children: [
-          PreServiceReminderBanner(),
+          Builder(
+            builder: (context) => PreServiceReminderBanner(
+              authProvider: Provider.of<AuthProvider>(context, listen: false),
+              bookingProvider: Provider.of<BookingProvider>(
+                context,
+                listen: false,
+              ),
+            ),
+          ),
           SubscriptionReminderBanner(),
           Expanded(
             child: Consumer<BookingProvider>(
