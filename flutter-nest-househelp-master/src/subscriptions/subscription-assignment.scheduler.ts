@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, IsNull, Like } from 'typeorm';
+import { Repository, Between, In, IsNull, Like, LessThan } from 'typeorm';
 import {
   Subscription,
   SubscriptionStatus,
@@ -301,11 +301,21 @@ export class SubscriptionAssignmentScheduler {
       }
 
       // =====================================================
-      // ✅ CATCH-ALL: Only for truly unassigned subscriptions outside time window
+      // ✅ CATCH-ALL: Orphaned Subscription Cleanup Job
+      // FIX 5: Process subscriptions older than 48 hours that have never been assigned
       // =====================================================
-      const twentyFourHoursAgo = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000);
-      // TEMPORARILY DISABLED CATCH-ALL LOGIC
-      const unassignedSubscriptions: Subscription[] = [];
+      const seventyTwoHoursAgo = new Date(nowIST.getTime() - 72 * 60 * 60 * 1000);
+      
+      // Find truly orphaned subscriptions (active, no worker, older than 72h)
+      const unassignedSubscriptions = await this.subscriptionRepository.find({
+        where: {
+          status: SubscriptionStatus.ACTIVE,
+          assignedWorkerId: IsNull(),
+          startDate: LessThan(seventyTwoHoursAgo),
+          workerAssignmentFailed: false
+        },
+        relations: ['serviceProfile', 'user'],
+      });
 
       this.logger.log(
         `Found ${unassignedSubscriptions.length} truly unassigned subscriptions without any bookings`,
@@ -444,14 +454,21 @@ export class SubscriptionAssignmentScheduler {
     subscription: Subscription,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
-      // NOTIFICATION DEDUPLICATION CHECK: Skip if notification was sent recently (within 1 hour)
-      // This prevents duplicate notifications when the scheduler runs every 10 minutes
-      const cooldownExpired = await this.hasNotificationCooldownExpired(subscription);
-      if (!cooldownExpired) {
+      // ✅ FIX: Only apply notification cooldown IF WORKER WAS ACTUALLY FOUND
+      // For unassigned subscriptions, we ALWAYS retry - no cooldown block
+      if (subscription.assignedWorkerId !== null) {
+        // Only apply cooldown when worker is already assigned
+        const cooldownExpired = await this.hasNotificationCooldownExpired(subscription);
+        if (!cooldownExpired) {
+          this.logger.log(
+            `Skipping subscription ${subscription.id}: notification cooldown not expired (worker already assigned)`,
+          );
+          return { success: true, reason: 'Notification cooldown active' };
+        }
+      } else {
         this.logger.log(
-          `Skipping subscription ${subscription.id}: notification cooldown not expired`,
+          `Subscription ${subscription.id} has no assigned worker - skipping cooldown, will retry assignment`,
         );
-        return { success: true, reason: 'Notification cooldown active' };
       }
 
       // =====================================================
