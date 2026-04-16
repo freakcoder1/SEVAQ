@@ -36,7 +36,7 @@ class AppConfig {
   /// Flag to use localhost (for USB debugging with ADB reverse).
   /// In release mode this is ignored because the production URL is used.
   /// Set to FALSE to use WiFi IP for more reliable connectivity (works in background).
-  static const bool useLocalhostForUSB = true;
+  static const bool useLocalhostForUSB = false;
 
   /// Set to FALSE to use production URL even in debug mode.
   /// When FALSE, overrides WiFi IP to use production URL instead.

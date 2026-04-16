@@ -125,7 +125,7 @@ class FirebaseMessagingService {
 
       // Try worker endpoint first if user is known to be a worker
       // This is because workers need to receive booking notifications
-      if (userRole == 'worker') {
+      if (userRole == 'worker' || userRole == null) {
         print(
           'FCM: User is worker, trying worker endpoint first: $workerEndpoint',
         );
