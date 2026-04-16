@@ -15,9 +15,11 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _pollingTimer;
   int _lastBookingsCount = 0;
   bool _isAppInBackground = false;
+  bool _isWorkerAvailable = true;
 
-  /// Polling interval - reduced to 15 seconds for faster response
-  static const Duration pollingInterval = Duration(seconds: 15);
+  /// Polling interval - DISABLED: FCM push notifications deliver real-time updates
+  static const Duration pollingInterval =
+      Duration(seconds: 300); // 5 minutes fallback only
 
   List<Booking> get bookings => _bookings;
   Booking? get selectedBooking => _selectedBooking;
@@ -25,54 +27,28 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
   String? get error => _error;
 
   List<Booking> get pendingBookings {
-    final list = _bookings.where((b) => b.isPending).toList();
-    list.sort((a, b) {
-      if (a.createdAt == null && b.createdAt == null) return 0;
-      if (a.createdAt == null) return 1;
-      if (b.createdAt == null) return -1;
-      return b.createdAt!.compareTo(a.createdAt!);
-    });
-    return list;
+    return _bookings.where((b) => b.isValid && b.isPending).toList();
   }
 
   List<Booking> get newBookings {
-    final list = _bookings.where((b) => b.isNewBooking).toList();
-    list.sort((a, b) {
-      if (a.createdAt == null && b.createdAt == null) return 0;
-      if (a.createdAt == null) return 1;
-      if (b.createdAt == null) return -1;
-      return b.createdAt!.compareTo(a.createdAt!);
-    });
-    return list;
+    return _bookings.where((b) => b.isValid && b.isNewBooking).toList();
   }
 
   List<Booking> get inProgressBookings {
-    final list =
-        _bookings.where((b) => b.isInProgress || b.isConfirmed).toList();
-    list.sort((a, b) {
-      if (a.createdAt == null && b.createdAt == null) return 0;
-      if (a.createdAt == null) return 1;
-      if (b.createdAt == null) return -1;
-      return b.createdAt!.compareTo(a.createdAt!);
-    });
-    return list;
+    return _bookings
+        .where((b) => b.isValid && (b.isInProgress || b.isConfirmed))
+        .toList();
   }
 
   List<Booking> get completedBookings {
-    final list = _bookings.where((b) => b.isCompleted).toList();
-    list.sort((a, b) {
-      if (a.createdAt == null && b.createdAt == null) return 0;
-      if (a.createdAt == null) return 1;
-      if (b.createdAt == null) return -1;
-      return b.createdAt!.compareTo(a.createdAt!);
-    });
-    return list;
+    return _bookings.where((b) => b.isValid && b.isCompleted).toList();
   }
 
   List<Booking> get acceptedOngoingBookings {
-    // First filter status
-    final filtered =
-        _bookings.where((b) => b.isConfirmed || b.isInProgress).toList();
+    // First filter status AND validate booking is actually valid
+    final filtered = _bookings
+        .where((b) => b.isValid && (b.isConfirmed || b.isInProgress))
+        .toList();
 
     // Remove duplicates by booking ID
     final seenIds = <String>{};
@@ -112,8 +88,18 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
         for (int i = 0; i < response.length; i++) {
           try {
             final bookingJson = response[i] as Map<String, dynamic>;
-            final booking = Booking.fromJson(bookingJson);
-            _bookings.add(booking);
+            try {
+              final booking = Booking.fromJson(bookingJson);
+              // Only add valid bookings
+              if (booking.isValid) {
+                _bookings.add(booking);
+              } else {
+                debugPrint(
+                    'Skipping invalid booking at index $i: id=${booking.id}');
+              }
+            } catch (e) {
+              debugPrint('Skipping invalid booking at index $i: $e');
+            }
           } catch (e) {
             debugPrint('Error parsing booking at index $i: $e');
           }
@@ -142,11 +128,12 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
     debugPrint(
         'BookingProvider: Starting polling every ${pollingInterval.inSeconds} seconds');
     _pollingTimer = Timer.periodic(pollingInterval, (_) {
-      if (_isAppInBackground) {
-        debugPrint('BookingProvider: Skipping poll - app is in background');
+      if (_isAppInBackground || !_isWorkerAvailable) {
+        debugPrint(
+            'BookingProvider: Skipping poll - app in background or worker offline');
         return;
       }
-      debugPrint('BookingProvider: Polling triggered');
+      debugPrint('BookingProvider: Polling triggered (fallback only)');
       _fetchBookingsSilent();
     });
   }
@@ -188,8 +175,19 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
         for (int i = 0; i < response.length; i++) {
           try {
             final bookingJson = response[i] as Map<String, dynamic>;
-            final booking = Booking.fromJson(bookingJson);
-            newBookings.add(booking);
+            try {
+              final booking = Booking.fromJson(bookingJson);
+              // Only add valid bookings
+              if (booking.isValid) {
+                newBookings.add(booking);
+              } else {
+                debugPrint(
+                    'Silent fetch: Skipping invalid booking at index $i: id=${booking.id}');
+              }
+            } catch (e) {
+              debugPrint(
+                  'Silent fetch: Skipping invalid booking at index $i: $e');
+            }
           } catch (e) {
             debugPrint('Error parsing booking at index $i: $e');
           }
@@ -243,8 +241,21 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
         for (int i = 0; i < response.length; i++) {
           try {
             final bookingJson = response[i] as Map<String, dynamic>;
-            final booking = Booking.fromJson(bookingJson);
-            _bookings.add(booking);
+            try {
+              final booking = Booking.fromJson(bookingJson);
+              // Only add valid bookings
+              if (booking.isValid) {
+                _bookings.add(booking);
+                debugPrint(
+                    'Parsed booking $i: ${booking.id} - ${booking.serviceName} - ${booking.status}');
+              } else {
+                debugPrint(
+                    'Skipping invalid booking at index $i: id=${booking.id}');
+              }
+            } catch (e, stackTrace) {
+              debugPrint('Error parsing booking at index $i: $e');
+              debugPrint('Booking keys: ${(response[i] as Map).keys.toList()}');
+            }
             debugPrint(
                 'Parsed booking $i: ${booking.id} - ${booking.serviceName} - ${booking.status}');
           } catch (e, stackTrace) {
@@ -293,7 +304,11 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
 
     try {
       await _apiService.post('workers/bookings/$bookingId/accept', {});
-      await fetchBookings();
+      // Optimistic update instead of full refresh
+      final index = _bookings.indexWhere((b) => b.id == bookingId);
+      if (index != -1) {
+        _bookings[index] = _bookings[index].copyWith(status: 'CONFIRMED');
+      }
       _isLoading = false;
       notifyListeners();
       return true;
@@ -376,9 +391,32 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Fetch a specific booking by ID
   Future<Booking?> fetchBookingById(String bookingId) async {
-    await fetchBookings();
     try {
-      return _bookings.firstWhere((b) => b.id == bookingId);
+      // First check local cache
+      Booking? cached;
+      try {
+        cached = _bookings.firstWhere((b) => b.id == bookingId);
+      } catch (e) {
+        cached = null;
+      }
+      if (cached != null) return cached;
+
+      // Fetch single booking directly from endpoint
+      final response = await _apiService.get('workers/bookings/$bookingId');
+      if (response == null) return null;
+
+      final booking = Booking.fromJson(response as Map<String, dynamic>);
+
+      // Update local cache
+      final index = _bookings.indexWhere((b) => b.id == bookingId);
+      if (index != -1) {
+        _bookings[index] = booking;
+      } else {
+        _bookings.add(booking);
+      }
+
+      notifyListeners();
+      return booking;
     } catch (e) {
       debugPrint('Booking not found with ID: $bookingId');
       return null;

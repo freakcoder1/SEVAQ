@@ -86,8 +86,21 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    // ✅ VALIDATION: Reject empty/invalid booking objects
+    // Prevents ghost bookings from appearing on new accounts
+    if (json.isEmpty) {
+      throw FormatException('Empty booking object received');
+    }
+
+    // ✅ REQUIRED FIELD VALIDATION
+    // A valid booking MUST have an ID
+    final bookingId = _safeString(json['id'] ?? json['bookingId']);
+    if (bookingId.isEmpty) {
+      throw FormatException('Booking has no valid ID');
+    }
+
     // Debug logging to understand booking type fields and status
-    final rawStatus = json['status'] ?? json['bookingStatus'] ?? 'PENDING';
+    final rawStatus = json['status'] ?? json['bookingStatus'];
     final normalizedStatus = _normalizeStatus(rawStatus);
     final isPending =
         normalizedStatus == 'REQUESTED' || normalizedStatus == 'PENDING';
@@ -210,8 +223,12 @@ class Booking {
     }
 
     // Normalize status to uppercase for consistent comparison
-    String status =
-        _normalizeStatus(json['status'] ?? json['bookingStatus'] ?? 'PENDING');
+    // ✅ NO DEFAULT FALLBACK - only use actual status from response
+    // This prevents ghost bookings with default PENDING status
+    String status = _normalizeStatus(json['status'] ?? json['bookingStatus']);
+
+    // If no actual status was present, mark booking as invalid
+    final bool hasValidStatus = status.isNotEmpty;
 
     // Parse location data from booking
     final locationData = _parseNestedObject(json['location']);
@@ -234,7 +251,7 @@ class Booking {
     }
 
     return Booking(
-      id: _safeString(json['id'] ?? json['bookingId']),
+      id: bookingId,
       serviceName: serviceName.isNotEmpty ? serviceName : 'Service',
       serviceCategory: serviceCategory.isNotEmpty ? serviceCategory : null,
       customerName: customerName.isNotEmpty ? customerName : 'Customer',
@@ -290,6 +307,50 @@ class Booking {
     };
   }
 
+  Booking copyWith({
+    String? id,
+    String? serviceName,
+    String? serviceCategory,
+    String? customerName,
+    String? customerPhone,
+    String? customerAddress,
+    double? customerLatitude,
+    double? customerLongitude,
+    String? scheduledDate,
+    String? startTime,
+    String? endTime,
+    String? status,
+    double? price,
+    String? paymentStatus,
+    String? notes,
+    String? bookingType,
+    String? subscriptionId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Booking(
+      id: id ?? this.id,
+      serviceName: serviceName ?? this.serviceName,
+      serviceCategory: serviceCategory ?? this.serviceCategory,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      customerAddress: customerAddress ?? this.customerAddress,
+      customerLatitude: customerLatitude ?? this.customerLatitude,
+      customerLongitude: customerLongitude ?? this.customerLongitude,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      status: status ?? this.status,
+      price: price ?? this.price,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      notes: notes ?? this.notes,
+      bookingType: bookingType ?? this.bookingType,
+      subscriptionId: subscriptionId ?? this.subscriptionId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   // ===== Booking Type Helpers =====
 
   /// Returns true if this is a subscription-based booking
@@ -340,6 +401,21 @@ class Booking {
       return const Color(0xFFE8EAF6); // Light indigo
     }
     return const Color(0xFFFFF3E0); // Light orange
+  }
+
+  // ===== Booking Validity Check =====
+
+  /// Returns true if this is a valid real booking (not ghost/empty)
+  /// Used to filter out invalid bookings that should never be displayed
+  bool get isValid {
+    // A valid booking MUST have:
+    // 1. Non-empty ID
+    // 2. Actual status value (not empty/default)
+    // 3. Has a service name
+    return id.isNotEmpty &&
+        status.isNotEmpty &&
+        serviceName.isNotEmpty &&
+        serviceName != 'Service';
   }
 
   // ===== Status Helpers =====
