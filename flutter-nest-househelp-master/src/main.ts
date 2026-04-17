@@ -1,3 +1,10 @@
+// Disable ioredis debug logging before anything else
+if (process.env.DEBUG) {
+  process.env.DEBUG = process.env.DEBUG.replace(/ioredis:[^\s,]*/g, '').replace(/,\s*,/g, ',').replace(/^,|,$/g, '');
+} else {
+  process.env.DEBUG = '';
+}
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import './database/seed';

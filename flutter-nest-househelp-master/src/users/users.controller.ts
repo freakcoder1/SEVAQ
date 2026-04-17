@@ -9,10 +9,13 @@ import {
   UseGuards,
   Request,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AdminCreateUserDto } from './dto/admin-create-user.dto';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
+import { RegisterFcmTokenDto } from './dto/register-fcm-token.dto';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { JwtRequest } from '../common/types/jwt-user.type';
@@ -33,9 +36,14 @@ export class UsersController {
 
   @Post('register-fcm-token')
   @UseGuards(JwtAuthGuard)
-  async registerFcmToken(@Request() req: JwtRequest, @Body('fcmToken') fcmToken: string) {
-    await this.usersService.updateFcmToken(req.user.userId, fcmToken);
-    return { success: true, message: 'FCM token registered successfully' };
+  @HttpCode(HttpStatus.OK)
+  async registerFcmToken(@Request() req: JwtRequest, @Body() registerFcmTokenDto: RegisterFcmTokenDto) {
+    await this.usersService.updateFcmToken(req.user.userId, registerFcmTokenDto.fcmToken);
+    return {
+      success: true,
+      message: 'FCM token registered successfully',
+      timestamp: new Date().toISOString()
+    };
   }
 
   @Get()

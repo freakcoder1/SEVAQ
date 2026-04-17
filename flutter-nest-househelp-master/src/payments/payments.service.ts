@@ -446,12 +446,15 @@ export class PaymentsService {
       // THIS WAS MISSING - THIS IS WHY CUSTOMERS NEVER RECEIVED NOTIFICATIONS
       if (booking.userId) {
         this.logger.log(`Payment complete for booking ${booking.id}, notifying customer ${booking.userId}`);
+        console.log(`🔍 DEBUG: booking.userId =`, booking.userId, typeof booking.userId);
         
         try {
           // Load user with fcm token
           const user = await this.usersRepository.findOne({
             where: { id: booking.userId }
           });
+          
+          console.log(`🔍 DEBUG: Found user =`, user ? user.id : 'NULL', 'fcmToken exists:', !!user?.fcmToken);
           
           if (user && user.fcmToken) {
             const serviceName = booking.service?.name || 'Service';
@@ -474,13 +477,16 @@ export class PaymentsService {
             this.logger.log(`✅ Sent booking confirmation notification to customer ${booking.userId} for booking ${booking.id}`);
           } else {
             this.logger.warn(`⚠️ Customer ${booking.userId} has no FCM token registered, cannot send confirmation notification`);
+            console.log(`🔍 DEBUG: User object dump:`, JSON.stringify(user, null, 2));
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           this.logger.error(`❌ Error sending notification to customer ${booking.userId}: ${errorMsg}`);
+          console.log(`🔍 DEBUG: Full error stack:`, error);
         }
       } else {
         this.logger.warn(`⚠️ Booking ${booking.id} has no userId associated, cannot send customer confirmation`);
+        console.log(`🔍 DEBUG: Full booking dump:`, JSON.stringify(booking, null, 2));
       }
 
       // Serialize the booking to ensure relations are included in response

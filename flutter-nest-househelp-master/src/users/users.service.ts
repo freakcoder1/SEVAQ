@@ -159,6 +159,15 @@ export class UsersService {
   }
 
   async updateFcmToken(userId: number | string, fcmToken: string): Promise<void> {
+    // Validate FCM token format
+    if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.trim().length === 0) {
+      throw new ForbiddenException('FCM token cannot be empty');
+    }
+
+    if (fcmToken.length > 512) {
+      throw new ForbiddenException('FCM token exceeds maximum allowed length');
+    }
+
     // Handle both numeric ID and UUID publicId
     let user: User | null;
     
@@ -173,8 +182,16 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    // Update using the numeric id
-    await this.usersRepository.update(user.id, { fcmToken });
+
+    try {
+      // Update using the numeric id
+      await this.usersRepository.update(user.id, {
+        fcmToken: fcmToken.trim(),
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to save FCM token');
+    }
   }
 
   async remove(id: string) {
