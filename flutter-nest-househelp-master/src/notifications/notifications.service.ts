@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import { Twilio } from 'twilio';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -31,8 +29,6 @@ export interface FirebaseStatus {
 
 @Injectable()
 export class NotificationsService {
-  private transporter: nodemailer.Transporter;
-  private twilioClient: Twilio | undefined;
   private firebaseInitialized: boolean = false;
   private firebaseStatus: FirebaseStatus = {
     initialized: false,
@@ -60,27 +56,6 @@ export class NotificationsService {
     @InjectRepository(Worker)
     private workersRepository: Repository<Worker>,
   ) {
-    // Configure nodemailer
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST'),
-      port: this.configService.get('SMTP_PORT', 587),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
-      },
-    });
-
-    // Configure Twilio (only if credentials are provided)
-    const accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
-    const authToken = this.configService.get('TWILIO_AUTH_TOKEN');
-    if (accountSid && authToken) {
-      this.twilioClient = new Twilio(accountSid, authToken);
-      console.log('Twilio client initialized');
-    } else {
-      console.warn('Twilio credentials not configured, SMS notifications will be skipped');
-    }
-
     // Configure Firebase Admin SDK (optional - only if credentials are provided)
     this.initializeFirebase();
   }
@@ -330,37 +305,7 @@ export class NotificationsService {
     return { ...this.firebaseStatus };
   }
 
-  async sendEmail(to: string, subject: string, text: string): Promise<void> {
-    try {
-      await this.transporter.sendMail({
-        from: this.configService.get('SMTP_FROM'),
-        to,
-        subject,
-        text,
-      });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      // Don't throw error to prevent failing the entire reminder process
-    }
-  }
 
-  async sendSms(to: string, message: string): Promise<void> {
-    try {
-      if (!this.twilioClient) {
-        console.warn('[SMS] Twilio client not initialized, skipping SMS');
-        return;
-      }
-      await this.twilioClient.messages.create({
-        body: message,
-        from: this.configService.get('TWILIO_PHONE_NUMBER'),
-        to,
-      });
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[SMS] Error sending SMS:', errorMsg);
-      // Don't throw error to prevent failing the entire reminder process
-    }
-  }
 
   async sendPushNotification(
     fcmToken: string,
@@ -575,22 +520,8 @@ export class NotificationsService {
   }
 
   async notifyAdmins(subject: string, message: string): Promise<void> {
-    const adminEmails = this.configService.get('ADMIN_EMAILS', '').split(',');
-    const adminPhones = this.configService.get('ADMIN_PHONES', '').split(',');
-
-    // Send emails
-    for (const email of adminEmails) {
-      if (email.trim()) {
-        await this.sendEmail(email.trim(), subject, message);
-      }
-    }
-
-    // Send SMS
-    for (const phone of adminPhones) {
-      if (phone.trim()) {
-        await this.sendSms(phone.trim(), message);
-      }
-    }
+    // Email/SMS notifications have been completely removed from the system
+    console.log(`[NOTIFICATION SYSTEM DISABLED] Admin notification skipped: ${subject} - ${message}`);
   }
 
   async sendPreServiceReminder(
@@ -645,13 +576,8 @@ export class NotificationsService {
         );
       }
 
-      if (user.email) {
-        await this.sendEmail(user.email, pushTitle, pushBody);
-      }
-
-      if (user.phone) {
-        await this.sendSms(user.phone, pushBody);
-      }
+      // Email/SMS notifications have been completely removed from the system
+      console.log(`[NOTIFICATION SYSTEM DISABLED] ${reminderType} reminder skipped for user ${user.id} - only push notifications are active`);
     } else {
       // T-2 hours reminder
       const pushTitle = 'Your service is coming up';
@@ -666,13 +592,8 @@ export class NotificationsService {
         );
       }
 
-      if (user.email) {
-        await this.sendEmail(user.email, pushTitle, pushBody);
-      }
-
-      if (user.phone) {
-        await this.sendSms(user.phone, pushBody);
-      }
+      // Email/SMS notifications have been completely removed from the system
+      console.log(`[NOTIFICATION SYSTEM DISABLED] ${reminderType} reminder skipped for user ${user.id} - only push notifications are active`);
     }
   }
 
