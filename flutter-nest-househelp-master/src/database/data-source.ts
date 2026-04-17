@@ -6,6 +6,48 @@ config();
 
 const configService = new ConfigService();
 
+// Support both DATABASE_URL (Railway) and individual DB_* variables
+const databaseUrl = configService.get('DATABASE_URL');
+
+let host = '';
+let port = 5432;
+let username = '';
+let password = '';
+let database = '';
+
+// Always try to parse valid DATABASE_URL first when provided
+// Fallback to individual DB_* variables only if parsing fails
+if (databaseUrl) {
+  // Parse DATABASE_URL (format: postgres://user:pass@host:port/database)
+  try {
+    const url = new URL(databaseUrl);
+    host = url.hostname;
+    port = parseInt(url.port) || 5432;
+    username = url.username;
+    password = url.password;
+    // Handle both path-based and socket-based URLs
+    let dbPath = url.pathname.replace('/', '');
+    if (dbPath && !dbPath.includes('.')) {
+      database = dbPath;
+    } else {
+      // Fall back to DB_NAME env or default
+      database = configService.get('DB_NAME', 'railway');
+    }
+  } catch (e) {
+    // If URL parsing fails, use fallback
+    database = configService.get('DB_NAME', 'railway');
+    host = configService.get('DB_HOST', 'localhost');
+  }
+}
+// Fallback to individual DB_* variables only if no DATABASE_URL was provided or parsing failed
+if (!host || !database) {
+  host = configService.get('DB_HOST', 'localhost');
+  port = configService.get<number>('DB_PORT', 5432);
+  username = configService.get('DB_USERNAME', 'sevaq_user');
+  password = configService.get('DB_PASSWORD', 'sevaq_password');
+  database = configService.get('DB_NAME', 'sevaq_db');
+}
+
 // Connection retry configuration
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY_MS = 1000;
@@ -138,17 +180,17 @@ export { createAppDataSourceWithRetry as createDataSource };
 // Keep backward compatibility - export a basic DataSource for migrations
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: configService.get('DB_HOST', 'localhost'),
-  port: configService.get<number>('DB_PORT', 5432),
-  username: configService.get('DB_USERNAME', 'sevaq_user'),
-  password: configService.get('DB_PASSWORD', 'sevaq_password'),
-  database: configService.get('DB_NAME', 'sevaq_db'),
+  host,
+  port,
+  username,
+  password,
+  database,
   entities: ['dist/**/*.entity.js'],
   migrations: ['dist/migrations/*.js'],
   synchronize: false,
   migrationsRun: false,
-  ssl: process.env.RAILWAY_ENVIRONMENT_ID ? { rejectUnauthorized: false } : false,
-  extra: process.env.RAILWAY_ENVIRONMENT_ID ? {
+  ssl: process.env.RAILWAY_ENVIRONMENT_ID || databaseUrl ? { rejectUnauthorized: false } : false,
+  extra: process.env.RAILWAY_ENVIRONMENT_ID || databaseUrl ? {
     ssl: { rejectUnauthorized: false }
   } : {}
 });
