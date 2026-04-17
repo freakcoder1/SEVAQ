@@ -108,7 +108,7 @@ export class ServiceRequestsService {
     try {
       await this.assignmentWorker.processAssignment(singleRequest.id);
       this.logger.log(
-        `Assignment processing completed for service request ${singleRequest.publicId}`,
+        `Assignment processing completed for service request id: ${singleRequest.id}, publicId: ${singleRequest.publicId}`,
       );
     } catch (error) {
       this.logger.error(

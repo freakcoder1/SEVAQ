@@ -600,7 +600,13 @@ export class NotificationsService {
     // FIX: booking.userId should be a UUID (stored as uuid type in booking table)
     // Validate UUID format before querying to handle stale data with numeric userIds
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!booking.userId || !uuidRegex.test(booking.userId)) {
+    // Accept both numeric legacy user ids and UUID format
+    const isValidUserId = booking.userId && (
+      typeof booking.userId === 'number' ||
+      (typeof booking.userId === 'string' && uuidRegex.test(booking.userId))
+    );
+    
+    if (!isValidUserId) {
       console.warn(`Skipping booking ${booking.id} - invalid userId: ${booking.userId}`);
       return;
     }
