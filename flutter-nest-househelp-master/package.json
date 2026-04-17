@@ -10,7 +10,7 @@
     "build:ts": "npx nest build",
     "build:seed": "npm run build && node dist/database/seed-railway.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
+    "start": "node dist/run-migration.js && node dist/database/seed.js && node dist/main",
     "start:dev": "nest start --watch --host 0.0.0.0",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
