@@ -146,5 +146,9 @@ export const AppDataSource = new DataSource({
   entities: ['dist/**/*.entity.js'],
   migrations: ['dist/migrations/*.js'],
   synchronize: false,
-  migrationsRun: true,
+  migrationsRun: false,
+  ssl: process.env.RAILWAY_ENVIRONMENT_ID ? { rejectUnauthorized: false } : false,
+  extra: process.env.RAILWAY_ENVIRONMENT_ID ? {
+    ssl: { rejectUnauthorized: false }
+  } : {}
 });
