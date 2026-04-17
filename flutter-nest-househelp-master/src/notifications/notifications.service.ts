@@ -611,9 +611,19 @@ export class NotificationsService {
       return;
     }
 
-    const user = await this.usersRepository.findOne({
-      where: { publicId: booking.userId },
-    });
+    let user;
+    // Handle both legacy numeric ids and modern UUID publicIds
+    if (typeof booking.userId === 'number') {
+      // Legacy integer user id - query by primary key id column
+      user = await this.usersRepository.findOne({
+        where: { id: booking.userId }
+      });
+    } else {
+      // Modern UUID publicId - query by publicId column
+      user = await this.usersRepository.findOne({
+        where: { publicId: booking.userId }
+      });
+    }
     if (!user) {
       console.error(`User not found for booking ${booking.id}, userId: ${booking.userId}`);
       return;
