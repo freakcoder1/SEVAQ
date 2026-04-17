@@ -49,6 +49,16 @@ export class SubscriptionsService {
       );
     }
 
+    // ✅ VALIDATION: Ensure start date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDateNormalized = new Date(startDate);
+    startDateNormalized.setHours(0, 0, 0, 0);
+    
+    if (startDateNormalized < today) {
+      throw new Error('Subscription start date cannot be in the past. Please select a future date.');
+    }
+
     const subscription = this.subscriptionRepository.create({
       publicId: uuidv4(),
       userId,
