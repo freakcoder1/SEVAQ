@@ -143,8 +143,8 @@ export const AppDataSource = new DataSource({
   username: configService.get('DB_USERNAME', 'sevaq_user'),
   password: configService.get('DB_PASSWORD', 'sevaq_password'),
   database: configService.get('DB_NAME', 'sevaq_db'),
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
+  entities: ['dist/**/*.entity.js'],
+  migrations: ['dist/migrations/*.js'],
   synchronize: false,
   migrationsRun: true,
 });
