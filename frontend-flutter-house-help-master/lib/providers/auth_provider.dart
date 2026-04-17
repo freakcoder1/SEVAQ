@@ -519,7 +519,9 @@ class AuthProvider with ChangeNotifier {
 
           // Register FCM token after successful registration
           debugPrint('AuthProvider: Registering FCM token after registration');
-          FirebaseMessagingService.registerFcmToken();
+          // ✅ FIX: Await FCM token registration BEFORE proceeding
+          // This was previously a floating unawaited future that was killed on navigation
+          await FirebaseMessagingService.registerFcmToken();
 
           return true;
         }
