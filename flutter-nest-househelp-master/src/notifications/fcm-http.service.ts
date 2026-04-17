@@ -72,21 +72,44 @@ export class FcmHttpService {
       this.logger.error(`FCM Error Details:`, error.response?.data?.error);
 
       // Handle invalid token errors - automatically clean up stale tokens
-      const errorCode = error.response?.data?.error?.status;
-      if (errorCode === 'INVALID_ARGUMENT' || errorCode === 'NOT_FOUND' || errorCode === 'PERMISSION_DENIED') {
-        const errorMessage = error.response?.data?.error?.message || '';
-        if (errorMessage.includes('InvalidRegistration') ||
-            errorMessage.includes('NotRegistered') ||
-            errorMessage.includes('InvalidApnsToken') ||
-            errorMessage.includes('token is not registered')) {
-          
-          this.logger.warn(`⚠️ Invalid FCM token detected, removing from database: ${token.substring(0, 30)}...`);
-          
-          // Clear token from both user and worker tables
-          await this.usersRepository.update({ fcmToken: token }, { fcmToken: '' });
-          await this.workersRepository.update({ fcmToken: token }, { fcmToken: '' });
-          
-          this.logger.log(`✅ Removed invalid FCM token from database`);
+      const errorStatus = error.response?.data?.error?.status;
+      const errorMessage = error.response?.data?.error?.message || '';
+      
+      // Extract FCM specific error code from details
+      let fcmErrorCode = null;
+      const errorDetails = error.response?.data?.error?.details;
+      if (Array.isArray(errorDetails)) {
+        const fcmError = errorDetails.find(d => d['@type'] === 'type.googleapis.com/google.firebase.fcm.v1.FcmError');
+        if (fcmError) {
+          fcmErrorCode = fcmError.errorCode;
+        }
+      }
+
+      this.logger.debug(`FCM Error Status: ${errorStatus}, FCM Error Code: ${fcmErrorCode}, Message: ${errorMessage}`);
+
+      // Check for all invalid / unregistered token cases
+      const isInvalidToken =
+        // V1 API errors
+        fcmErrorCode === 'UNREGISTERED' ||
+        fcmErrorCode === 'INVALID_ARGUMENT' ||
+        // Legacy error messages
+        errorMessage.includes('InvalidRegistration') ||
+        errorMessage.includes('NotRegistered') ||
+        errorMessage.includes('Requested entity was not found') ||
+        errorMessage.includes('InvalidApnsToken') ||
+        errorMessage.includes('token is not registered');
+
+      if (isInvalidToken) {
+        this.logger.warn(`⚠️ Invalid / UNREGISTERED FCM token detected, removing from database: ${token.substring(0, 30)}...`);
+        
+        // Clear token from both user and worker tables
+        const userResult = await this.usersRepository.update({ fcmToken: token }, { fcmToken: '' });
+        const workerResult = await this.workersRepository.update({ fcmToken: token }, { fcmToken: '' });
+        
+        this.logger.log(`✅ Removed invalid FCM token - Users affected: ${userResult.affected}, Workers affected: ${workerResult.affected}`);
+        
+        if (userResult.affected === 0 && workerResult.affected === 0) {
+          this.logger.warn(`⚠️ Token was not found in database - may have already been removed or whitespace mismatch`);
         }
       }
 
