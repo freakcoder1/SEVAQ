@@ -480,7 +480,12 @@ export class BookingsService {
           
           if (savedBookingWithService) {
             await this.notificationsService.notifyUserBookingConfirmation(user, savedBookingWithService);
+            console.log('🔍 NOTIFICATION: Customer notification sent successfully for booking', bookingToReturn.id, 'to user', user.id);
+          } else {
+            console.warn('🔍 NOTIFICATION: Could not load booking with service for customer notification', bookingToReturn.id);
           }
+        } else {
+          console.warn('🔍 NOTIFICATION: Could not find user for customer notification, userId:', userIdValue);
         }
       } catch (notifyError) {
         console.error('🔍 ERROR: Failed to send customer notification:', notifyError);
