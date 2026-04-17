@@ -158,9 +158,18 @@ export class UsersService {
     return this.usersRepository.update(user.id, updateUserDto);
   }
 
-  async updateFcmToken(publicId: string, fcmToken: string): Promise<void> {
-    // Find user by publicId first
-    const user = await this.findOne(publicId);
+  async updateFcmToken(userId: number | string, fcmToken: string): Promise<void> {
+    // Handle both numeric ID and UUID publicId
+    let user: User | null;
+    
+    if (typeof userId === 'number' || !isNaN(Number(userId))) {
+      // Numeric internal ID
+      user = await this.usersRepository.findOneBy({ id: Number(userId) });
+    } else {
+      // UUID publicId
+      user = await this.findOne(userId);
+    }
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
