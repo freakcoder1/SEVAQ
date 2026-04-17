@@ -133,8 +133,8 @@ export class DailySlotGenerationScheduler {
       slots.push({ startTime, endTime });
     }
 
-    // Morning slots: 6:00 AM - 12:00 PM (6 slots)
-    const morningHours = [6, 7, 8, 9, 10, 11];
+    // Morning slots: 11:00 AM - 12:00 PM (only 1 slot, no overlap with early morning)
+    const morningHours = [11];
     for (const hour of morningHours) {
       const startTime = new Date(baseDate);
       startTime.setHours(hour, 0, 0, 0);

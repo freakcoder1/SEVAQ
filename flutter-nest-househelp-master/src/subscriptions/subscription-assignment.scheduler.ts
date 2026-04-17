@@ -41,6 +41,7 @@ export class SubscriptionAssignmentScheduler {
   private backoffMultiplier = 1;
   private timeoutRef: NodeJS.Timeout | null = null;
   private isRunning = false;
+  private readonly MAX_EXECUTION_TIME_MS = 90 * 1000; // 90 seconds hard limit
 
   constructor(
     @InjectRepository(Subscription)
@@ -723,49 +724,59 @@ export class SubscriptionAssignmentScheduler {
         return { success: false, reason: 'Failed to create booking' };
       }
 
-      // Now assign a worker to this booking directly without slot lookup
-      // This skips the slot service which doesn't work properly for subscriptions
-      const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
+      try {
+        // Now assign a worker to this booking directly without slot lookup
+        // This skips the slot service which doesn't work properly for subscriptions
+        const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
 
-      if (assignmentResult.success) {
-        this.logger.log(
-          `Successfully assigned worker ${assignmentResult.worker?.id} ` +
-            `for subscription ${subscription.id}`,
-        );
-        // Update the subscription's assignedWorkerId so the frontend can show the worker's name
-        if (assignmentResult.worker && subscription.assignedWorkerId !== assignmentResult.worker.id) {
-          subscription.assignedWorkerId = assignmentResult.worker.id;
-          await this.subscriptionRepository.save(subscription);
+        if (assignmentResult.success) {
           this.logger.log(
-            `Updated subscription ${subscription.id} with assigned worker ${assignmentResult.worker.id}`,
+            `Successfully assigned worker ${assignmentResult.worker?.id} ` +
+              `for subscription ${subscription.id}`,
           );
-        }
-        
-        // ✅ BUGFIX: Update booking status to CONFIRMED so customer app stops showing "finding your match"
-        // Customer interface checks for BookingStatus not AssignmentState
-        if (assignmentResult.worker) {
-          await this.bookingRepository.update(booking.id, {
-            status: BookingStatus.CONFIRMED,
-            assignmentState: AssignmentState.ASSIGNED,
-            workerId: assignmentResult.worker.id,
-          });
+          // Update the subscription's assignedWorkerId so the frontend can show the worker's name
+          if (assignmentResult.worker && subscription.assignedWorkerId !== assignmentResult.worker.id) {
+            subscription.assignedWorkerId = assignmentResult.worker.id;
+            await this.subscriptionRepository.save(subscription);
+            this.logger.log(
+              `Updated subscription ${subscription.id} with assigned worker ${assignmentResult.worker.id}`,
+            );
+          }
+          
+          // ✅ BUGFIX: Update booking status to CONFIRMED so customer app stops showing "finding your match"
+          // Customer interface checks for BookingStatus not AssignmentState
+          if (assignmentResult.worker) {
+            await this.bookingRepository.update(booking.id, {
+              status: BookingStatus.CONFIRMED,
+              assignmentState: AssignmentState.ASSIGNED,
+              workerId: assignmentResult.worker.id,
+            });
 
-          // ✅ BUGFIX: Reload booking with FULL user relations (user, addresses)
-          // This ensures customer name and location are available in the worker app
-          await this.bookingRepository.findOne({
-            where: { id: booking.id },
-            relations: ['user', 'user.addresses', 'worker', 'service'],
-          });
+            // ✅ BUGFIX: Reload booking with FULL user relations (user, addresses)
+            // This ensures customer name and location are available in the worker app
+            await this.bookingRepository.findOne({
+              where: { id: booking.id },
+              relations: ['user', 'user.addresses', 'worker', 'service'],
+            });
+          }
+          
+          // Notification is already sent inside directlyAssignWorker(), no need to send again
+        } else {
+          this.logger.warn(
+            `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
+          );
+          // ✅ PERMANENT FIX: Clean up orphaned booking when worker assignment fails
+          this.logger.log(`Cleaning up orphaned booking ${booking.id} for subscription ${subscription.id}`);
+          await this.bookingsService.cancel(booking.id);
         }
-        
-        // Notification is already sent inside directlyAssignWorker(), no need to send again
-      } else {
-        this.logger.warn(
-          `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
-        );
+
+        return assignmentResult;
+      } catch (assignmentError) {
+        this.logger.error(`Worker assignment failed, cleaning up booking ${booking.id}: ${assignmentError.message}`);
+        // Always clean up the booking if anything fails after creation
+        await this.bookingsService.cancel(booking.id);
+        throw assignmentError;
       }
-
-      return assignmentResult;
     } catch (error) {
       this.logger.error(
         `Error assigning worker for subscription ${subscription.id}: ${error.message}`,

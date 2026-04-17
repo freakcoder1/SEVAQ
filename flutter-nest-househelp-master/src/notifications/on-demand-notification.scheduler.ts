@@ -73,12 +73,10 @@ export class OnDemandNotificationScheduler {
             await this.bookingRepository.save(booking);
             
             this.logger.log(`✅ Notification sent successfully for booking ${booking.id}`);
-          } else {
-            this.logger.warn(`⚠️ No FCM token found for worker on booking ${booking.id}, skipping notification`);
-            // Still mark as sent to avoid infinite loop
-            booking.notificationSent = true;
-            await this.bookingRepository.save(booking);
-          }
+           } else {
+             this.logger.warn(`⚠️ No FCM token found for worker on booking ${booking.id}, skipping notification`);
+             // Do NOT mark as sent - will retry next run, worker might register token later
+           }
         } catch (notificationError: unknown) {
           const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
           const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
