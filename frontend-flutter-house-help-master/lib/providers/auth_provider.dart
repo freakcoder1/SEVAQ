@@ -430,13 +430,13 @@ class AuthProvider with ChangeNotifier {
             await bookingProvider.fetchBookings();
           }
 
+          // Register FCM token after successful login - BEFORE RETURNING!
+          debugPrint('AuthProvider: Registering FCM token after login');
+          FirebaseMessagingService.registerFcmToken();
+
           debugPrint('AuthProvider: Notifying listeners and returning true');
           notifyListeners();
           _releaseAuthLock();
-
-          // Register FCM token after successful login
-          debugPrint('AuthProvider: Registering FCM token after login');
-          FirebaseMessagingService.registerFcmToken();
 
           debugPrint('AuthProvider: login() - About to return true');
           return true;
@@ -745,6 +745,17 @@ class AuthProvider with ChangeNotifier {
           );
 
           _isLoading = false;
+
+          // Register pending FCM token now that user is authenticated
+          // This will send any stored pending FCM token to backend
+          try {
+            await FirebaseMessagingService.registerFcmToken();
+            debugPrint(
+              'AuthProvider: FCM token registered successfully after login',
+            );
+          } catch (e) {
+            debugPrint('AuthProvider: Failed to register FCM token: $e');
+          }
 
           _releaseAuthLock();
           notifyListeners();
