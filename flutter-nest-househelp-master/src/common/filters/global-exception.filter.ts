@@ -35,11 +35,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
 
     // Log the error
-    this.logger.error(
-      `HTTP ${status} Error: ${JSON.stringify(errorResponse)}`,
-      exception instanceof Error ? exception.stack : undefined,
-      'GlobalExceptionFilter',
-    );
+    if (status === HttpStatus.UNAUTHORIZED) {
+      // 401 Unauthorized is normal expected behaviour for expired JWT tokens
+      // Downgrade to debug log level to avoid spamming production logs
+      this.logger.debug(
+        `HTTP ${status}: ${JSON.stringify(errorResponse)}`,
+        'GlobalExceptionFilter',
+      );
+    } else {
+      this.logger.error(
+        `HTTP ${status} Error: ${JSON.stringify(errorResponse)}`,
+        exception instanceof Error ? exception.stack : undefined,
+        'GlobalExceptionFilter',
+      );
+    }
 
     response.status(status).json(errorResponse);
   }

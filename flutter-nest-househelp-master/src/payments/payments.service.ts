@@ -442,6 +442,47 @@ export class PaymentsService {
         }
       }
 
+      // ✅ Send confirmation notification to CUSTOMER now that payment is complete
+      // THIS WAS MISSING - THIS IS WHY CUSTOMERS NEVER RECEIVED NOTIFICATIONS
+      if (booking.userId) {
+        this.logger.log(`Payment complete for booking ${booking.id}, notifying customer ${booking.userId}`);
+        
+        try {
+          // Load user with fcm token
+          const user = await this.usersRepository.findOne({
+            where: { id: booking.userId }
+          });
+          
+          if (user && user.fcmToken) {
+            const serviceName = booking.service?.name || 'Service';
+            const bookingDate = booking.date || new Date().toISOString().split('T')[0];
+            
+            await this.notificationsService.sendPushNotification(
+              user.fcmToken,
+              'Booking Confirmed ✅',
+              `Your ${serviceName} booking for ${bookingDate} has been confirmed successfully. We have assigned a worker for your service.`,
+              {
+                type: 'booking_confirmed',
+                bookingId: booking.id.toString(),
+                serviceName,
+                serviceDate: bookingDate,
+                startTime: booking.startTime ?? '',
+                timestamp: new Date().toISOString(),
+              },
+            );
+            
+            this.logger.log(`✅ Sent booking confirmation notification to customer ${booking.userId} for booking ${booking.id}`);
+          } else {
+            this.logger.warn(`⚠️ Customer ${booking.userId} has no FCM token registered, cannot send confirmation notification`);
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(`❌ Error sending notification to customer ${booking.userId}: ${errorMsg}`);
+        }
+      } else {
+        this.logger.warn(`⚠️ Booking ${booking.id} has no userId associated, cannot send customer confirmation`);
+      }
+
       // Serialize the booking to ensure relations are included in response
       return this.serializeBooking(booking);
     } catch (error) {
