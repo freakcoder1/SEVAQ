@@ -6,6 +6,7 @@ import { CreateWorkerDto } from './dto/create-worker.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { JwtRequest } from '../common/types/jwt-user.type';
 import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
 
 @Controller('workers')
 export class WorkersController {
@@ -15,6 +16,7 @@ export class WorkersController {
     private readonly workersService: WorkersService,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly usersService: UsersService,
   ) {}
 
   @Get()
@@ -374,17 +376,21 @@ export class WorkersController {
       // Graceful handling: Regular customers are allowed to register FCM tokens too
       // This is not an error, user just doesn't have a worker profile yet
       this.logger.warn(`Regular user (not a worker) registering FCM token: ${req.user.userId}`);
-      return { 
-        success: true, 
-        isWorker: false, 
-        message: 'FCM token registered for user account' 
+      
+      // Save FCM token to the actual user record for customers
+      await this.usersService.updateFcmToken(req.user.userId, fcmToken);
+      
+      return {
+        success: true,
+        isWorker: false,
+        message: 'FCM token registered for user account'
       };
     }
     await this.workersService.updateFcmToken(worker.id, fcmToken);
-    return { 
-      success: true, 
-      isWorker: true, 
-      message: 'FCM token registered for worker account' 
+    return {
+      success: true,
+      isWorker: true,
+      message: 'FCM token registered for worker account'
     };
   }
 
