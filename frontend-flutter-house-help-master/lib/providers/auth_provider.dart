@@ -430,9 +430,10 @@ class AuthProvider with ChangeNotifier {
             await bookingProvider.fetchBookings();
           }
 
-          // Register FCM token after successful login - BEFORE RETURNING!
+          // Register FCM token after successful login - AWAIT THIS!
           debugPrint('AuthProvider: Registering FCM token after login');
-          FirebaseMessagingService.registerFcmToken();
+          await FirebaseMessagingService.registerFcmToken();
+          debugPrint('AuthProvider: FCM token registration completed');
 
           debugPrint('AuthProvider: Notifying listeners and returning true');
           notifyListeners();
