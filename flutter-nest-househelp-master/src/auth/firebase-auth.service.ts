@@ -200,18 +200,45 @@ export class FirebaseAuthService {
   private generateJwt(user: any): { access_token: string; user: any; needsProfileCompletion?: boolean } {
     // FIX: Use publicId (UUID) instead of id (numeric) for JWT subject
     // This ensures consistency with auth.service.ts and passes UUID validation in jwt.strategy.ts
+    
+    // Validate required fields before generating token
+    if (!user.publicId) {
+      this.logger.error(`Cannot generate JWT: user.publicId is missing/undefined for user: ${user.id || user.phone}`);
+      this.logger.error(`User object contents: ${JSON.stringify(user, Object.getOwnPropertyNames(user))}`);
+      throw new Error('User public ID is required for token generation');
+    }
+    
+    if (!user.email) {
+      this.logger.error(`Cannot generate JWT: user.email is missing for user: ${user.publicId}`);
+      throw new Error('User email is required for token generation');
+    }
+    
+    if (!user.role) {
+      this.logger.error(`Cannot generate JWT: user.role is missing for user: ${user.publicId}`);
+      throw new Error('User role is required for token generation');
+    }
+
     const payload = { email: user.email, sub: user.publicId, role: user.role };
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: {
-        id: user.publicId, // Return publicId as the user id to frontend
-        publicId: user.publicId,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        role: user.role,
-      },
-    };
+    
+    try {
+      const accessToken = this.jwtService.sign(payload);
+      
+      return {
+        access_token: accessToken,
+        user: {
+          id: user.publicId, // Return publicId as the user id to frontend
+          publicId: user.publicId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          role: user.role,
+        },
+      };
+    } catch (jwtError) {
+      this.logger.error(`JWT signing failed: ${jwtError.message}`, jwtError.stack);
+      this.logger.error(`Failed payload: sub=${user.publicId}, email=${user.email}, role=${user.role}`);
+      throw jwtError;
+    }
   }
 }
