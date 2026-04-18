@@ -157,6 +157,19 @@ export class FirebaseAuthService {
           createUserDto as any,
           phone,
         );
+        
+        // ✅ FIX: Reload user from database after creation to get auto-generated publicId
+        // TypeORM does not return generated UUID columns from insert operations
+        this.logger.log(`Reloading newly created user to retrieve generated publicId`);
+        const reloadedUser = await this.usersService.findOneByPhone(phone);
+        
+        if (!reloadedUser) {
+          this.logger.error(`Failed to reload user after creation for phone: ${phone}`);
+          throw new Error('User creation failed - could not retrieve created user');
+        }
+        
+        user = reloadedUser;
+        this.logger.log(`User reloaded successfully, publicId: ${user.publicId}`);
       } else {
         // Existing user - preserve their saved profile data
         // Never overwrite user entered names
