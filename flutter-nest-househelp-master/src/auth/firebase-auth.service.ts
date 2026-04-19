@@ -179,9 +179,25 @@ export class FirebaseAuthService {
         user.firstName === 'User' ||
         (user.email && user.email.endsWith('@phone.auth'));
 
-      const jwtResponse: any = this.generateJwt(user);
-      jwtResponse.needsProfileCompletion = needsProfileCompletion;
-      return jwtResponse;
+      // Create plain object response - TypeORM entities have circular references that break Nest serialization
+      const jwtResponse = this.generateJwt(user);
+      
+      // Return a clean serializable object, no TypeORM proxy entities
+      const response: any = {
+        access_token: jwtResponse.access_token,
+        user: {
+          id: user.id,
+          publicId: user.publicId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          email: user.email,
+          role: user.role
+        }
+      };
+      
+      response.needsProfileCompletion = needsProfileCompletion;
+      return response;
     } catch (error) {
       this.logger.error(`Dev login failed: ${error.message}`);
       throw new UnauthorizedException('Login failed');

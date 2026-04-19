@@ -173,6 +173,11 @@ export class AuthController {
         verifyOtpLoginDto.firstName,
         verifyOtpLoginDto.lastName,
       );
+      
+      // Validate result is serializable before logging success
+      // This catches any serialization errors that would otherwise happen after returning
+      JSON.stringify(result);
+      
       this.logger.log(`OTP login successful for phone: ${verifyOtpLoginDto.phone}`);
       return result;
     } catch (error: unknown) {
