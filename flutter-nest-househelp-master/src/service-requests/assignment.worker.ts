@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ServiceRequest } from './entities/service-request.entity';
@@ -9,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
 import { ServiceType } from '../service-profiles/entities/service-profile.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { calculateDistance, toRadians } from '../common/geospatial.utils';
 
 @Injectable()
 export class AssignmentWorker {
@@ -26,6 +28,7 @@ export class AssignmentWorker {
     private usersRepository: Repository<User>,
     private serviceProfilesService: ServiceProfilesService,
     private notificationsService: NotificationsService,
+    private configService: ConfigService,
   ) {}
 
   async processAssignment(requestId: string): Promise<void> {
@@ -47,8 +50,8 @@ export class AssignmentWorker {
       const location = request.metadata?.location;
 
       // Use location from request or fallback to default coordinates
-      const userLat = location?.lat ?? 28.5804579; // Default to test location
-      const userLng = location?.lng ?? 77.4392951; // Default to test location
+      const userLat = location?.lat ?? this.configService.get<number>('defaultLocation.lat', 28.5804579);
+      const userLng = location?.lng ?? this.configService.get<number>('defaultLocation.lng', 77.4392951);
 
       // Parse time window to get start and end times
       const { startTime, endTime } = this.parseTimeWindow(
@@ -328,8 +331,8 @@ export class AssignmentWorker {
           `📏 Worker ${worker.id} distance: ${distance.toFixed(2)}km`,
         );
 
-        // Flexible radius check (start with 15km)
-        const maxRadius = 15;
+        // Flexible radius check - configurable via environment
+        const maxRadius = this.configService.get<number>('assignment.maxRadius', 15);
         if (distance > maxRadius) {
           this.logger.log(
             `❌ Worker ${worker.id} too far (${distance.toFixed(2)}km > ${maxRadius}km)`,
@@ -443,20 +446,10 @@ export class AssignmentWorker {
     lat2: number,
     lon2: number,
   ): number {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) *
-        Math.cos(this.deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
+    return calculateDistance(lat1, lon1, lat2, lon2);
   }
 
   private deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
+    return toRadians(deg);
   }
 }

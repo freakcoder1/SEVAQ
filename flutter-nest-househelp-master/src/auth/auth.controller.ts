@@ -75,10 +75,11 @@ export class AuthController {
       );
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `💥 [${requestId}] Login failed - Email: ${loginDto.email || 'N/A'}, Error: ${error.message}, Duration: ${duration}ms`,
+        `💥 [${requestId}] Login failed - Email: ${loginDto.email || 'N/A'}, Error: ${errorMessage}, Duration: ${duration}ms`,
       );
       throw error;
     }
@@ -87,9 +88,9 @@ export class AuthController {
   @Post('signup')
   @Throttle({ default: { ttl: 60000, limit: 3 } }) // Max 3 signup attempts per minute
   async signup(@Body() createUserDto: CreateUserDto) {
-    console.log('Signup request received:', createUserDto);
+    this.logger.log(`Signup request received: ${createUserDto.email}`);
     const result = await this.authService.signup(createUserDto);
-    console.log('Signup successful for user:', createUserDto.email);
+    this.logger.log(`Signup successful for user: ${createUserDto.email}`);
     return result;
   }
 
@@ -106,8 +107,9 @@ export class AuthController {
       const result = await this.authService.registerWorker(createWorkerDto);
       this.logger.log(`Worker registration successful: ${createWorkerDto.email}`);
       return result;
-    } catch (error) {
-      this.logger.error(`Worker registration failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Worker registration failed: ${errorMessage}`);
       this.logger.error(`Error details: ${JSON.stringify(error)}`);
       throw error;
     }

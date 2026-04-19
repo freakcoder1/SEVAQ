@@ -130,37 +130,37 @@ export class WorkersService {
    */
   async findByUserId(userId: string): Promise<Worker | null> {
     try {
-      console.log('[WorkersService] findByUserId called with userId:', userId, 'type:', typeof userId);
+      this.logger.debug(`findByUserId called with userId: ${userId}, type: ${typeof userId}`);
       
       // DEFENSIVE: Handle null/undefined/empty userId to prevent NaN errors
       if (!userId || typeof userId !== 'string' || userId === 'null' || userId === 'undefined') {
-        console.warn('[WorkersService] findByUserId called with invalid userId:', userId);
+        this.logger.warn(`findByUserId called with invalid userId: ${userId}`);
         return null;
       }
 
       // Try to find by publicId first (UUID format) - this is the user's publicId from JWT
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      console.log('[WorkersService] Is UUID?', isUUID);
+      this.logger.debug(`Is UUID? ${isUUID}`);
       
       if (isUUID) {
         // First find the user by their publicId, then find the worker
-        console.log('[WorkersService] Looking up user by publicId:', userId);
+        this.logger.debug(`Looking up user by publicId: ${userId}`);
         const user = await this.usersRepository.findOne({
           where: { publicId: userId },
         });
-        console.log('[WorkersService] User found:', user ? `id=${user.id}` : 'null');
+        this.logger.debug(`User found: ${user ? `id=${user.id}` : 'null'}`);
         if (user) {
-          console.log('[WorkersService] Looking up worker by userId:', user.id);
+          this.logger.debug(`Looking up worker by userId: ${user.id}`);
           const worker = await this.workersRepository.findOne({
             where: { userId: user.id },
             relations: ['user', 'services'],
           });
-          console.log('[WorkersService] Worker found:', worker ? `id=${worker.id}` : 'null');
+          this.logger.debug(`Worker found: ${worker ? `id=${worker.id}` : 'null'}`);
           if (worker) return worker;
         }
         
         // Also try finding worker directly by publicId (for backward compatibility)
-        console.log('[WorkersService] Trying to find worker directly by publicId:', userId);
+        this.logger.debug(`Trying to find worker directly by publicId: ${userId}`);
         return this.workersRepository.findOne({
           where: { publicId: userId },
           relations: ['user', 'services'],
@@ -168,9 +168,9 @@ export class WorkersService {
       }
       
       // Fall back to finding by user.id (numeric)
-      console.log('[WorkersService] Trying numeric userId:', userId);
+      this.logger.debug(`Trying numeric userId: ${userId}`);
       const userIdNum = parseInt(userId, 10);
-      console.log('[WorkersService] Parsed numeric:', userIdNum, 'isNaN:', isNaN(userIdNum));
+      this.logger.debug(`Parsed numeric: ${userIdNum}, isNaN: ${isNaN(userIdNum)}`);
       if (!isNaN(userIdNum)) {
         return this.workersRepository.findOne({
           where: { userId: userIdNum },
@@ -178,10 +178,10 @@ export class WorkersService {
         });
       }
       
-      console.log('[WorkersService] No valid userId format, returning null');
+      this.logger.debug('No valid userId format, returning null');
       return null;
     } catch (error) {
-      console.error('[WorkersService] Error in findByUserId:', error);
+      this.logger.error(`Error in findByUserId: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -559,7 +559,7 @@ export class WorkersService {
     latitude: number,
     longitude: number,
   ): Promise<Worker> {
-    console.log(`Creating worker profile for user: ${userPublicId}`);
+    this.logger.log(`Creating worker profile for user: ${userPublicId}`);
     
     // ============================================
     // Priority 2: Validate required fields
@@ -577,7 +577,7 @@ export class WorkersService {
     
     // Allow empty serviceIds for testing - use default service "Home Cleaning" UUID
     if (!serviceIds || serviceIds.length === 0) {
-      console.log('No services selected, using default service: Home Cleaning (6138cfa5-4ffd-47cf-b55f-55d4c30a6c51)');
+      this.logger.log('No services selected, using default service: Home Cleaning');
       serviceIds = ['6138cfa5-4ffd-47cf-b55f-55d4c30a6c51'];
     }
 
@@ -591,7 +591,7 @@ export class WorkersService {
         where: { publicId: userPublicId },
       });
       if (user) {
-        console.log(`Found user by publicId: ${user.id} (${user.email})`);
+        this.logger.log(`Found user by publicId: ${user.id} (${user.email})`);
         userIdToUse = user.id;
       }
     }
@@ -604,7 +604,7 @@ export class WorkersService {
           where: { id: numericId },
         });
         if (user) {
-          console.log(`Found user by numeric id: ${user.id} (${user.email})`);
+          this.logger.log(`Found user by numeric id: ${user.id} (${user.email})`);
           userIdToUse = user.id;
         }
       }
@@ -616,21 +616,21 @@ export class WorkersService {
         where: { email: userPublicId },
       });
       if (user) {
-        console.log(`Found user by email: ${user.id} (${user.email})`);
+        this.logger.log(`Found user by email: ${user.id} (${user.email})`);
         userIdToUse = user.id;
       }
     }
     
     // If user still not found after all attempts, throw error
     if (!user) {
-      console.error(`User not found with any identifier: ${userPublicId}`);
+      this.logger.error(`User not found with any identifier: ${userPublicId}`);
       // Debug: list all users in DB to help diagnose
       const allUsers = await this.usersRepository.find({ take: 5 });
-      console.log(`Debug - Sample users in DB:`, allUsers.map(u => ({ id: u.id, publicId: u.publicId, email: u.email })));
+      this.logger.debug(`Debug - Sample users in DB: ${JSON.stringify(allUsers.map(u => ({ id: u.id, publicId: u.publicId, email: u.email })))}`);
       throw new Error('User not found');
     }
     
-    console.log(`Found user: ${user.id} (${user.email})`);
+    this.logger.log(`Found user: ${user.id} (${user.email})`);
     
     // Load services if provided
     let services: Service[] = [];
@@ -643,7 +643,7 @@ export class WorkersService {
           services.push(service);
         }
       }
-      console.log(`Loaded ${services.length} services for worker`);
+      this.logger.log(`Loaded ${services.length} services for worker`);
     }
     
     // ============================================
@@ -676,7 +676,7 @@ export class WorkersService {
     });
     
     const savedWorker = await this.workersRepository.save(worker);
-    console.log(`Worker profile created with ID: ${savedWorker.id} with 25km radius and default schedule`);
+    this.logger.log(`Worker profile created with ID: ${savedWorker.id} with 25km radius and default schedule`);
     
     // Reload with relations
     return this.workersRepository.findOne({

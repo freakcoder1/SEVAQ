@@ -22,25 +22,11 @@ export class ServiceRequestsController {
     @Request() req: JwtRequest,
     @Body() request: CreateServiceRequestDto,
   ): Promise<{ requestId: string; assignmentStatus: string }> {
-    console.log(
-      '🔍 DEBUG: Received service request data:',
-      JSON.stringify(request, null, 2),
-    );
-
     const userId = req.user.userId;
     const serviceRequest = await this.serviceRequestsService.create(
       userId,
       request,
     );
-
-    console.log('📝 SERVICE REQUEST CREATED:', {
-      id: serviceRequest.id,
-      publicId: serviceRequest.publicId,
-      status: serviceRequest.assignmentStatus,
-      serviceId: serviceRequest.serviceId,
-      date: serviceRequest.date,
-      timeWindow: serviceRequest.timeWindow,
-    });
 
     return {
       requestId: serviceRequest.publicId,

@@ -140,15 +140,7 @@ export class SubscriptionsService {
       .getMany();
 
     // Log for debugging - check if assignedWorker is loaded
-    for (const sub of subscriptions) {
-      console.log(`Subscription ${sub.id}: assignedWorkerId=${sub.assignedWorkerId}, has assignedWorker=${!!sub.assignedWorker}`);
-      if (sub.assignedWorker) {
-        console.log(`  Worker ${sub.assignedWorker.id}: has user=${!!sub.assignedWorker.user}`);
-        if (sub.assignedWorker.user) {
-          console.log(`  Worker user: ${sub.assignedWorker.user.firstName} ${sub.assignedWorker.user.lastName}`);
-        }
-      }
-    }
+    // Debug logging removed - production ready
 
     return subscriptions;
   }

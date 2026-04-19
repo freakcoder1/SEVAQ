@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -46,6 +46,8 @@ export class NotificationsService {
     },
   };
 
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private configService: ConfigService,
     private fcmHttpService: FcmHttpService,
@@ -90,9 +92,9 @@ export class NotificationsService {
       if (serviceAccountJson.includes('service_account')) {
         try {
           const parsed = JSON.parse(serviceAccountJson);
-          if (parsed.project_id && parsed.client_email && parsed.private_key) {
+           if (parsed.project_id && parsed.client_email && parsed.private_key) {
             validation.serviceAccountValid = true;
-            console.log('[Firebase Validation] Service account JSON is valid');
+            this.logger.debug('Service account JSON is valid');
           } else {
             errors.push('Service account JSON missing required fields (project_id, client_email, private_key)');
           }
@@ -111,7 +113,7 @@ export class NotificationsService {
       if (normalizedKey.includes('-----BEGIN RSA PRIVATE KEY-----') ||
           normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
         validation.privateKeyFormatValid = true;
-        console.log('[Firebase Validation] Private key format is valid');
+        this.logger.debug('Private key format is valid');
       } else {
         errors.push('Private key does not appear to be in PEM format (missing BEGIN PRIVATE KEY header)');
       }
@@ -138,42 +140,42 @@ export class NotificationsService {
    * Initialize Firebase Admin SDK with detailed logging and diagnostics
    */
   private initializeFirebase(): void {
-    console.log('='.repeat(60));
-    console.log('[Firebase Init] Starting Firebase Admin SDK initialization...');
-    console.log('='.repeat(60));
+    this.logger.log('='.repeat(60));
+    this.logger.log('[Firebase Init] Starting Firebase Admin SDK initialization...');
+    this.logger.log('='.repeat(60));
 
     // Record attempt timestamp
     this.firebaseStatus.lastAttemptAt = new Date().toISOString();
 
     // Step 1: Validate credentials
-    console.log('[Firebase Init] Step 1: Validating credentials...');
+    this.logger.log('[Firebase Init] Step 1: Validating credentials...');
     const validationResult = this.validateFirebaseCredentials();
     this.firebaseStatus.credentialValidation = validationResult.validation;
 
-    console.log('[Firebase Init] Credential validation results:');
-    console.log(`  - Has Service Account JSON: ${validationResult.validation.hasServiceAccountJson}`);
-    console.log(`  - Service Account Valid: ${validationResult.validation.serviceAccountValid}`);
-    console.log(`  - Has Project ID: ${validationResult.validation.hasProjectId}`);
-    console.log(`  - Has Client Email: ${validationResult.validation.hasClientEmail}`);
-    console.log(`  - Has Private Key: ${validationResult.validation.hasPrivateKey}`);
-    console.log(`  - Private Key Format Valid: ${validationResult.validation.privateKeyFormatValid}`);
+    this.logger.log('[Firebase Init] Credential validation results:');
+    this.logger.log(`  - Has Service Account JSON: ${validationResult.validation.hasServiceAccountJson}`);
+    this.logger.log(`  - Service Account Valid: ${validationResult.validation.serviceAccountValid}`);
+    this.logger.log(`  - Has Project ID: ${validationResult.validation.hasProjectId}`);
+    this.logger.log(`  - Has Client Email: ${validationResult.validation.hasClientEmail}`);
+    this.logger.log(`  - Has Private Key: ${validationResult.validation.hasPrivateKey}`);
+    this.logger.log(`  - Private Key Format Valid: ${validationResult.validation.privateKeyFormatValid}`);
 
     if (validationResult.errors.length > 0) {
-      console.warn('[Firebase Init] Validation warnings:');
-      validationResult.errors.forEach(err => console.warn(`  - ${err}`));
+      this.logger.warn('[Firebase Init] Validation warnings:');
+      validationResult.errors.forEach(err => this.logger.warn(`  - ${err}`));
     }
 
     // Step 2: Try service account JSON initialization
     const serviceAccountJson = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
     
     if (validationResult.validation.serviceAccountValid) {
-      console.log('[Firebase Init] Step 2: Attempting initialization with service account JSON...');
+      this.logger.log('[Firebase Init] Step 2: Attempting initialization with service account JSON...');
       try {
         const serviceAccount = JSON.parse(serviceAccountJson);
-        console.log(`[Firebase Init] Service account details:`);
-        console.log(`  - Project ID: ${serviceAccount.project_id}`);
-        console.log(`  - Client Email: ${serviceAccount.client_email}`);
-        console.log(`  - Token URI: ${serviceAccount.token_uri}`);
+        this.logger.log(`[Firebase Init] Service account details:`);
+        this.logger.log(`  - Project ID: ${serviceAccount.project_id}`);
+        this.logger.log(`  - Client Email: ${serviceAccount.client_email}`);
+        this.logger.log(`  - Token URI: ${serviceAccount.token_uri}`);
 
         // Proper private key sanitization for DER parsing
         if (serviceAccount.private_key) {

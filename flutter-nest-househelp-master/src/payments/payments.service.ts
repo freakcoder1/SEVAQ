@@ -281,7 +281,7 @@ export class PaymentsService {
           
           // Fetch the service request to get the correct date
           const srId = bookingData.assignmentId || bookingData.serviceRequestId;
-          console.log('🔍 DEBUG: Looking for service request with ID:', srId, 'Type:', typeof srId);
+          this.logger.debug(`Looking for service request with ID: ${srId}, Type: ${typeof srId}`);
           
           // Handle both UUID (publicId) and numeric ID
           let serviceRequest;
@@ -291,24 +291,24 @@ export class PaymentsService {
               'SELECT id, date FROM service_request WHERE publicId = $1 LIMIT 1',
               [srId]
             );
-            console.log('🔍 DEBUG: Querying by publicId');
+            this.logger.debug('Querying by publicId');
           } else {
             // It's a numeric ID
             serviceRequest = await this.dataSource.query(
               'SELECT id, date FROM service_request WHERE id = $1 LIMIT 1',
               [parseInt(srId)]
             );
-            console.log('🔍 DEBUG: Querying by numeric ID');
+            this.logger.debug('Querying by numeric ID');
           }
-          console.log('🔍 DEBUG: Service request query result:', serviceRequest);
+          this.logger.debug(`Service request query result: ${serviceRequest}`);
           if (serviceRequest && serviceRequest.length > 0 && serviceRequest[0].date) {
             validBookingData.date = this.convertToDateString(serviceRequest[0].date);
-            console.log('🔍 DEBUG: Got date from service request:', validBookingData.date);
+            this.logger.debug(`Got date from service request: ${validBookingData.date}`);
           } else {
             // FIX: Throw error if service request doesn't have a date
             // This ensures the bug is caught rather than silently defaulting to today
             const errorMsg = `Service request ${srId} does not have a valid date. Cannot create booking.`;
-            console.error('🔍 ERROR: PaymentsService -', errorMsg);
+            this.logger.error(errorMsg);
             throw new Error(errorMsg);
           }
         } else {
@@ -348,7 +348,7 @@ export class PaymentsService {
           // bookingData.amount comes from Razorpay which uses paise (1200 rupees = 120000 paise)
           if (bookingData.amount !== undefined) {
             const amountValue = Number(bookingData.amount) / 100; // Convert from paise to rupees
-            console.log('🔍 DEBUG PaymentsService: bookingData.amount =', bookingData.amount, '-> converted to', amountValue);
+            this.logger.debug(`bookingData.amount = ${bookingData.amount} -> converted to ${amountValue}`);
             validBookingData.totalAmount = amountValue;
             validBookingData.amount = amountValue;
           }
@@ -446,7 +446,7 @@ export class PaymentsService {
       // THIS WAS MISSING - THIS IS WHY CUSTOMERS NEVER RECEIVED NOTIFICATIONS
       if (booking.userId) {
         this.logger.log(`Payment complete for booking ${booking.id}, notifying customer ${booking.userId}`);
-        console.log(`🔍 DEBUG: booking.userId =`, booking.userId, typeof booking.userId);
+        this.logger.debug(`booking.userId = ${booking.userId}, type: ${typeof booking.userId}`);
         
         try {
           // Load user with fcm token
@@ -454,7 +454,7 @@ export class PaymentsService {
             where: { id: booking.userId }
           });
           
-          console.log(`🔍 DEBUG: Found user =`, user ? user.id : 'NULL', 'fcmToken exists:', !!user?.fcmToken);
+          this.logger.debug(`Found user = ${user ? user.id : 'NULL'}, fcmToken exists: ${!!user?.fcmToken}`);
           
           if (user && user.fcmToken) {
             const serviceName = booking.service?.name || 'Service';
@@ -477,16 +477,16 @@ export class PaymentsService {
             this.logger.log(`✅ Sent booking confirmation notification to customer ${booking.userId} for booking ${booking.id}`);
           } else {
             this.logger.warn(`⚠️ Customer ${booking.userId} has no FCM token registered, cannot send confirmation notification`);
-            console.log(`🔍 DEBUG: User object dump:`, JSON.stringify(user, null, 2));
+            this.logger.debug(`User object: ${JSON.stringify(user)}`);
           }
-        } catch (error) {
+        } catch (error: unknown) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           this.logger.error(`❌ Error sending notification to customer ${booking.userId}: ${errorMsg}`);
-          console.log(`🔍 DEBUG: Full error stack:`, error);
+          this.logger.debug(`Full error: ${error}`);
         }
       } else {
         this.logger.warn(`⚠️ Booking ${booking.id} has no userId associated, cannot send customer confirmation`);
-        console.log(`🔍 DEBUG: Full booking dump:`, JSON.stringify(booking, null, 2));
+        this.logger.debug(`Booking object: ${JSON.stringify(booking)}`);
       }
 
       // Serialize the booking to ensure relations are included in response

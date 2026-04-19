@@ -3,12 +3,15 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Logger,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditService } from '../audit.service';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(AuditInterceptor.name);
+
   constructor(private readonly auditService: AuditService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -52,9 +55,10 @@ export class AuditInterceptor implements NestInterceptor {
             ipAddress: request.ip,
             userAgent: request.headers['user-agent'],
           });
-        } catch (error) {
+        } catch (error: unknown) {
           // Don't let audit logging failures break the request
-          console.error('Audit logging failed:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          this.logger.error(`Audit logging failed: ${errorMessage}`);
         }
       }),
     );

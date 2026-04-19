@@ -330,14 +330,14 @@ export class BookingsService {
 
       // Calculate amount if not provided
       let amount = createBookingDto.amount;
-      console.log('🔍 DEBUG create: Initial amount from DTO =', amount);
+      this.logger.debug(`create: Initial amount from DTO = ${amount}`);
       if (!amount) {
         const service = await this.servicesRepository.findOne({
           where: { id: createBookingDto.serviceId },
         });
 
-        console.log('🔍 DEBUG create: Service found =', service ? service.id : 'null');
-        console.log('🔍 DEBUG create: Service basePrice =', service?.basePrice);
+        this.logger.debug(`create: Service found = ${service ? service.id : 'null'}`);
+        this.logger.debug(`create: Service basePrice = ${service?.basePrice}`);
 
         if (service) {
           const basePrice = parseFloat(service.basePrice.toString());
@@ -480,15 +480,16 @@ export class BookingsService {
           
           if (savedBookingWithService) {
             await this.notificationsService.notifyUserBookingConfirmation(user, savedBookingWithService);
-            console.log('🔍 NOTIFICATION: Customer notification sent successfully for booking', bookingToReturn.id, 'to user', user.id);
+            this.logger.debug(`Customer notification sent successfully for booking ${bookingToReturn.id} to user ${user.id}`);
           } else {
-            console.warn('🔍 NOTIFICATION: Could not load booking with service for customer notification', bookingToReturn.id);
+            this.logger.warn(`Could not load booking with service for customer notification ${bookingToReturn.id}`);
           }
         } else {
-          console.warn('🔍 NOTIFICATION: Could not find user for customer notification, userId:', userIdValue);
+          this.logger.warn(`Could not find user for customer notification, userId: ${userIdValue}`);
         }
-      } catch (notifyError) {
-        console.error('🔍 ERROR: Failed to send customer notification:', notifyError);
+      } catch (notifyError: unknown) {
+        const errorMessage = notifyError instanceof Error ? notifyError.message : 'Unknown error';
+        this.logger.error(`Failed to send customer notification: ${errorMessage}`);
         // Don't fail the booking if notification fails
       }
 
@@ -518,11 +519,12 @@ export class BookingsService {
                 notificationSent: true
               });
               
-              console.log('🔍 NOTIFICATION: Worker notification sent successfully for booking', bookingToReturn.id);
+              this.logger.debug(`Worker notification sent successfully for booking ${bookingToReturn.id}`);
             }
           }
-        } catch (workerNotifyError) {
-          console.error('🔍 ERROR: Failed to send worker notification:', workerNotifyError);
+        } catch (workerNotifyError: unknown) {
+          const errorMessage = workerNotifyError instanceof Error ? workerNotifyError.message : 'Unknown error';
+          this.logger.error(`Failed to send worker notification: ${errorMessage}`);
           // Don't fail the booking if notification fails
         }
       }
@@ -530,7 +532,7 @@ export class BookingsService {
       // FIX: Ensure assignmentState is correctly set for bookings with worker assigned
       // If worker is assigned but assignmentState is not ASSIGNED, update it
       if (bookingToReturn.workerId && bookingToReturn.assignmentState !== AssignmentState.ASSIGNED) {
-        console.log('🔍 FIX: Updating assignmentState from', bookingToReturn.assignmentState, 'to ASSIGNED');
+        this.logger.debug(`Updating assignmentState from ${bookingToReturn.assignmentState} to ASSIGNED`);
         await this.bookingsRepository.update(bookingToReturn.id, {
           assignmentState: AssignmentState.ASSIGNED,
           status: BookingStatus.CONFIRMED,
@@ -732,14 +734,14 @@ export class BookingsService {
 
   async createWithAssignment(createBookingDto: any) {
     // DEBUG: Log incoming amount
-    console.log('🔍 DEBUG createWithAssignment: createBookingDto.amount =', createBookingDto.amount);
+    this.logger.debug(`createWithAssignment: createBookingDto.amount = ${createBookingDto.amount}`);
     
     // Create service request first
     const savedBooking = await this.create(createBookingDto);
     
     // DEBUG: Log the created booking's amount
-    console.log('🔍 DEBUG createWithAssignment: savedBooking.amount =', savedBooking.amount);
-    console.log('🔍 DEBUG createWithAssignment: savedBooking.totalAmount =', savedBooking.totalAmount);
+    this.logger.debug(`createWithAssignment: savedBooking.amount = ${savedBooking.amount}`);
+    this.logger.debug(`createWithAssignment: savedBooking.totalAmount = ${savedBooking.totalAmount}`);
 
     // Attempt assignment asynchronously
     try {
@@ -747,9 +749,8 @@ export class BookingsService {
     } catch (error) {
       // Assignment failed, but booking was created successfully
       if (error instanceof Error) {
-        console.log(
-          `[Booking ${savedBooking.id}] Assignment attempt failed (booking still created):`,
-          error.message,
+        this.logger.warn(
+          `[Booking ${savedBooking.id}] Assignment attempt failed (booking still created): ${error.message}`
         );
       } else {
         this.logger.debug(`[Booking ${savedBooking.id}] Assignment attempt failed with unknown error type (booking still created)`);

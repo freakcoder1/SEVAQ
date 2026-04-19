@@ -110,9 +110,10 @@ export class ServiceRequestsService {
       this.logger.log(
         `Assignment processing completed for service request id: ${singleRequest.id}, publicId: ${singleRequest.publicId}`,
       );
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to process assignment for service request ${singleRequest.publicId}: ${error.message}`,
+        `Failed to process assignment for service request ${singleRequest.publicId}: ${errorMessage}`,
       );
     }
 
@@ -127,10 +128,12 @@ export class ServiceRequestsService {
       });
       this.logger.log(`Found service request: ${result ? 'yes' : 'no'}`);
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Error finding service request ${id}: ${error.message}`,
-        error.stack,
+        `Error finding service request ${id}: ${errorMessage}`,
+        errorStack,
       );
       throw error;
     }
@@ -208,6 +211,6 @@ export class ServiceRequestsService {
   async triggerAssignmentProcessing(): Promise<void> {
     // This method can be used to manually trigger assignment processing
     // For now, it's a placeholder that can be expanded with actual logic
-    console.log('Assignment processing triggered manually');
+    this.logger.log('Assignment processing triggered manually');
   }
 }

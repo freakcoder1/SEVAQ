@@ -54,11 +54,11 @@ export class WorkersController {
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req: JwtRequest) {
     try {
-      console.log('[WorkersController] getMyProfile - user:', req.user);
+      this.logger.debug(`getMyProfile requested for user: ${req.user?.userId}`);
       
       // Safe check - if no user object from auth guard
       if (!req.user || !req.user.userId) {
-        console.error('[WorkersController] No user in request - auth guard may have failed');
+        this.logger.error('No user in request - auth guard may have failed');
         return { 
           message: 'Authentication required',
           needsRegistration: false 
@@ -66,7 +66,7 @@ export class WorkersController {
       }
       
       const worker = await this.workersService.findByUserId(req.user.userId);
-      console.log('[WorkersController] findByUserId result:', worker ? 'found' : 'not found');
+      this.logger.debug(`findByUserId result: ${worker ? 'found' : 'not found'}`);
       if (!worker) {
         // Return a 200 response with null worker instead of error
         // This indicates the user hasn't created a worker profile yet
@@ -81,7 +81,6 @@ export class WorkersController {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching worker profile: ${errorMessage}`, errorStack);
-      console.error('[WorkersController] getMyProfile error:', error);
       // Return 200 with error info for debugging
       return { 
         message: 'Error fetching worker profile', 
