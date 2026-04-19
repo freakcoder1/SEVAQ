@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_house_help/providers/booking_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../firebase_options.dart';
+import 'api_service.dart';
 
 /// Annotation to prevent tree-shaking by Dart compiler
 /// This class is accessed from native code (Android/iOS)
@@ -104,77 +104,34 @@ class FirebaseMessagingService {
 
   static Future<void> _sendFcmTokenToBackend(String fcmToken) async {
     try {
-      // Get the auth token from secure storage - use 'jwt_token' as that's what other services use
-      String? authToken = await _secureStorage.read(key: 'jwt_token');
-
-      if (authToken == null) {
-        print(
-          'FCM: No auth token found (jwt_token), skipping FCM token registration',
-        );
-        // Store token locally so it can be registered later after login
-        await _secureStorage.write(key: 'pending_fcm_token', value: fcmToken);
-        return;
-      }
+      // Create ApiService instance - this handles auth token automatically
+      final apiService = ApiService();
 
       // Get user role from secure storage - stored during login
       String? userRole = await _secureStorage.read(key: 'user_role');
 
-      // Define both endpoints
-      String workerEndpoint = '${AppConfig.apiBaseUrl}/workers/me/fcm-token';
-      String userEndpoint = '${AppConfig.apiBaseUrl}/users/register-fcm-token';
-
-      // Try worker endpoint first if user is known to be a worker
-      // This is because workers need to receive booking notifications
-      if (userRole == 'worker' || userRole == null) {
-        print(
-          'FCM: User is worker, trying worker endpoint first: $workerEndpoint',
-        );
+      // Only try worker endpoint if user is explicitly a worker
+      // Default to user endpoint for customers and unknown roles
+      if (userRole == 'worker') {
+        print('FCM: User is worker, trying worker endpoint');
         try {
-          final workerResponse = await http.patch(
-            Uri.parse(workerEndpoint),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $authToken',
-            },
-            body: '{"fcmToken": "$fcmToken"}',
-          );
-
-          if (workerResponse.statusCode == 200 ||
-              workerResponse.statusCode == 201) {
-            print('FCM: Worker token registered successfully!');
-            return;
-          } else if (workerResponse.statusCode == 404) {
-            // Worker profile doesn't exist yet - this is expected for new workers
-            print(
-              'FCM: Worker profile not found (404), may need to register first',
-            );
-          } else {
-            print('FCM: Worker endpoint error: ${workerResponse.statusCode}');
-          }
+          await apiService.patch('/workers/me/fcm-token', {
+            'fcmToken': fcmToken,
+          });
+          print('FCM: Worker token registered successfully!');
+          return;
         } catch (e) {
-          print('FCM: Worker endpoint exception: $e');
+          print('FCM: Worker endpoint failed, will try user endpoint: $e');
         }
       }
 
       // Try user endpoint (for customers or workers without profile yet)
-      print('FCM: Trying user endpoint: $userEndpoint');
+      print('FCM: Trying user endpoint');
       try {
-        final userResponse = await http.post(
-          Uri.parse(userEndpoint),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $authToken',
-          },
-          body: '{"fcmToken": "$fcmToken"}',
-        );
-
-        if (userResponse.statusCode == 200 || userResponse.statusCode == 201) {
-          print('FCM: User token registered successfully!');
-        } else {
-          print(
-            'FCM: User endpoint error: ${userResponse.statusCode} - ${userResponse.body}',
-          );
-        }
+        await apiService.post('/users/register-fcm-token', {
+          'fcmToken': fcmToken,
+        });
+        print('FCM: User token registered successfully!');
       } catch (e) {
         print('FCM: User endpoint exception: $e');
       }

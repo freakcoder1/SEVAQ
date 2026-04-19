@@ -50,6 +50,24 @@ class ApiService {
     return AppConfig.apiBaseUrl;
   }
 
+  /// Normalize endpoint path to prevent double /api prefix collision
+  /// Automatically strips leading /api prefix if present to prevent /api/api paths
+  static String normalizeEndpoint(String endpoint) {
+    if (endpoint.startsWith('/api/')) {
+      debugPrint(
+        '⚠️ ApiService: Fixing double /api prefix for endpoint: $endpoint',
+      );
+      endpoint = endpoint.substring(5);
+    } else if (endpoint.startsWith('api/')) {
+      endpoint = endpoint.substring(4);
+    }
+    // Remove leading slash if present to avoid double slashes
+    if (endpoint.startsWith('/')) {
+      endpoint = endpoint.substring(1);
+    }
+    return endpoint;
+  }
+
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
@@ -115,7 +133,8 @@ class ApiService {
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     try {
-      final url = '$baseUrl/$endpoint';
+      final normalizedEndpoint = normalizeEndpoint(endpoint);
+      final url = '$baseUrl/$normalizedEndpoint';
       debugPrint('ApiService: POST request to $url');
       final response = await http
           .post(
@@ -142,7 +161,8 @@ class ApiService {
 
   Future<dynamic> get(String endpoint) async {
     try {
-      final url = '$baseUrl/$endpoint';
+      final normalizedEndpoint = normalizeEndpoint(endpoint);
+      final url = '$baseUrl/$normalizedEndpoint';
       final headers = await _getHeaders();
       debugPrint('ApiService: GET request to $url');
       debugPrint('ApiService: GET headers: $headers');
@@ -171,9 +191,10 @@ class ApiService {
 
   Future<dynamic> patch(String endpoint, Map<String, dynamic> data) async {
     try {
+      final normalizedEndpoint = normalizeEndpoint(endpoint);
       final response = await http
           .patch(
-            Uri.parse('$baseUrl/$endpoint'),
+            Uri.parse('$baseUrl/$normalizedEndpoint'),
             headers: await _getHeaders(),
             body: jsonEncode(data),
           )
@@ -195,8 +216,12 @@ class ApiService {
 
   Future<dynamic> delete(String endpoint) async {
     try {
+      final normalizedEndpoint = normalizeEndpoint(endpoint);
       final response = await http
-          .delete(Uri.parse('$baseUrl/$endpoint'), headers: await _getHeaders())
+          .delete(
+            Uri.parse('$baseUrl/$normalizedEndpoint'),
+            headers: await _getHeaders(),
+          )
           .timeout(AppConfig.requestTimeout);
       return await _processResponse(response);
     } catch (e) {
