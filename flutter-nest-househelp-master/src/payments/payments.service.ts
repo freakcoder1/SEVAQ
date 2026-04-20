@@ -444,9 +444,13 @@ export class PaymentsService {
 
       // ✅ Send confirmation notification to CUSTOMER now that payment is complete
       // THIS WAS MISSING - THIS IS WHY CUSTOMERS NEVER RECEIVED NOTIFICATIONS
+      
+      let notificationFcmToken: string | null = null;
+      let notificationSource: string = 'none';
+      
+      // First check for authenticated user FCM token
       if (booking.userId) {
-        this.logger.log(`Payment complete for booking ${booking.id}, notifying customer ${booking.userId}`);
-        this.logger.debug(`booking.userId = ${booking.userId}, type: ${typeof booking.userId}`);
+        this.logger.log(`Payment complete for booking ${booking.id}, checking customer ${booking.userId}`);
         
         try {
           // Load user with fcm token
@@ -454,39 +458,55 @@ export class PaymentsService {
             where: { id: booking.userId }
           });
           
-          this.logger.debug(`Found user = ${user ? user.id : 'NULL'}, fcmToken exists: ${!!user?.fcmToken}`);
-          
           if (user && user.fcmToken) {
-            const serviceName = booking.service?.name || 'Service';
-            const bookingDate = booking.date || new Date().toISOString().split('T')[0];
-            
-            await this.notificationsService.sendPushNotification(
-              user.fcmToken,
-              'Booking Confirmed ✅',
-              `Your ${serviceName} booking for ${bookingDate} has been confirmed successfully. We have assigned a worker for your service.`,
-              {
-                type: 'booking_confirmed',
-                bookingId: booking.id.toString(),
-                serviceName,
-                serviceDate: bookingDate,
-                startTime: booking.startTime ?? '',
-                timestamp: new Date().toISOString(),
-              },
-            );
-            
-            this.logger.log(`✅ Sent booking confirmation notification to customer ${booking.userId} for booking ${booking.id}`);
+            notificationFcmToken = user.fcmToken;
+            notificationSource = 'authenticated_user';
+            this.logger.debug(`Using authenticated user FCM token for booking ${booking.id}`);
           } else {
-            this.logger.warn(`⚠️ Customer ${booking.userId} has no FCM token registered, cannot send confirmation notification`);
-            this.logger.debug(`User object: ${JSON.stringify(user)}`);
+            this.logger.debug(`User ${booking.userId} has no FCM token, checking booking guest token`);
           }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Error loading user ${booking.userId}: ${errorMsg}`);
+        }
+      }
+      
+      // ✅ FALLBACK: Check for guest FCM token attached directly to booking
+      if (!notificationFcmToken && booking.guestFcmToken) {
+        notificationFcmToken = booking.guestFcmToken;
+        notificationSource = 'guest_booking_token';
+        this.logger.debug(`Using GUEST FCM token attached to booking ${booking.id}`);
+      }
+      
+      // Send notification if we have any valid token
+      if (notificationFcmToken) {
+        const serviceName = booking.service?.name || 'Service';
+        const bookingDate = booking.date || new Date().toISOString().split('T')[0];
+        
+        try {
+          await this.notificationsService.sendPushNotification(
+            notificationFcmToken,
+            'Booking Confirmed ✅',
+            `Your ${serviceName} booking for ${bookingDate} has been confirmed successfully. We have assigned a worker for your service.`,
+            {
+              type: 'booking_confirmed',
+              bookingId: booking.id.toString(),
+              serviceName,
+              serviceDate: bookingDate,
+              startTime: booking.startTime ?? '',
+              timestamp: new Date().toISOString(),
+            },
+          );
+          
+          this.logger.log(`✅ Sent booking confirmation notification to customer for booking ${booking.id} (source: ${notificationSource})`);
         } catch (error: unknown) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          this.logger.error(`❌ Error sending notification to customer ${booking.userId}: ${errorMsg}`);
+          this.logger.error(`❌ Error sending notification for booking ${booking.id}: ${errorMsg}`);
           this.logger.debug(`Full error: ${error}`);
         }
       } else {
-        this.logger.warn(`⚠️ Booking ${booking.id} has no userId associated, cannot send customer confirmation`);
-        this.logger.debug(`Booking object: ${JSON.stringify(booking)}`);
+        this.logger.warn(`⚠️ NO FCM TOKEN FOUND for booking ${booking.id} - cannot send customer confirmation`);
+        this.logger.debug(`userId = ${booking.userId}, guestFcmToken exists = ${!!booking.guestFcmToken}`);
       }
 
       // Serialize the booking to ensure relations are included in response

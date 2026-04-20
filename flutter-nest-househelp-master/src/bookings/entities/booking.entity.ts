@@ -184,6 +184,9 @@ export class Booking {
   notificationSent: boolean;
 
   @Column({ type: 'text', nullable: true })
+  guestFcmToken: string;
+
+  @Column({ type: 'text', nullable: true })
   assignmentMetadata: string;
 
   @OneToOne(() => Payment, (payment) => payment.booking)
