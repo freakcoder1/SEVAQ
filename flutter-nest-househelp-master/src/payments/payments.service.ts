@@ -254,6 +254,7 @@ export class PaymentsService {
         const bookingRepo = queryRunner.manager.getRepository('Booking');
         booking = await bookingRepo.findOne({
           where: { id: booking.id },
+          select: ['id', 'publicId', 'userId', 'workerId', 'serviceId', 'serviceRequestId', 'date', 'startTime', 'endTime', 'totalAmount', 'amount', 'status', 'isPaid', 'type', 'notes', 'location', 'metadata', 'guestFcmToken'],
           relations: ['worker', 'worker.user', 'service', 'user'],
         });
 
@@ -376,6 +377,7 @@ export class PaymentsService {
         // Fetch the booking with related data for the response
         booking = await bookingRepo.findOne({
           where: { id: booking.id },
+          select: ['id', 'publicId', 'userId', 'workerId', 'serviceId', 'serviceRequestId', 'date', 'startTime', 'endTime', 'totalAmount', 'amount', 'status', 'isPaid', 'type', 'notes', 'location', 'metadata', 'guestFcmToken'],
           relations: ['worker', 'worker.user', 'service', 'user'],
         });
       }
