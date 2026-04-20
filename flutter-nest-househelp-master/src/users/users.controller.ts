@@ -35,10 +35,17 @@ export class UsersController {
   }
 
   @Post('register-fcm-token')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async registerFcmToken(@Request() req: JwtRequest, @Body() registerFcmTokenDto: RegisterFcmTokenDto) {
-    await this.usersService.updateFcmToken(req.user.userId, registerFcmTokenDto.fcmToken);
+  async registerFcmToken(@Request() req: any, @Body() registerFcmTokenDto: RegisterFcmTokenDto) {
+    // Allow both authenticated and unauthenticated FCM token registration
+    const userId = req.user?.userId;
+    
+    if (userId) {
+      // Authenticated user: attach token to user account
+      await this.usersService.updateFcmToken(userId, registerFcmTokenDto.fcmToken);
+    }
+    
+    // Always return success even for unauthenticated devices
     return {
       success: true,
       message: 'FCM token registered successfully',

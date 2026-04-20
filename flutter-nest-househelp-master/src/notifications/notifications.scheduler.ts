@@ -8,7 +8,7 @@ export class NotificationsScheduler {
 
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Cron('0 */15 * * * *')
+  @Cron('0 * * * * *')
   async handlePreServiceReminders() {
     this.logger.log('Checking for pre-service reminders to send');
     try {

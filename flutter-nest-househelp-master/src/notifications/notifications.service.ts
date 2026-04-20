@@ -605,6 +605,14 @@ export class NotificationsService {
       const reminderType = await this.determineReminderType(booking);
       if (reminderType) {
         await this.sendPreServiceReminder(booking, reminderType);
+        
+        // MARK REMINDER AS SENT - PERMANENT FIX FOR DUPLICATE NOTIFICATIONS
+        await this.bookingsRepository
+          .createQueryBuilder()
+          .update(Booking)
+          .set({ preServiceReminderSent: true })
+          .where('id = :id', { id: booking.id })
+          .execute();
       }
     }
   }
@@ -717,9 +725,12 @@ export class NotificationsService {
         bookings = allBookings.filter(booking => booking.userId === userId);
       }
 
-      // Filter to only include bookings within the 2h-26h window
+      // Filter to only include bookings within the 2h-26h window AND NO REMINDER SENT YET
       return bookings.filter((booking) => {
         if (!booking.startTime) return false;
+        // Skip if reminder was already sent
+        if (booking.preServiceReminderSent === true) return false;
+        
         const timeParts = booking.startTime.split(':');
         const hours = parseInt(timeParts[0], 10);
         const minutes = parseInt(timeParts[1] || '0', 10);

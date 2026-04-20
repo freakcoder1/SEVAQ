@@ -99,6 +99,9 @@ export class Booking {
   @Column({ name: 'serviceId', type: 'int', nullable: true })
   serviceId: number;
 
+  @Column({ type: 'boolean', default: false })
+  preServiceReminderSent: boolean;
+
   @ManyToOne(() => Service, { nullable: true })
   @JoinColumn({ name: 'serviceId' })
   service: Service;
