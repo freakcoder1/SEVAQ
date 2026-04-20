@@ -439,6 +439,8 @@ export class BookingsService {
         user: await this.usersRepository.findOne({
           where: { publicId: createBookingDto.userId },
         }),
+        // Save guest FCM token if provided in the request
+        guestFcmToken: createBookingDto.guestFcmToken || createBookingDto.guest_fcm_token || null,
       };
 
       const booking = this.bookingsRepository.create(bookingData);
