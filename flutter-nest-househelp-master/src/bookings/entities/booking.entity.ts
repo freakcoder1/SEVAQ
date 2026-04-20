@@ -183,7 +183,7 @@ export class Booking {
   @Column({ default: false })
   notificationSent: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'guest_fcm_token' })
   guestFcmToken: string;
 
   @Column({ type: 'text', nullable: true })
