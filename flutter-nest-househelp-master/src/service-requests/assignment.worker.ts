@@ -357,16 +357,27 @@ export class AssignmentWorker {
             `❌ Worker ${worker.id} not available for requested time, trying alternative strategies...`,
           );
 
-          // Strategy 1: Try exact time match
-          availableSlot = await this.slotsService.findAvailableSlot(
-            worker.id,
-            startTime,
-            endTime,
+          // Strategy 1: Try to find any available slot for the worker on the same day
+          const requestedDate = new Date(
+            startTime.getFullYear(),
+            startTime.getMonth(),
+            startTime.getDate(),
           );
-          if (availableSlot) {
-            this.logger.log(
-              `✅ Worker ${worker.id} found with exact time match`,
+          const nextDay = new Date(requestedDate);
+          nextDay.setDate(requestedDate.getDate() + 1);
+
+          const sameDaySlots =
+            await this.slotsService.getAvailableSlotsForWorker(
+              worker.id,
+              requestedDate,
+              nextDay,
             );
+
+          if (sameDaySlots.length > 0) {
+            this.logger.log(
+              `✅ Worker ${worker.id} found with same-day alternative slot`,
+            );
+            availableSlot = sameDaySlots[0]; // Use the earliest available slot
           }
         }
 
