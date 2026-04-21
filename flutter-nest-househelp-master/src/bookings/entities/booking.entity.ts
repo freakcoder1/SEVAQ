@@ -201,8 +201,9 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   assignmentMetadata: string;
 
-  @Column({ type: 'json', nullable: true })
-  metadata: any;
+  // TEMPORARY DISABLED - this column was never created in production database causing critical failures
+  // @Column({ type: 'json', nullable: true })
+  // metadata: any;
 
   @OneToOne(() => Payment, (payment) => payment.booking)
   payment: Payment;
