@@ -68,7 +68,8 @@ describe('House Help App E2E', () => {
         });
         expect(loginResponse.status).toBe(201);
         const token = loginResponse.body.access_token;
-        const servicesResponse = await (0, supertest_1.default)(app.getHttpServer()).get('/services');
+        const servicesResponse = await (0, supertest_1.default)(app.getHttpServer())
+            .get('/services');
         expect(servicesResponse.status).toBe(200);
         expect(servicesResponse.body.length).toBeGreaterThan(0);
         const bookingResponse = await (0, supertest_1.default)(app.getHttpServer())
