@@ -869,6 +869,7 @@ export class BookingsService {
   async findOne(id: string) {
     const booking = await this.bookingsRepository.findOne({
       where: { id },
+      select: ['id', 'publicId', 'userId', 'workerId', 'serviceId', 'serviceRequestId', 'date', 'startTime', 'endTime', 'totalAmount', 'amount', 'status', 'isPaid', 'type', 'notes', 'location', 'metadata', 'guestFcmToken', 'assignedWorkerId', 'createdAt', 'updatedAt'],
       relations: [
         'user',
         'user.addresses',

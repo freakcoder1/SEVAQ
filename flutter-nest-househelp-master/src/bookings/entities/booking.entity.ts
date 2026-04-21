@@ -201,6 +201,9 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   assignmentMetadata: string;
 
+  @Column({ type: 'json', nullable: true })
+  metadata: any;
+
   @OneToOne(() => Payment, (payment) => payment.booking)
   payment: Payment;
 
