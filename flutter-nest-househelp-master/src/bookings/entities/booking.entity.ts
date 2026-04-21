@@ -8,8 +8,10 @@ import {
   JoinColumn,
   OneToOne,
   VersionColumn,
+  BeforeInsert,
 } from 'typeorm';
 import { Expose, Type } from 'class-transformer';
+import * as crypto from 'crypto';
 import { IsOptional, IsNumber, IsString } from 'class-validator';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
@@ -74,6 +76,16 @@ export enum AssignmentState {
 export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string; // Public-facing UUID identifier
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = crypto.randomUUID();
+    }
+  }
 
   @Column({ name: 'userId', type: 'uuid' })
   userId: string;
