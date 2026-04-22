@@ -118,14 +118,39 @@ export class PaymentsController {
     // Use authenticated user's publicId (UUID) from JWT token
     const userId = (req.user as any).userId;
 
+    let monthlyPriceInRupees: number;
+    let serviceProfileId: number | null;
+
+    if (body.customPrice !== undefined) {
+      // Custom dynamic pricing mode - use provided price directly
+      monthlyPriceInRupees = Number(body.customPrice);
+      serviceProfileId = null;
+      
+      if (isNaN(monthlyPriceInRupees) || monthlyPriceInRupees < 100) {
+        throw new BadRequestException('Invalid custom price. Must be minimum 100 INR.');
+      }
+    } else {
+      // Existing profile mode - load from database
+      const serviceProfile = await this.serviceProfilesService.getProfileById(
+        body.serviceProfileId,
+      );
+      if (!serviceProfile) {
+        throw new BadRequestException('Service profile not found');
+      }
+      
+      monthlyPriceInRupees = Number(serviceProfile.monthlyPrice);
+      serviceProfileId = body.serviceProfileId;
+    }
+
     // Get subscription data - use authenticated userId from JWT
     const subscriptionData = {
       userId: userId, // Use authenticated user's UUID
-      serviceProfileId: body.serviceProfileId,
+      serviceProfileId: serviceProfileId,
       preferredTimeWindow: body.preferredTimeWindow,
       startDate: body.startDate,
       location: body.location,
-      monthlyPriceSnapshot: body.monthlyPriceSnapshot,
+      monthlyPriceSnapshot: monthlyPriceInRupees,
+      customPlanData: body.customPlanData,
     };
 
     // Atomically verify payment + create subscription in a single flow
