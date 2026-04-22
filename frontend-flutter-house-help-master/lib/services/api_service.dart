@@ -550,20 +550,36 @@ extension PaymentApi on ApiService {
 
   Future<dynamic> createSubscriptionOrder({
     required dynamic userId, // Support both int and String (UUID)
-    required int serviceProfileId,
+    int? serviceProfileId,
+    int? customPrice,
     required String preferredTimeWindow,
     required DateTime startDate,
     required double lat,
     required double lng,
+    Map<String, dynamic>? customPlanData,
   }) async {
-    return await post('payments/create-subscription-order', {
+    final body = {
       'userId': userId,
-      'serviceProfileId': serviceProfileId,
       'preferredTimeWindow': preferredTimeWindow,
       'startDate': startDate.toIso8601String(),
       'billingCycle': 'MONTHLY',
       'location': {'lat': lat, 'lng': lng},
-    });
+    };
+
+    if (serviceProfileId != null) {
+      body['serviceProfileId'] = serviceProfileId;
+    }
+
+    if (customPrice != null) {
+      body['customPrice'] = customPrice;
+      body['monthlyPriceSnapshot'] = customPrice;
+    }
+
+    if (customPlanData != null) {
+      body['customPlanData'] = customPlanData;
+    }
+
+    return await post('payments/create-subscription-order', body);
   }
 
   Future<dynamic> createSubscriptionAfterPayment({

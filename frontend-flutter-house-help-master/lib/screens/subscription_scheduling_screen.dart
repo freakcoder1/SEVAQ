@@ -154,17 +154,41 @@ class _SubscriptionSchedulingScreenState
       }
 
       // Create payment order with preferredTimeWindow
-      final paymentOrder = await _apiService.createSubscriptionOrder(
-        userId: resolvedUserId,
-        serviceProfileId: widget.serviceProfile.id,
-        preferredTimeWindow: _selectedTimeWindow
+      final Map<String, dynamic> orderParams = {
+        'userId': resolvedUserId,
+        'preferredTimeWindow': _selectedTimeWindow
             .toString()
             .split('.')
             .last
             .toUpperCase(),
-        startDate: _selectedStartDate!,
-        lat: _currentLocation?.latitude ?? 0.0,
-        lng: _currentLocation?.longitude ?? 0.0,
+        'startDate': _selectedStartDate!,
+        'lat': _currentLocation?.latitude ?? 0.0,
+        'lng': _currentLocation?.longitude ?? 0.0,
+      };
+
+      // Handle custom plans (id=0 means dynamic pricing)
+      if (widget.serviceProfile.id == 0) {
+        // Custom plan - send calculated price directly
+        orderParams['customPrice'] = widget.serviceProfile.monthlyPrice.toInt();
+        orderParams['customPlanData'] = {
+          'serviceType': widget.serviceProfile.serviceType,
+          'profileName': widget.serviceProfile.profileName,
+          'scopeDefinition': widget.serviceProfile.scopeDefinition,
+        };
+      } else {
+        // Standard predefined profile
+        orderParams['serviceProfileId'] = widget.serviceProfile.id;
+      }
+
+      final paymentOrder = await _apiService.createSubscriptionOrder(
+        userId: orderParams['userId'],
+        serviceProfileId: orderParams['serviceProfileId'],
+        customPrice: orderParams['customPrice'],
+        preferredTimeWindow: orderParams['preferredTimeWindow'],
+        startDate: orderParams['startDate'],
+        lat: orderParams['lat'],
+        lng: orderParams['lng'],
+        customPlanData: orderParams['customPlanData'],
       );
 
       if (paymentOrder == null || paymentOrder['id'] == null) {
