@@ -97,18 +97,25 @@ export class SubscriptionsService {
           case 'early-morning': startHour = 6; endHour = 11; break;
         }
 
-        await this.bookingsService.create({
-          userId,
-          serviceId: serviceProfileId,
-          date: bookingDate,
-          startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
-          endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
-          location,
-          type: 'subscription',
-          subscriptionId: savedSubscription.id,
-          status: 'requested',
-          notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
-        });
+        // ✅ CORRECT: Use transaction manager directly for booking creation
+        // ✅ TypeORM transaction only works when using the transaction manager instance
+        await transactionManager.createQueryBuilder()
+          .insert()
+          .into('booking')
+          .values({
+            publicId: uuidv4(),
+            userId,
+            serviceId: serviceProfileId,
+            date: bookingDate,
+            startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+            endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+            location,
+            type: 'subscription',
+            subscriptionId: savedSubscription.id,
+            status: 'requested',
+            notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
+          })
+          .execute();
       }
     });
 
