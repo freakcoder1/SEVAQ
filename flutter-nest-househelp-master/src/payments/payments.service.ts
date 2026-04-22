@@ -577,9 +577,20 @@ export class PaymentsService {
         // Import SubscriptionStatus from subscriptions module
         const { SubscriptionStatus } = await import('../subscriptions/entities/subscription.entity');
         
+        // ✅ CRITICAL FIX: Convert UUID publicId to internal INTEGER userId
+        // subscriptionData.userId is UUID from JWT token, we need internal database ID
+        const userRepo = queryRunner.manager.getRepository('user');
+        const user = await userRepo.findOne({
+          where: { publicId: subscriptionData.userId },
+        });
+        
+        if (!user) {
+          throw new Error(`User not found for publicId: ${subscriptionData.userId}`);
+        }
+        
         const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
-          userId: subscriptionData.userId,
+          userId: user.id, // ✅ Using INTEGER internal user ID
           serviceProfileId: subscriptionData.serviceProfileId,
           preferredTimeWindow: subscriptionData.preferredTimeWindow,
           startDate: new Date(subscriptionData.startDate),
