@@ -12,6 +12,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
+import { PricingService } from './pricing.service';
 import {
   Subscription,
   PreferredTimeWindow,
@@ -25,6 +26,7 @@ import { JwtRequest } from '../common/types/jwt-user.type';
 export class SubscriptionsController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly pricingService: PricingService,
   ) {}
 
   @Post()
@@ -150,6 +152,31 @@ export class SubscriptionsController {
     return this.subscriptionsService.getSubscriptionsByStatus(
       SubscriptionStatus.ACTIVE,
     );
+  }
+
+  @Get('pricing/cleaning/:bhkType')
+  async getCleaningPrice(@Param('bhkType') bhkType: string) {
+    try {
+      const price = this.pricingService.calculateCleaningPrice(parseInt(bhkType));
+      return { success: true, price, bhkType: parseInt(bhkType) };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException({ success: false, message: errorMessage }, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('pricing/cooking/:persons/:mealPlan')
+  async getCookingPrice(
+    @Param('persons') persons: string,
+    @Param('mealPlan') mealPlan: string,
+  ) {
+    try {
+      const price = this.pricingService.calculateCookingPrice(parseInt(persons), mealPlan);
+      return { success: true, price, persons: parseInt(persons), mealPlan };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException({ success: false, message: errorMessage }, HttpStatus.BAD_REQUEST);
+    }
   }
 
 }

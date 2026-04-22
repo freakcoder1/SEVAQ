@@ -9,6 +9,7 @@ import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
+import { PricingService } from './pricing.service';
 import { OnDemandAssignmentScheduler } from './on-demand-assignment.scheduler';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { BookingsModule } from '../bookings/bookings.module';
@@ -31,10 +32,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
   controllers: [SubscriptionsController],
   providers: [
     SubscriptionsService,
+    PricingService,
     OnDemandAssignmentScheduler,
   ],
   exports: [
     SubscriptionsService,
+    PricingService,
     OnDemandAssignmentScheduler,
   ],
 })
