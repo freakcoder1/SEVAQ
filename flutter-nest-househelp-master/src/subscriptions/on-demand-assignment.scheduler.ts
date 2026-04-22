@@ -130,15 +130,15 @@ export class OnDemandAssignmentScheduler {
        // - type is 'on_demand'
        // - status is 'requested' or 'confirmed' (not completed/cancelled)
        // - no worker assigned (workerId is null)
-       const bookingsToAssign = await this.bookingRepository.find({
-         where: {
-           type: BookingType.ON_DEMAND,
-           status: In([BookingStatus.REQUESTED, BookingStatus.CONFIRMED]),
-           workerId: IsNull(),
-         },
-         relations: ['service', 'user'],
-         take: 25, // Process max 25 at a time to avoid overwhelming the connection pool
-       });
+        const bookingsToAssign = await this.bookingRepository.find({
+          where: {
+            type: In([BookingType.ON_DEMAND, BookingType.SUBSCRIPTION]),
+            status: In([BookingStatus.REQUESTED, BookingStatus.CONFIRMED]),
+            workerId: IsNull(),
+          },
+          relations: ['service', 'user'],
+          take: 25, // Process max 25 at a time to avoid overwhelming the connection pool
+        });
 
        this.logger.log(
          `Found ${bookingsToAssign.length} on-demand bookings needing worker assignment`,
