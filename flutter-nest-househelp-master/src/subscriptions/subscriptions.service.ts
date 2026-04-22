@@ -90,7 +90,7 @@ export class SubscriptionsService {
     try {
       const userResult = await this.dataSource.query(
         'SELECT id FROM "user" WHERE id::text = $1 LIMIT 1',
-        [userId],
+        [userId]
       );
       
       if (userResult && userResult.length > 0) {

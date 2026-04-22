@@ -489,6 +489,7 @@ export class SubscriptionAssignmentScheduler {
 
         if (!lockedSubscription) {
           await queryRunner.rollbackTransaction();
+          await queryRunner.release();
           return { success: false, reason: 'Subscription no longer exists' };
         }
 
@@ -779,9 +780,9 @@ export class SubscriptionAssignmentScheduler {
       }
     } catch (error) {
       this.logger.error(
-        `Error assigning worker for subscription ${subscription.id}: ${error.message}`,
+        `Error assigning worker for subscription ${subscription.id}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return { success: false, reason: error.message };
+      return { success: false, reason: error instanceof Error ? error.message : String(error) };
     }
   }
 
