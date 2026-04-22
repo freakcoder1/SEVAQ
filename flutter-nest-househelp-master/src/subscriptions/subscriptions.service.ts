@@ -45,13 +45,19 @@ export class SubscriptionsService {
     // For custom plans, serviceProfileId can be null - we use the provided monthlyPriceSnapshot directly
 
     // Check for existing active subscription with the same service profile
-    const existingSubscription = await this.subscriptionRepository.findOne({
+    const existingQuery: any = {
       where: {
         userId,
-        serviceProfileId,
         status: SubscriptionStatus.ACTIVE,
       },
-    });
+    };
+    
+    // Only add serviceProfileId filter if it's not null (custom plan)
+    if (serviceProfileId !== null && serviceProfileId !== undefined) {
+      existingQuery.where.serviceProfileId = serviceProfileId;
+    }
+    
+    const existingSubscription = await this.subscriptionRepository.findOne(existingQuery);
 
     if (existingSubscription) {
       throw new Error(
@@ -69,24 +75,36 @@ export class SubscriptionsService {
       throw new Error('Subscription start date cannot be in the past. Please select a future date.');
     }
 
-    const subscription = this.subscriptionRepository.create({
+    const subscriptionData: any = {
       publicId: uuidv4(),
       userId,
-      serviceProfileId,
       preferredTimeWindow,
       startDate,
       status: SubscriptionStatus.ACTIVE,
       billingCycle: BillingCycle.MONTHLY,
-      monthlyPriceSnapshot:
-        monthlyPriceSnapshot || Number(serviceProfile.monthlyPrice),
       location,
-    });
+    };
+    
+    // Only set serviceProfileId if it's not null (custom plan)
+    if (serviceProfileId !== null && serviceProfileId !== undefined) {
+      subscriptionData.serviceProfileId = serviceProfileId;
+    }
+    
+    // Use provided monthlyPriceSnapshot directly for custom plans
+    if (monthlyPriceSnapshot !== undefined && monthlyPriceSnapshot !== null) {
+      subscriptionData.monthlyPriceSnapshot = monthlyPriceSnapshot;
+    } else if (serviceProfile) {
+      subscriptionData.monthlyPriceSnapshot = Number(serviceProfile.monthlyPrice);
+    }
+    
+    const subscription = this.subscriptionRepository.create(subscriptionData);
 
     if (!preferredTimeWindow) {
       throw new Error('Preferred time window is required');
     }
 
-    const savedSubscription = await this.subscriptionRepository.save(subscription);
+    const savedSubscriptions = await this.subscriptionRepository.save(subscription);
+    const savedSubscription = Array.isArray(savedSubscriptions) ? savedSubscriptions[0] : savedSubscriptions;
 
     // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
     // ✅ REMOVED BROKEN TRANSACTION - this was causing silent rollback
