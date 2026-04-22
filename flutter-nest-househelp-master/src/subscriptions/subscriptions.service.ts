@@ -74,36 +74,42 @@ export class SubscriptionsService {
       location,
     });
 
+    if (!preferredTimeWindow) {
+      throw new Error('Preferred time window is required');
+    }
+
     const savedSubscription = await this.subscriptionRepository.save(subscription);
 
     // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
-    // No more background scheduler, no more leaks, no more failures
-    for (let week = 0; week < 4; week++) {
-      const bookingDate = new Date(startDate);
-      bookingDate.setDate(bookingDate.getDate() + (week * 7));
-      
-      // Calculate time window
-      let startHour = 8;
-      let endHour = 12;
-      switch (preferredTimeWindow.toLowerCase()) {
-        case 'morning': startHour = 8; endHour = 12; break;
-        case 'afternoon': startHour = 12; endHour = 17; break;
-        case 'evening': startHour = 16; endHour = 21; break;
-        case 'early-morning': startHour = 6; endHour = 11; break;
-      }
+    // ✅ ALL BOOKINGS CREATED INSIDE SINGLE ATOMIC TRANSACTION
+    await this.dataSource.transaction(async transactionManager => {
+      for (let week = 0; week < 4; week++) {
+        const bookingDate = new Date(startDate);
+        bookingDate.setDate(bookingDate.getDate() + (week * 7));
+        
+        // Calculate time window
+        let startHour = 8;
+        let endHour = 12;
+        switch (preferredTimeWindow.toLowerCase()) {
+          case 'morning': startHour = 8; endHour = 12; break;
+          case 'afternoon': startHour = 12; endHour = 17; break;
+          case 'evening': startHour = 16; endHour = 21; break;
+          case 'early-morning': startHour = 6; endHour = 11; break;
+        }
 
-      await this.bookingsService.create({
-        userId,
-        serviceId: serviceProfileId,
-        date: bookingDate,
-        startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
-        endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
-        location,
-        type: 'subscription',
-        subscriptionId: savedSubscription.id,
-        notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
-      });
-    }
+        await this.bookingsService.create({
+          userId,
+          serviceId: serviceProfileId,
+          date: bookingDate,
+          startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+          endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+          location,
+          type: 'subscription',
+          subscriptionId: savedSubscription.id,
+          notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
+        });
+      }
+    });
 
     return savedSubscription;
   }
