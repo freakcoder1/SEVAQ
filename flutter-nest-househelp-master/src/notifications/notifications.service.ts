@@ -599,21 +599,44 @@ export class NotificationsService {
     }
   }
 
-  async checkAndSendReminders(): Promise<void> {
-    const bookings = await this.findBookingsNeedingReminders();
-    for (const booking of bookings) {
-      const reminderType = await this.determineReminderType(booking);
-      if (reminderType) {
-        await this.sendPreServiceReminder(booking, reminderType);
-        
-        // MARK REMINDER AS SENT - PERMANENT FIX FOR DUPLICATE NOTIFICATIONS
-        await this.bookingsRepository
-          .createQueryBuilder()
-          .update(Booking)
-          .set({ preServiceReminderSent: true })
-          .where('id = :id', { id: booking.id })
-          .execute();
+  async checkAndSendReminders(): Promise<{ success: boolean, processed: number, sent: number, errors: number }> {
+    const stats = { processed: 0, sent: 0, errors: 0 };
+    
+    try {
+      const bookings = await this.findBookingsNeedingReminders();
+      stats.processed = bookings.length;
+      
+      for (const booking of bookings) {
+        try {
+          const reminderType = await this.determineReminderType(booking);
+          if (reminderType) {
+            await this.sendPreServiceReminder(booking, reminderType);
+            
+            // MARK REMINDER AS SENT - PERMANENT FIX FOR DUPLICATE NOTIFICATIONS
+            await this.bookingsRepository
+              .createQueryBuilder()
+              .update(Booking)
+              .set({ preServiceReminderSent: true })
+              .where('id = :id', { id: booking.id })
+              .execute();
+            
+            stats.sent++;
+          }
+        } catch (bookingError) {
+          stats.errors++;
+          this.logger.error(`Failed processing booking ${booking.id} for reminder`, bookingError);
+          // Continue processing other bookings - don't fail entire batch
+        }
       }
+      
+      return {
+        success: stats.errors === 0,
+        ...stats
+      };
+      
+    } catch (globalError) {
+      this.logger.error('Fatal failure in pre-service reminder check', globalError);
+      throw globalError; // Re-throw so scheduler knows about complete failure
     }
   }
 

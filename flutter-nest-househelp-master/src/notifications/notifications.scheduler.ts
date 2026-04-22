@@ -12,11 +12,16 @@ export class NotificationsScheduler {
   async handlePreServiceReminders() {
     this.logger.log('Checking for pre-service reminders to send');
     try {
-      await this.notificationsService.checkAndSendReminders();
-      this.logger.log('✅ Pre-service reminder check completed successfully');
+      const result = await this.notificationsService.checkAndSendReminders();
+      
+      if (result.success) {
+        this.logger.log(`✅ Pre-service reminder check completed successfully. Processed ${result.processed} bookings, sent ${result.sent} reminders`);
+      } else {
+        this.logger.warn(`⚠️ Pre-service reminder check completed with errors. ${result.errors} errors occurred`);
+      }
+      
     } catch (error) {
-      this.logger.error('❌ Pre-service reminder check FAILED', error);
-      // Do NOT log success on failure - this was the critical bug
+      this.logger.error('❌ Pre-service reminder check FAILED COMPLETELY', error);
     }
   }
 }
