@@ -106,6 +106,7 @@ export class SubscriptionsService {
           location,
           type: 'subscription',
           subscriptionId: savedSubscription.id,
+          status: 'requested',
           notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
         });
       }
