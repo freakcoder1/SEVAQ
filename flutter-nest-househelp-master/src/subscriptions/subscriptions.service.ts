@@ -26,17 +26,23 @@ export class SubscriptionsService {
 
   async createSubscription(
     userId: string,
-    serviceProfileId: number,
+    serviceProfileId: number | null,
     preferredTimeWindow: PreferredTimeWindow,
     startDate: Date,
     location: { lat: number; lng: number; address?: string },
     monthlyPriceSnapshot: number,
+    customPlanData?: any,
   ): Promise<Subscription> {
-    const serviceProfile =
-      await this.serviceProfilesService.getProfileById(serviceProfileId);
-    if (!serviceProfile) {
-      throw new Error('Service profile not found');
+    let serviceProfile = null;
+    
+    if (serviceProfileId !== null && serviceProfileId !== undefined) {
+      serviceProfile = await this.serviceProfilesService.getProfileById(serviceProfileId);
+      if (!serviceProfile) {
+        throw new Error('Service profile not found');
+      }
     }
+    
+    // For custom plans, serviceProfileId can be null - we use the provided monthlyPriceSnapshot directly
 
     // Check for existing active subscription with the same service profile
     const existingSubscription = await this.subscriptionRepository.findOne({

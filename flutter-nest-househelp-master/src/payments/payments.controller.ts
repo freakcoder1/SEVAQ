@@ -21,16 +21,28 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async createSubscriptionOrder(@Body() body: any, @Req() req: Request) {
     // Create payment order for subscription
-    // Calculate the amount based on service profile
-    const serviceProfile = await this.serviceProfilesService.getProfileById(
-      body.serviceProfileId,
-    );
-    if (!serviceProfile) {
-      throw new BadRequestException('Service profile not found');
+    // Supports both existing serviceProfileId OR custom dynamic pricing
+    
+    let monthlyPriceInRupees: number;
+    
+    if (body.customPrice !== undefined) {
+      // Custom dynamic pricing mode - use provided price directly
+      monthlyPriceInRupees = Number(body.customPrice);
+      
+      if (isNaN(monthlyPriceInRupees) || monthlyPriceInRupees < 100) {
+        throw new BadRequestException('Invalid custom price. Must be minimum 100 INR.');
+      }
+    } else {
+      // Existing profile mode - load from database
+      const serviceProfile = await this.serviceProfilesService.getProfileById(
+        body.serviceProfileId,
+      );
+      if (!serviceProfile) {
+        throw new BadRequestException('Service profile not found');
+      }
+      
+      monthlyPriceInRupees = Number(serviceProfile.monthlyPrice);
     }
-
-    // Store the original price in rupees for the subscription snapshot
-    const monthlyPriceInRupees = Number(serviceProfile.monthlyPrice);
     
     // Convert rupees to paise for Razorpay (Razorpay expects amount in paise)
     const amountInPaise = monthlyPriceInRupees * 100;
