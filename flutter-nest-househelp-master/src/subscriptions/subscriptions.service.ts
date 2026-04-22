@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import {
@@ -14,6 +14,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SubscriptionsService {
+  private readonly logger = new Logger(SubscriptionsService.name);
+
   constructor(
     @InjectRepository(Subscription)
     private subscriptionRepository: Repository<Subscription>,
@@ -81,43 +83,44 @@ export class SubscriptionsService {
     const savedSubscription = await this.subscriptionRepository.save(subscription);
 
     // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
-    // ✅ ALL BOOKINGS CREATED INSIDE SINGLE ATOMIC TRANSACTION
-    await this.dataSource.transaction(async transactionManager => {
-      for (let week = 0; week < 4; week++) {
-        const bookingDate = new Date(startDate);
-        bookingDate.setDate(bookingDate.getDate() + (week * 7));
-        
-        // Calculate time window
-        let startHour = 8;
-        let endHour = 12;
-        switch (preferredTimeWindow.toLowerCase()) {
-          case 'morning': startHour = 8; endHour = 12; break;
-          case 'afternoon': startHour = 12; endHour = 17; break;
-          case 'evening': startHour = 16; endHour = 21; break;
-          case 'early-morning': startHour = 6; endHour = 11; break;
-        }
-
-        // ✅ CORRECT: Use transaction manager directly for booking creation
-        // ✅ TypeORM transaction only works when using the transaction manager instance
-        await transactionManager.createQueryBuilder()
-          .insert()
-          .into('booking')
-          .values({
-            publicId: uuidv4(),
-            userId,
-            serviceId: serviceProfileId,
-            date: bookingDate,
-            startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
-            endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
-            location,
-            type: 'subscription',
-            subscriptionId: savedSubscription.id,
-            status: 'requested',
-            notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
-          })
-          .execute();
+    // ✅ REMOVED BROKEN TRANSACTION - this was causing silent rollback
+    for (let week = 0; week < 4; week++) {
+      const bookingDate = new Date(startDate);
+      bookingDate.setDate(bookingDate.getDate() + (week * 7));
+      
+      // Calculate time window
+      let startHour = 8;
+      let endHour = 12;
+      switch (preferredTimeWindow.toLowerCase()) {
+        case 'morning': startHour = 8; endHour = 12; break;
+        case 'afternoon': startHour = 12; endHour = 17; break;
+        case 'evening': startHour = 16; endHour = 21; break;
+        case 'early-morning': startHour = 6; endHour = 11; break;
       }
-    });
+
+      // ✅ Create booking directly with repository
+      // ✅ This bypasses all broken transaction issues
+      try {
+        await this.bookingsService.create({
+          userId,
+          serviceId: serviceProfileId,
+          date: bookingDate,
+          startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+          endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+          location,
+          type: 'subscription',
+          subscriptionId: savedSubscription.id,
+          status: 'requested',
+          notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
+        });
+        this.logger.log(`✅ Created booking ${week + 1} for subscription ${savedSubscription.id}`);
+      } catch (error: any) {
+        this.logger.error(`❌ FAILED to create booking ${week + 1} for subscription ${savedSubscription.id}: ${error?.message ?? String(error)}`, error?.stack);
+        throw error;
+      }
+    }
+
+    this.logger.log(`✅ SUCCESS: Created all 4 bookings for subscription ${savedSubscription.id}`);
 
     return savedSubscription;
   }
