@@ -464,6 +464,17 @@ export class PaymentsService {
             notificationFcmToken = user.fcmToken;
             notificationSource = 'authenticated_user';
             this.logger.debug(`Using authenticated user FCM token for booking ${booking.id}`);
+          } else if (user && !user.fcmToken && booking.guestFcmToken) {
+            // ✅ AUTO-MIGRATION: Save guest token to user profile permanently
+            this.logger.log(`🔄 Auto-migrating guest FCM token to user ${booking.userId}`);
+            // Direct update via repository (no UsersService dependency required)
+            await this.usersRepository.update(booking.userId, {
+              fcmToken: booking.guestFcmToken.trim(),
+              updatedAt: new Date()
+            });
+            notificationFcmToken = booking.guestFcmToken;
+            notificationSource = 'auto_migrated_guest_token';
+            this.logger.log(`✅ Successfully migrated FCM token for user ${booking.userId}`);
           } else {
             this.logger.debug(`User ${booking.userId} has no FCM token, checking booking guest token`);
           }
