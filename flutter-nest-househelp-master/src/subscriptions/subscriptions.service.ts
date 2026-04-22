@@ -9,6 +9,7 @@ import {
 } from './entities/subscription.entity';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
 import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
+import { BookingsService } from '../bookings/bookings.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class SubscriptionsService {
     private subscriptionRepository: Repository<Subscription>,
     private serviceProfilesService: ServiceProfilesService,
     private dataSource: DataSource,
+    private bookingsService: BookingsService,
   ) {}
 
   async createSubscription(
@@ -72,7 +74,38 @@ export class SubscriptionsService {
       location,
     });
 
-    return this.subscriptionRepository.save(subscription);
+    const savedSubscription = await this.subscriptionRepository.save(subscription);
+
+    // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
+    // No more background scheduler, no more leaks, no more failures
+    for (let week = 0; week < 4; week++) {
+      const bookingDate = new Date(startDate);
+      bookingDate.setDate(bookingDate.getDate() + (week * 7));
+      
+      // Calculate time window
+      let startHour = 8;
+      let endHour = 12;
+      switch (preferredTimeWindow.toLowerCase()) {
+        case 'morning': startHour = 8; endHour = 12; break;
+        case 'afternoon': startHour = 12; endHour = 17; break;
+        case 'evening': startHour = 16; endHour = 21; break;
+        case 'early-morning': startHour = 6; endHour = 11; break;
+      }
+
+      await this.bookingsService.create({
+        userId,
+        serviceId: serviceProfileId,
+        date: bookingDate,
+        startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+        endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+        location,
+        type: 'subscription',
+        subscriptionId: savedSubscription.id,
+        notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
+      });
+    }
+
+    return savedSubscription;
   }
 
   /**

@@ -12,7 +12,6 @@ import {
   Request,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
 import {
   Subscription,
   PreferredTimeWindow,
@@ -26,7 +25,6 @@ import { JwtRequest } from '../common/types/jwt-user.type';
 export class SubscriptionsController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
-    private readonly scheduler: SubscriptionAssignmentScheduler,
   ) {}
 
   @Post()
@@ -154,17 +152,4 @@ export class SubscriptionsController {
     );
   }
 
-  @Post('admin/trigger-scheduler')
-  async triggerScheduler(): Promise<{ message: string }> {
-    try {
-      await this.scheduler.handleSubscriptionAssignments();
-      return { message: 'Scheduler triggered successfully' };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new HttpException(
-        `Scheduler trigger failed: ${errorMessage}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
 }
