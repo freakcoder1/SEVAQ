@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, DeepPartial } from 'typeorm';
+import { Repository, DataSource, DeepPartial, MoreThanOrEqual } from 'typeorm';
 import {
   Subscription,
   PreferredTimeWindow,
@@ -14,7 +14,7 @@ import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-wor
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class SubscriptionsService {
+export class SubscriptionsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SubscriptionsService.name);
 
   constructor(
@@ -272,9 +272,182 @@ export class SubscriptionsService {
        `✅ Generated ${createdCount} new bookings for subscription ${subscriptionId}`,
      );
    }
-
-  /**
-   * Resolves a user identifier to a UUID.
+ 
+   /**
+    * On application bootstrap, check for active subscriptions with no upcoming bookings
+    * and generate missing weekly bookings for them
+    */
+   async onApplicationBootstrap(): Promise<void> {
+     this.logger.log('Running bootstrap check for subscriptions with missing bookings...');
+     try {
+       const result = await this.generateMissingBookingsForActiveSubscriptions();
+       this.logger.log(
+         `Bootstrap check complete: ${result.subscriptionsChecked} subscriptions checked, ${result.bookingsGenerated} bookings generated`,
+       );
+     } catch (error: any) {
+       this.logger.error(
+         `Error during bootstrap check for missing bookings: ${error.message}`,
+         error.stack,
+       );
+     }
+   }
+ 
+   /**
+    * Generate missing weekly bookings for all active subscriptions that have no upcoming bookings
+    * This handles the case where subscriptions are renewed but no new bookings are created
+    */
+   async generateMissingBookingsForActiveSubscriptions(): Promise<{
+     subscriptionsChecked: number;
+     bookingsGenerated: number;
+   }> {
+     let totalBookingsGenerated = 0;
+     let subscriptionsChecked = 0;
+ 
+     try {
+       // Find all active subscriptions
+       const activeSubscriptions = await this.subscriptionRepository.find({
+         where: {
+           status: SubscriptionStatus.ACTIVE,
+         },
+         relations: ['user', 'serviceProfile'],
+       });
+ 
+       this.logger.log(
+         `Found ${activeSubscriptions.length} active subscriptions to check`,
+       );
+ 
+       for (const subscription of activeSubscriptions) {
+         subscriptionsChecked++;
+ 
+         // Check if subscription has any upcoming bookings
+         const today = new Date().toISOString().split('T')[0];
+         const existingBookings = await this.bookingsRepository.find({
+           where: {
+             subscriptionId: subscription.id,
+             date: MoreThanOrEqual(today),
+           },
+           order: { date: 'ASC' },
+         });
+ 
+         if (existingBookings.length === 0) {
+           this.logger.log(
+             `Subscription ${subscription.id} has no upcoming bookings, generating weekly bookings...`,
+           );
+ 
+           // Determine start date - use subscription start date or today
+           const startDate = subscription.startDate
+             ? new Date(subscription.startDate)
+             : new Date();
+ 
+           // Generate 4 weekly bookings
+           const weeks = 4;
+           let bookingsCreated = 0;
+ 
+           for (let week = 0; week < weeks; week++) {
+             const bookingDate = new Date(startDate);
+             bookingDate.setDate(startDate.getDate() + week * 7);
+ 
+             // Skip if booking already exists (safety check)
+             const existing = await this.bookingsRepository.findOne({
+               where: {
+                 subscriptionId: subscription.id,
+                 date: bookingDate.toISOString().split('T')[0],
+               },
+             });
+ 
+             if (existing) {
+               this.logger.debug(
+                 `Booking already exists for subscription ${subscription.id} on ${bookingDate.toISOString().split('T')[0]}, skipping`,
+               );
+               continue;
+             }
+ 
+             // Calculate time window from preferredTimeWindow
+             let startHour = 8;
+             let endHour = 12;
+             switch (subscription.preferredTimeWindow?.toLowerCase()) {
+               case 'morning':
+                 startHour = 8;
+                 endHour = 12;
+                 break;
+               case 'afternoon':
+                 startHour = 12;
+                 endHour = 17;
+                 break;
+               case 'evening':
+                 startHour = 16;
+                 endHour = 21;
+                 break;
+               case 'early-morning':
+                 startHour = 6;
+                 endHour = 11;
+                 break;
+             }
+ 
+             // Build location data from subscription's location JSON column
+             if (!subscription.location) {
+               this.logger.error(
+                 `Subscription ${subscription.id} has no location data in database. Cannot generate bookings.`,
+               );
+               continue; // Skip this subscription
+             }
+             const locationData: LocationData = {
+               lat: subscription.location.lat,
+               lng: subscription.location.lng,
+               latitude: subscription.location.lat,
+               longitude: subscription.location.lng,
+               address: subscription.location.address || '',
+             };
+ 
+             // Create booking
+             const bookingData: DeepPartial<Booking> = {
+               userId: subscription.user.publicId,
+               serviceId: subscription.serviceProfileId ?? undefined,
+               date: bookingDate.toISOString().split('T')[0],
+               startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+               endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+               location: locationData,
+               type: BookingType.SUBSCRIPTION,
+               subscriptionId: subscription.id,
+               status: BookingStatus.REQUESTED,
+               notes: `Auto-generated weekly booking for subscription ${subscription.id} (week ${week + 1})`,
+             };
+ 
+             const booking = this.bookingsRepository.create(bookingData);
+             await this.bookingsRepository.save(booking);
+             bookingsCreated++;
+             totalBookingsGenerated++;
+ 
+             this.logger.debug(
+               `Created booking ${booking.id} for subscription ${subscription.id} on ${bookingDate.toISOString().split('T')[0]}`,
+             );
+           }
+ 
+           this.logger.log(
+             `Generated ${bookingsCreated} bookings for subscription ${subscription.id}`,
+           );
+         } else {
+           this.logger.debug(
+             `Subscription ${subscription.id} already has ${existingBookings.length} upcoming bookings, skipping`,
+           );
+         }
+       }
+ 
+       return {
+         subscriptionsChecked,
+         bookingsGenerated: totalBookingsGenerated,
+       };
+     } catch (error: any) {
+       this.logger.error(
+         `Error generating missing bookings: ${error.message}`,
+         error.stack,
+       );
+       throw error;
+     }
+   }
+ 
+   /**
+    * Resolves a user identifier to a UUID.
    * Handles legacy integer user IDs by looking up the user's actual UUID.
    */
   private async resolveUserIdToUuid(userId: string): Promise<string> {
