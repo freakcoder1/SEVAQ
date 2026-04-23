@@ -581,10 +581,21 @@ export class PaymentsService {
         // Subscription entity joins User on publicId, not internal integer id
         // subscriptionData.userId is already the correct UUID publicId, use it directly
         
+        // 🔍 DEBUG LOG
+        this.logger.log('🔍 subscriptionData payload:', JSON.stringify(subscriptionData, null, 2));
+        
+        // Extract service profile id from any possible field, fallback to BASIC profile (id=1 which always exists)
+        const serviceProfileId = subscriptionData.serviceProfileId 
+          ?? subscriptionData.id 
+          ?? subscriptionData.profileId 
+          ?? 1; // Default to BASIC profile which is guaranteed to exist
+          
+        this.logger.log(`🔍 Final selected serviceProfileId: ${serviceProfileId}`);
+        
         const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
           userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
-          serviceProfileId: subscriptionData.serviceProfileId ?? subscriptionData.id, // ✅ Use correct id field sent from client
+          serviceProfileId: serviceProfileId,
           preferredTimeWindow: subscriptionData.preferredTimeWindow,
           startDate: new Date(subscriptionData.startDate),
           location: subscriptionData.location,
