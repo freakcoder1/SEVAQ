@@ -584,7 +584,7 @@ export class PaymentsService {
         const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
           userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
-          serviceProfileId: subscriptionData.serviceProfileId ?? 0, // ✅ Use 0 for custom pricing subscriptions
+          serviceProfileId: subscriptionData.serviceProfileId ?? subscriptionData.id, // ✅ Use correct id field sent from client
           preferredTimeWindow: subscriptionData.preferredTimeWindow,
           startDate: new Date(subscriptionData.startDate),
           location: subscriptionData.location,
