@@ -91,7 +91,7 @@ export class Booking {
   userId: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'publicId' })
   user: User;
 
   @ManyToOne(() => Worker, { nullable: true })
