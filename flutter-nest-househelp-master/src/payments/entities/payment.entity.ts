@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
+  ManyToOne,
   JoinColumn,
   CreateDateColumn,
   BeforeInsert,
@@ -42,7 +43,7 @@ export class Payment {
   @Column({ type: 'int', nullable: true })
   subscriptionId: number;
 
-  @OneToOne(() => Subscription)
+  @ManyToOne(() => Subscription)
   @JoinColumn({ name: 'subscriptionId' })
   subscription: Subscription;
 
