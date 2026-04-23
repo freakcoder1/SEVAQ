@@ -596,7 +596,8 @@ export class PaymentsService {
         // Check if user already has an ACTIVE subscription for this service profile type
         this.logger.log(`🔍 Checking for existing active subscription for user ${subscriptionData.userId} with serviceProfileId ${serviceProfileId}`);
         
-        const existingSubscription = await subscriptionRepo.findOne({
+        const        existingSubscription = await subscriptionRepo.findOne({
+          select: ['id', 'isPaid'],
           where: {
             userId: subscriptionData.userId,
             serviceProfileId: serviceProfileId,
