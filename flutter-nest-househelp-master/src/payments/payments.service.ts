@@ -585,25 +585,48 @@ export class PaymentsService {
         this.logger.log('🔍 subscriptionData payload:', JSON.stringify(subscriptionData, null, 2));
         
         // Extract service profile id from any possible field, fallback to BASIC profile (id=1 which always exists)
-        const serviceProfileId = subscriptionData.serviceProfileId 
-          ?? subscriptionData.id 
-          ?? subscriptionData.profileId 
+        const serviceProfileId = subscriptionData.serviceProfileId
+          ?? subscriptionData.id
+          ?? subscriptionData.profileId
           ?? 1; // Default to BASIC profile which is guaranteed to exist
-          
-        this.logger.log(`🔍 Final selected serviceProfileId: ${serviceProfileId}`);
         
-        const newSubscription = subscriptionRepo.create({
-          publicId: uuidv4(), // Generate unique publicId
-          userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
-          serviceProfileId: serviceProfileId,
-          preferredTimeWindow: subscriptionData.preferredTimeWindow,
-          startDate: new Date(subscriptionData.startDate),
-          location: subscriptionData.location,
-          monthlyPriceSnapshot: subscriptionData.monthlyPriceSnapshot ?? 0, // Default to 0 if null
-          status: SubscriptionStatus.ACTIVE,
-          isPaid: true,
+        this.logger.log(`🔍 Final selected serviceProfileId: ${serviceProfileId}`);
+
+        // ✅ IDENTIFIED BUG: UNIQUE CONSTRAINT VIOLATION
+        // Check if user already has an ACTIVE subscription for this service profile type
+        this.logger.log(`🔍 Checking for existing active subscription for user ${subscriptionData.userId} with serviceProfileId ${serviceProfileId}`);
+        
+        const existingSubscription = await subscriptionRepo.findOne({
+          where: {
+            userId: subscriptionData.userId,
+            serviceProfileId: serviceProfileId,
+            status: SubscriptionStatus.ACTIVE
+          }
         });
-        subscription = await subscriptionRepo.save(newSubscription);
+
+        if (existingSubscription) {
+          this.logger.log(`✅ Found existing active subscription id=${existingSubscription.id}, reusing instead of creating new one`);
+          // Update existing subscription instead of creating new one
+          await queryRunner.manager.update('Subscription', existingSubscription.id, {
+            isPaid: true,
+            updatedAt: new Date()
+          });
+          subscription = existingSubscription;
+        } else {
+          this.logger.log(`🔄 No existing active subscription found, creating new subscription`);
+          const newSubscription = subscriptionRepo.create({
+            publicId: uuidv4(), // Generate unique publicId
+            userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
+            serviceProfileId: serviceProfileId,
+            preferredTimeWindow: subscriptionData.preferredTimeWindow,
+            startDate: new Date(subscriptionData.startDate),
+            location: subscriptionData.location,
+            monthlyPriceSnapshot: subscriptionData.monthlyPriceSnapshot ?? 0, // Default to 0 if null
+            status: SubscriptionStatus.ACTIVE,
+            isPaid: true,
+          });
+          subscription = await subscriptionRepo.save(newSubscription);
+        }
       }
 
       // Save payment record within transaction
