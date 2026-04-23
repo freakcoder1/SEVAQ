@@ -653,34 +653,37 @@ export class PaymentsService {
       // Immediately trigger worker assignment for the first booking
       // Use a new queryRunner since the transaction is committed
       try {
-        const assignmentQueryRunner = this.dataSource.createQueryRunner();
-        await assignmentQueryRunner.connect();
-        
-        // Find the first booking for this subscription
-        // ✅ CORRECT: subscription.userId is UUID publicId, booking.userId is INTEGER internal ID
-        // We need to look up user internal ID from subscription's userId which is public UUID
-        const userRepo = assignmentQueryRunner.manager.getRepository('user');
-        const user = await userRepo.findOne({
-          where: { publicId: subscription.userId },
-        });
-        
-        if (!user) {
-          this.logger.warn(`User not found for publicId: ${subscription.userId} - cannot assign worker`);
-          await assignmentQueryRunner.release();
-        } else {
-          const bookingsRepo = assignmentQueryRunner.manager.getRepository('booking');
-          const startDate = new Date(subscriptionData.startDate);
-          const firstBooking = await bookingsRepo.findOne({
-            where: {
-              userId: user.id,  // ✅ Using INTEGER internal ID
-              date: startDate,
-            },
-            order: { id: 'ASC' },
+        // ✅ FINAL FIX: Only run assignment logic for NEW subscriptions
+        // When reusing existing subscription subscriptionData will be incomplete
+        if (subscriptionData && subscriptionData.startDate) {
+          const assignmentQueryRunner = this.dataSource.createQueryRunner();
+          await assignmentQueryRunner.connect();
+          
+          // Find the first booking for this subscription
+          // ✅ CORRECT: subscription.userId is UUID publicId, booking.userId is INTEGER internal ID
+          // We need to look up user internal ID from subscription's userId which is public UUID
+          const userRepo = assignmentQueryRunner.manager.getRepository('user');
+          const user = await userRepo.findOne({
+            where: { publicId: subscription.userId },
           });
           
-          await assignmentQueryRunner.release();
+          if (!user) {
+            this.logger.warn(`User not found for publicId: ${subscription.userId} - cannot assign worker`);
+            await assignmentQueryRunner.release();
+          } else {
+            const bookingsRepo = assignmentQueryRunner.manager.getRepository('booking');
+            const startDate = new Date(subscriptionData.startDate);
+            const firstBooking = await bookingsRepo.findOne({
+              where: {
+                userId: user.id,  // ✅ Using INTEGER internal ID
+                date: startDate,
+              },
+              order: { id: 'ASC' },
+            });
           
-          if (firstBooking && firstBooking.id) {
+            await assignmentQueryRunner.release();
+          
+            if (firstBooking && firstBooking.id) {
             this.logger.log(
               `Triggering immediate assignment for subscription ${subscription.id}, booking ${firstBooking.id}`,
             );
