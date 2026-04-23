@@ -607,11 +607,7 @@ export class PaymentsService {
 
         if (existingSubscription) {
           this.logger.log(`✅ Found existing active subscription id=${existingSubscription.id}, reusing instead of creating new one`);
-          // Update existing subscription instead of creating new one
-          await queryRunner.manager.update('Subscription', existingSubscription.id, {
-            isPaid: true,
-            updatedAt: new Date()
-          });
+          // Existing active subscription is already paid - no need to update
           subscription = existingSubscription;
         } else {
           this.logger.log(`🔄 No existing active subscription found, creating new subscription`);
