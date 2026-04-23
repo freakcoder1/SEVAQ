@@ -117,6 +117,9 @@ export class Subscription {
   @JoinColumn({ name: 'assignedWorkerId' })
   assignedWorker: Worker | null;
 
+  @Column({ type: 'boolean', default: false })
+  isPaid: boolean;
+
   @VersionColumn()
   version: number;
 }
