@@ -13,6 +13,7 @@ import {
 } from './entities/booking.entity';
 import { ServiceRequest } from '../service-requests/entities/service-request.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class BookingsService {
@@ -32,6 +33,7 @@ export class BookingsService {
     private slotsService: SlotsService,
     private notificationsService: NotificationsService,
     private dataSource: DataSource,
+    private subscriptionsService: SubscriptionsService,
   ) {}
 
   async findBestWorker(
@@ -722,6 +724,14 @@ export class BookingsService {
         }
       });
 
+      // Sync worker assignment to parent subscription
+      if (savedBooking.subscriptionId) {
+        await this.subscriptionsService.assignWorkerToSubscription(
+          savedBooking.subscriptionId,
+          bestMatch.worker.id,
+        );
+      }
+
       // NOTE: Worker notification is intentionally NOT sent here.
       // The notification will be sent after payment is confirmed in payments.service.ts
       // This ensures workers only get notified about paid bookings.
@@ -1088,29 +1098,7 @@ export class BookingsService {
     });
   }
 
-  async getUpcomingBookings(userPublicId: string) {
-    // Resolve userId: if it's a publicId (UUID), convert to numeric id
-    const resolvedUserId = await this.resolveUserId(userPublicId);
-    if (!resolvedUserId) {
-      return [];
-    }
 
-    return this.bookingsRepository
-      .createQueryBuilder('booking')
-      .leftJoinAndSelect('booking.service', 'service')
-      .leftJoinAndSelect('booking.worker', 'worker')
-      .leftJoinAndSelect('worker.user', 'workerUser')
-      .where('booking.userId = :userId', { userId: resolvedUserId })
-      .andWhere('booking.status IN (:...statuses)', {
-        statuses: [
-          BookingStatus.REQUESTED,
-          BookingStatus.PENDING,
-          BookingStatus.CONFIRMED,
-        ],
-      })
-      .orderBy('booking.startTime', 'ASC')
-      .getMany();
-  }
 
   async getPastBookings(userPublicId: string) {
     // Resolve userId: if it's a publicId (UUID), convert to numeric id

@@ -13,6 +13,7 @@ import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -43,6 +44,7 @@ export class OnDemandAssignmentScheduler {
     private readonly workerRepository: Repository<Worker>,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   /**
@@ -168,8 +170,9 @@ export class OnDemandAssignmentScheduler {
            }
          } catch (error) {
            failedAssignments++;
+           const errorMessage = error instanceof Error ? error.message : String(error);
            this.logger.error(
-             `Error assigning worker for on-demand booking ${booking.id}: ${error.message}`,
+             `Error assigning worker for on-demand booking ${booking.id}: ${errorMessage}`,
            );
          }
        }
@@ -178,8 +181,9 @@ export class OnDemandAssignmentScheduler {
          `On-demand assignment scheduler completed: ${successfulAssignments} assigned, ${failedAssignments} failed out of ${bookingsToAssign.length} bookings`,
        );
      } catch (error) {
+       const errorMessage = error instanceof Error ? error.message : String(error);
        this.logger.error(
-         `Error in on-demand assignment scheduler: ${error.message}`,
+         `Error in on-demand assignment scheduler: ${errorMessage}`,
        );
        // On error backoff more aggressively
        this.idleCounter = Math.min(this.idleCounter + 2, this.BACKOFF_LEVELS.length - 1);
@@ -315,6 +319,14 @@ export class OnDemandAssignmentScheduler {
 
       await this.bookingRepository.save(booking);
 
+      // Sync worker assignment to parent subscription
+      if (booking.subscriptionId) {
+        await this.subscriptionsService.assignWorkerToSubscription(
+          booking.subscriptionId,
+          nearestWorker.worker.id,
+        );
+      }
+
       // Send push notification to worker
       await this._notifyWorkerOfAssignment(nearestWorker.worker, booking);
 
@@ -324,10 +336,11 @@ export class OnDemandAssignmentScheduler {
 
       return { success: true, worker: nearestWorker.worker };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Error in assignWorkerForBooking for booking ${booking.id}: ${error.message}`,
+        `Error in assignWorkerForBooking for booking ${booking.id}: ${errorMessage}`,
       );
-      return { success: false, reason: error.message };
+      return { success: false, reason: errorMessage };
     }
   }
 

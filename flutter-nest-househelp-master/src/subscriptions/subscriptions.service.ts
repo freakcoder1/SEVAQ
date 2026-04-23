@@ -202,21 +202,12 @@ export class SubscriptionsService {
   }
 
   async getSubscriptionsByPublicId(publicId: string): Promise<Subscription[]> {
-    // Join on user.publicId since subscription.userId stores the user's publicId (UUID)
-    const subscriptions = await this.subscriptionRepository
-      .createQueryBuilder('subscription')
-      .innerJoin('subscription.user', 'user')
-      .where('user.publicId = :publicId', { publicId })
-      .leftJoinAndSelect('subscription.serviceProfile', 'serviceProfile')
-      .leftJoinAndSelect('subscription.assignedWorker', 'assignedWorker')
-      .leftJoinAndSelect('assignedWorker.user', 'workerUser')
-      .orderBy('subscription.createdAt', 'DESC')
-      .getMany();
-
-    // Log for debugging - check if assignedWorker is loaded
-    // Debug logging removed - production ready
-
-    return subscriptions;
+    // subscription.userId directly stores user publicId (UUID), no join needed
+    return this.subscriptionRepository.find({
+      where: { userId: publicId },
+      relations: ['serviceProfile', 'assignedWorker', 'assignedWorker.user'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async pauseSubscription(id: number): Promise<Subscription> {
@@ -275,5 +266,25 @@ export class SubscriptionsService {
     status: SubscriptionStatus,
   ): Promise<Subscription[]> {
     return this.subscriptionRepository.find({ where: { status } });
+  }
+
+  /**
+   * Sync worker assignment from a booking to the parent subscription
+   * Updates the subscription's assignedWorkerId and related fields
+   */
+  async assignWorkerToSubscription(
+    subscriptionId: number,
+    workerId: number,
+  ): Promise<Subscription> {
+    const subscription = await this.getSubscriptionById(subscriptionId);
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
+
+    subscription.assignedWorkerId = workerId;
+    subscription.workerAssignmentFailed = false;
+    subscription.availabilityDetectedAt = new Date();
+
+    return this.subscriptionRepository.save(subscription);
   }
 }
