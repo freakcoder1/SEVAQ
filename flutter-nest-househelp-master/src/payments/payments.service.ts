@@ -577,20 +577,13 @@ export class PaymentsService {
         // Import SubscriptionStatus from subscriptions module
         const { SubscriptionStatus } = await import('../subscriptions/entities/subscription.entity');
         
-        // ✅ CRITICAL FIX: Convert UUID publicId to internal INTEGER userId
-        // subscriptionData.userId is UUID from JWT token, we need internal database ID
-        const userRepo = queryRunner.manager.getRepository('user');
-        const user = await userRepo.findOne({
-          where: { publicId: subscriptionData.userId },
-        });
-        
-        if (!user) {
-          throw new Error(`User not found for publicId: ${subscriptionData.userId}`);
-        }
+        // ✅ CORRECT FIX: Subscriptions table expects UUID (publicId) for userId column
+        // Subscription entity joins User on publicId, not internal integer id
+        // subscriptionData.userId is already the correct UUID publicId, use it directly
         
         const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
-          userId: user.id, // ✅ Using INTEGER internal user ID
+          userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
           serviceProfileId: subscriptionData.serviceProfileId,
           preferredTimeWindow: subscriptionData.preferredTimeWindow,
           startDate: new Date(subscriptionData.startDate),
@@ -630,8 +623,8 @@ export class PaymentsService {
         await assignmentQueryRunner.connect();
         
         // Find the first booking for this subscription
-        // CRITICAL FIX: subscription.userId is UUID, but booking.userId is INTEGER
-        // We must look up the user's internal ID from their public UUID
+        // ✅ CORRECT: subscription.userId is UUID publicId, booking.userId is INTEGER internal ID
+        // We need to look up user internal ID from subscription's userId which is public UUID
         const userRepo = assignmentQueryRunner.manager.getRepository('user');
         const user = await userRepo.findOne({
           where: { publicId: subscription.userId },
@@ -644,7 +637,7 @@ export class PaymentsService {
           const bookingsRepo = assignmentQueryRunner.manager.getRepository('booking');
           const startDate = new Date(subscriptionData.startDate);
           const firstBooking = await bookingsRepo.findOne({
-            where: { 
+            where: {
               userId: user.id,  // ✅ Using INTEGER internal ID
               date: startDate,
             },
