@@ -682,16 +682,28 @@ export class PaymentsService {
           
             if (firstBooking && firstBooking.id) {
               this.logger.log(
-                `Triggering immediate assignment for subscription ${subscription.id}, booking ${firstBooking.id}`,
-              );
-              // Assignment service was removed - assignments will be handled by the standard scheduler
-              this.logger.log(
-                `Immediate assignment skipped for subscription ${subscription.id} - will be processed by standard assignment scheduler`,
+                `Found first booking for subscription ${subscription.id}, booking ${firstBooking.id} - worker assignment will be handled by scheduler`,
               );
             } else {
               this.logger.warn(
-                `No booking found for subscription ${subscription.id} for immediate assignment`,
+                `No upcoming bookings found for subscription ${subscription.id}. Generating new weekly bookings...`,
               );
+              // Generate new bookings for the subscription to ensure there are upcoming appointments
+              try {
+                await this.subscriptionsService.generateBookingsForSubscription(
+                  subscription.id,
+                  startDate,
+                );
+                this.logger.log(
+                  `✅ Successfully generated new bookings for subscription ${subscription.id}`,
+                );
+              } catch (genError: any) {
+                this.logger.error(
+                  `Failed to generate bookings for subscription ${subscription.id}: ${genError.message}`,
+                  genError.stack,
+                );
+                // Don't throw - payment already succeeded, but log prominently
+              }
             }
           }
         }

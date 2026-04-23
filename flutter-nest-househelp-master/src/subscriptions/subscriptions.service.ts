@@ -163,7 +163,115 @@ export class SubscriptionsService {
     this.logger.log(`✅ SUCCESS: Created all 4 bookings for subscription ${savedSubscription.id}`);
 
     return savedSubscription;
-  }
+    }
+ 
+    /**
+     * Generate weekly bookings for an existing subscription.
+     * Used when a subscription is renewed and needs future bookings.
+     *
+     * @param subscriptionId - The subscription ID
+     * @param startDate - The start date for the first new booking
+     * @param weeks - Number of weekly bookings to generate (default 4)
+     */
+   async generateBookingsForSubscription(
+     subscriptionId: number,
+     startDate: Date,
+     weeks: number = 4,
+   ): Promise<void> {
+     // Load subscription with all necessary fields
+     const subscription = await this.subscriptionRepository.findOne({
+       where: { id: subscriptionId },
+     });
+ 
+     if (!subscription) {
+       throw new Error(`Subscription ${subscriptionId} not found`);
+     }
+ 
+     const { userId, serviceProfileId, location, preferredTimeWindow } = subscription;
+ 
+     if (!location) {
+       throw new Error(
+         `Subscription ${subscriptionId} has no location set. Cannot generate bookings.`,
+       );
+     }
+ 
+     // Calculate time window from preferredTimeWindow
+     let startHour = 8;
+     let endHour = 12;
+     switch (preferredTimeWindow.toLowerCase()) {
+       case 'morning':
+         startHour = 8;
+         endHour = 12;
+         break;
+       case 'afternoon':
+         startHour = 12;
+         endHour = 17;
+         break;
+       case 'evening':
+         startHour = 16;
+         endHour = 21;
+         break;
+       case 'early-morning':
+         startHour = 6;
+         endHour = 11;
+         break;
+     }
+ 
+     // Build location data
+     const locationData: LocationData = {
+       lat: location.lat,
+       lng: location.lng,
+       latitude: location.lat,
+       longitude: location.lng,
+       address: location.address || '',
+     };
+ 
+     let createdCount = 0;
+ 
+     for (let week = 0; week < weeks; week++) {
+       const bookingDate = new Date(startDate);
+       bookingDate.setDate(bookingDate.getDate() + (week * 7));
+       const dateStr = bookingDate.toISOString().split('T')[0];
+ 
+       // Skip if a booking already exists for this subscription on this date
+       const existing = await this.bookingsRepository.findOne({
+         where: {
+           subscriptionId,
+           date: dateStr,
+         },
+       });
+       if (existing) {
+         this.logger.debug(
+           `Booking for ${dateStr} already exists for subscription ${subscriptionId}, skipping`,
+         );
+         continue;
+       }
+ 
+       const bookingData: DeepPartial<Booking> = {
+         userId,
+         serviceId: serviceProfileId ?? undefined,
+         date: dateStr,
+         startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
+         endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
+         location: locationData,
+         type: BookingType.SUBSCRIPTION,
+         subscriptionId,
+         status: BookingStatus.REQUESTED,
+         notes: `Auto-generated for subscription ${subscriptionId} - Week ${week + 1}`,
+       };
+ 
+       const booking = this.bookingsRepository.create(bookingData);
+       await this.bookingsRepository.save(booking);
+       createdCount++;
+       this.logger.log(
+         `✅ Created booking ${week + 1} for subscription ${subscriptionId} on ${dateStr}`,
+       );
+     }
+ 
+     this.logger.log(
+       `✅ Generated ${createdCount} new bookings for subscription ${subscriptionId}`,
+     );
+   }
 
   /**
    * Resolves a user identifier to a UUID.
