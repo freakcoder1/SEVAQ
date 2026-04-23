@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Brackets, WhereExpressionBuilder } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { User } from '../users/entities/user.entity';
@@ -799,13 +799,31 @@ export class NotificationsService {
       return [];
     }
 
+    // Get active subscription for this user to include subscription bookings
+    const activeSubscription = await this.subscriptionsRepository.findOne({
+      where: {
+        userId: userPublicId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+    });
+    const subscriptionId = activeSubscription?.id;
+
     return this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
       .leftJoinAndSelect('booking.service', 'service')
-      .where('booking.userId = :userId', { userId: user.id })
+      .where(
+        new Brackets((qb: WhereExpressionBuilder) => {
+          qb.where('booking.userId = :userId', { userId: user.id });
+          if (subscriptionId) {
+            qb.orWhere('booking.subscriptionId = :subscriptionId', {
+              subscriptionId,
+            });
+          }
+        })
+      )
       .orderBy('booking.date', 'ASC')
       .addOrderBy('booking.startTime', 'ASC')
       .getMany();

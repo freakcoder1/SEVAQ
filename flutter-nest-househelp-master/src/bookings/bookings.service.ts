@@ -13,7 +13,7 @@ import {
 } from './entities/booking.entity';
 import { ServiceRequest } from '../service-requests/entities/service-request.entity';
 import { NotificationsService } from '../notifications/notifications.service';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
 
 @Injectable()
 export class BookingsService {
@@ -33,7 +33,7 @@ export class BookingsService {
     private slotsService: SlotsService,
     private notificationsService: NotificationsService,
     private dataSource: DataSource,
-    private subscriptionsService: SubscriptionsService,
+    private subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
   ) {}
 
   async findBestWorker(
@@ -724,9 +724,9 @@ export class BookingsService {
         }
       });
 
-      // Sync worker assignment to parent subscription
+      // Sync worker assignment to parent subscription (break circular dependency)
       if (savedBooking.subscriptionId) {
-        await this.subscriptionsService.assignWorkerToSubscription(
+        await this.subscriptionWorkerSyncService.syncWorkerToSubscription(
           savedBooking.subscriptionId,
           bestMatch.worker.id,
         );

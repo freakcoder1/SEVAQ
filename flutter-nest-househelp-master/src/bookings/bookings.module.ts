@@ -10,12 +10,14 @@ import { ServiceRequest } from '../service-requests/entities/service-request.ent
 
 import { SlotsModule } from '../slots/slots.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SubscriptionSyncModule } from '../subscriptions/subscription-sync.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Booking, Worker, Service, User, ServiceRequest]),
     SlotsModule,
     NotificationsModule,
+    SubscriptionSyncModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService],

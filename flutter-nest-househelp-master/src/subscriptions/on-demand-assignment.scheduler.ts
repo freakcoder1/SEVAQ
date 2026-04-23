@@ -13,7 +13,7 @@ import { Service } from '../services/entities/service.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -44,7 +44,7 @@ export class OnDemandAssignmentScheduler {
     private readonly workerRepository: Repository<Worker>,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,
-    private readonly subscriptionsService: SubscriptionsService,
+    private readonly subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
   ) {}
 
   /**
@@ -319,9 +319,9 @@ export class OnDemandAssignmentScheduler {
 
       await this.bookingRepository.save(booking);
 
-      // Sync worker assignment to parent subscription
+      // Sync worker assignment to parent subscription (break circular dependency)
       if (booking.subscriptionId) {
-        await this.subscriptionsService.assignWorkerToSubscription(
+        await this.subscriptionWorkerSyncService.syncWorkerToSubscription(
           booking.subscriptionId,
           nearestWorker.worker.id,
         );

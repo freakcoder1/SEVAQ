@@ -11,6 +11,7 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { PricingService } from './pricing.service';
 import { OnDemandAssignmentScheduler } from './on-demand-assignment.scheduler';
+import { SubscriptionSyncModule } from './subscription-sync.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { UsersModule } from '../users/users.module';
@@ -28,6 +29,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     UsersModule,
     NotificationsModule,
     ScheduleModule.forRoot(),
+    SubscriptionSyncModule,
   ],
   controllers: [SubscriptionsController],
   providers: [

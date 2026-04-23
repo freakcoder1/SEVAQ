@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, DeepPartial } from 'typeorm';
 import {
   Subscription,
   PreferredTimeWindow,
@@ -9,7 +9,8 @@ import {
 } from './entities/subscription.entity';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
 import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
-import { BookingsService } from '../bookings/bookings.service';
+import { Booking, BookingStatus, BookingType, LocationData } from '../bookings/entities/booking.entity';
+import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -19,9 +20,11 @@ export class SubscriptionsService {
   constructor(
     @InjectRepository(Subscription)
     private subscriptionRepository: Repository<Subscription>,
+    @InjectRepository(Booking)
+    private bookingsRepository: Repository<Booking>,
     private serviceProfilesService: ServiceProfilesService,
     private dataSource: DataSource,
-    private bookingsService: BookingsService,
+    private subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
   ) {}
 
   async createSubscription(
@@ -107,7 +110,6 @@ export class SubscriptionsService {
     const savedSubscription = Array.isArray(savedSubscriptions) ? savedSubscriptions[0] : savedSubscriptions;
 
     // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
-    // ✅ REMOVED BROKEN TRANSACTION - this was causing silent rollback
     for (let week = 0; week < 4; week++) {
       const bookingDate = new Date(startDate);
       bookingDate.setDate(bookingDate.getDate() + (week * 7));
@@ -122,21 +124,35 @@ export class SubscriptionsService {
         case 'early-morning': startHour = 6; endHour = 11; break;
       }
 
-      // ✅ Create booking directly with repository
-      // ✅ This bypasses all broken transaction issues
+      // ✅ Create booking directly with repository to avoid circular dependency
       try {
-        await this.bookingsService.create({
+        // Format date as YYYY-MM-DD string for Booking entity
+        const dateStr = bookingDate.toISOString().split('T')[0];
+        
+        // Build location data matching LocationData entity structure
+        const locationData: LocationData = {
+          lat: location.lat,
+          lng: location.lng,
+          latitude: location.lat,
+          longitude: location.lng,
+          address: location.address || '',
+        };
+
+        const bookingData: DeepPartial<Booking> = {
           userId,
-          serviceId: serviceProfileId,
-          date: bookingDate,
+          serviceId: serviceProfileId ?? undefined,
+          date: dateStr,
           startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
           endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
-          location,
-          type: 'subscription',
+          location: locationData,
+          type: BookingType.SUBSCRIPTION,
           subscriptionId: savedSubscription.id,
-          status: 'requested',
+          status: BookingStatus.REQUESTED,
           notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
-        });
+        };
+
+        const booking = this.bookingsRepository.create(bookingData);
+        await this.bookingsRepository.save(booking);
         this.logger.log(`✅ Created booking ${week + 1} for subscription ${savedSubscription.id}`);
       } catch (error: any) {
         this.logger.error(`❌ FAILED to create booking ${week + 1} for subscription ${savedSubscription.id}: ${error?.message ?? String(error)}`, error?.stack);
@@ -276,15 +292,15 @@ export class SubscriptionsService {
     subscriptionId: number,
     workerId: number,
   ): Promise<Subscription> {
+    // Delegate to the sync service to avoid circular dependency with BookingsService
+    await this.subscriptionWorkerSyncService.syncWorkerToSubscription(subscriptionId, workerId);
+    
+    // Fetch and return the updated subscription
     const subscription = await this.getSubscriptionById(subscriptionId);
     if (!subscription) {
       throw new Error('Subscription not found');
     }
-
-    subscription.assignedWorkerId = workerId;
-    subscription.workerAssignmentFailed = false;
-    subscription.availabilityDetectedAt = new Date();
-
-    return this.subscriptionRepository.save(subscription);
+    
+    return subscription;
   }
 }
