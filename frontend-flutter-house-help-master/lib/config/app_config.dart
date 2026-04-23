@@ -66,7 +66,7 @@ class AppConfig {
 
     // 2. Release / profile builds → production URL
     if (kReleaseMode) {
-      return _productionApiBaseUrl;
+      return '$_productionApiBaseUrl/api';
     }
 
     // 3. Debug builds → platform-aware dev URL

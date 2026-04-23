@@ -58,12 +58,6 @@ class ProfileScreen extends StatelessWidget {
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.payment_outlined),
-              title: Text('Payment Methods'),
-              trailing: Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
             Consumer<ThemeProvider>(
               builder: (context, themeProvider, _) {
                 return SwitchListTile(

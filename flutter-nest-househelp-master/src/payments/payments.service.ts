@@ -672,7 +672,7 @@ export class PaymentsService {
             const startDate = new Date(subscriptionData.startDate);
             const firstBooking = await bookingsRepo.findOne({
               where: {
-                userId: user.id,  // ✅ Using INTEGER internal ID
+                userId: user.publicId,  // ✅ FIX: Use UUID publicId (booking.userId is UUID, not integer)
                 date: startDate,
               },
               order: { id: 'ASC' },

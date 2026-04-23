@@ -6,6 +6,7 @@ import 'package:flutter_house_help/models/service_profile.dart';
 import 'package:flutter_house_help/providers/auth_provider.dart';
 import 'package:flutter_house_help/providers/location_provider.dart';
 import 'package:flutter_house_help/screens/subscription_scheduling_screen.dart';
+import 'package:flutter_house_help/screens/subscription_pricing_screen.dart';
 import 'package:flutter_house_help/services/api_service.dart';
 
 class SubscriptionProfilesScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _SubscriptionProfilesScreenState
   ServiceProfile? _selectedProfile;
   bool _isLoading = true;
   String _errorMessage = '';
+  bool _useCustomPlan = false;
 
   @override
   void initState() {
@@ -187,29 +189,43 @@ class _SubscriptionProfilesScreenState
   }
 
   Widget _buildProfilesContent(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${widget.serviceName} — Monthly Plans',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+    // Embed full pricing selector UI directly as main content
+    return SubscriptionPricingScreen(
+      serviceType: widget.serviceType,
+      serviceName: widget.serviceName,
+      userId: widget.userId,
+      initialLocation: widget.initialLocation,
+    );
+  }
+
+  Widget _buildCustomPlanButton(ThemeData theme) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SubscriptionPricingScreen(
+                serviceType: widget.serviceType,
+                serviceName: widget.serviceName,
+                userId: widget.userId,
+                initialLocation: widget.initialLocation,
+              ),
             ),
+          );
+        },
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppTheme.deepTeal, width: 1.5),
+          foregroundColor: AppTheme.deepTeal,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          SizedBox(height: 16),
-          Text(
-            'Choose a plan based on your household needs. No daily decisions. No configuration.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
-          ),
-          SizedBox(height: 30),
-          _buildProfilesList(theme),
-          SizedBox(height: 24),
-          _buildTrustFooter(theme),
-          SizedBox(height: 24),
-          _buildContinueButton(theme),
-        ],
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        child: const Text('⚙️ Customize your own plan'),
       ),
     );
   }

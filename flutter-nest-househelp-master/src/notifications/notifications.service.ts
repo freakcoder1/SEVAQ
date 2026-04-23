@@ -816,7 +816,7 @@ export class NotificationsService {
       .leftJoinAndSelect('booking.service', 'service')
       .where(
         new Brackets((qb: WhereExpressionBuilder) => {
-          qb.where('booking.userId = :userId', { userId: user.id });
+          qb.where('booking.userId = :userId', { userId: userPublicId });
           if (subscriptionId) {
             qb.orWhere('booking.subscriptionId = :subscriptionId', {
               subscriptionId,

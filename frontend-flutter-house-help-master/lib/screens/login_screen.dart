@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../theme.dart';
 import '../providers/auth_provider.dart';
 import 'otp_login_screen.dart';
 
@@ -95,6 +97,21 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 52),
+
+                // SEVAQ Logo
+                Center(
+                  child: Text(
+                    'SEVAQ',
+                    style: GoogleFonts.poppins(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.deepTeal,
+                      letterSpacing: 3.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
 
                 // Trust status indicator
                 Row(

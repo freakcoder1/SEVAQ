@@ -81,8 +81,8 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
 
   DateTime _getEarliestViableDate() {
     final now = DateTime.now();
-    // Start from tomorrow to ensure we have time for assignment
-    return now.add(const Duration(days: 1));
+    // Start from today for on-demand service
+    return DateTime(now.year, now.month, now.day);
   }
 
   List<DateTime> _getAvailableDates() {
