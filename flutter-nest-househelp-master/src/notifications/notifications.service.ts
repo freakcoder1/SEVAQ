@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
+import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { User } from '../users/entities/user.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import * as admin from 'firebase-admin';
@@ -53,6 +54,8 @@ export class NotificationsService {
     private fcmHttpService: FcmHttpService,
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
+    @InjectRepository(Subscription)
+    private subscriptionsRepository: Repository<Subscription>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Worker)
@@ -745,7 +748,20 @@ export class NotificationsService {
       // Filter by userId if provided (after fetching)
       let bookings = allBookings;
       if (userId) {
-        bookings = allBookings.filter(booking => booking.userId === userId);
+        // Get active subscription for this user to find subscription bookings
+        const activeSubscription = await this.subscriptionsRepository.findOne({
+          where: {
+            userId: userId,
+            status: SubscriptionStatus.ACTIVE,
+          },
+        });
+        const subscriptionId = activeSubscription?.id;
+
+        bookings = allBookings.filter(
+          (booking) =>
+            booking.userId === userId ||
+            (subscriptionId && booking.subscriptionId === subscriptionId)
+        );
       }
 
       // Filter to only include bookings within the 2h-26h window AND NO REMINDER SENT YET
