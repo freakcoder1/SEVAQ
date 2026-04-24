@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class FixBookingUserIdType20250423 implements MigrationInterface {
-  name = 'FixBookingUserIdType20250423';
+export class FixBookingUserIdType1776990812591 implements MigrationInterface {
+  name = 'FixBookingUserIdType1776990812591';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔍 Checking booking.userId column type...');
