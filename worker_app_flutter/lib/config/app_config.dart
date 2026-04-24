@@ -14,10 +14,10 @@ class AppConfig {
       'https://sevaq-production.up.railway.app/api';
 
   /// Development API URL used when running on iOS / web / Android via USB.
-  /// Use port 45357 for local backend server (default backend port)
-  /// For Android USB debugging with ADB reverse, use localhost:45357 (physical device)
+  /// Use port 3000 for local backend server (default backend port)
+  /// For Android USB debugging with ADB reverse, use localhost:3000 (physical device)
   static const int _apiPort =
-      int.fromEnvironment('API_PORT', defaultValue: 45357);
+      int.fromEnvironment('API_PORT', defaultValue: 3000);
   static const String _devLocalhostUrl = 'http://localhost:$_apiPort/api';
 
   /// Development API URL for Android physical devices over WiFi.
