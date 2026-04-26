@@ -417,8 +417,13 @@ export class PaymentsService {
             validBookingData.metadata = bookingData.metadata;
           if (bookingData.location)
             validBookingData.location = bookingData.location;
+          // Save FCM token to booking for notification delivery
+          if (bookingData.fcmToken) {
+            validBookingData.guestFcmToken = bookingData.fcmToken;
+            this.logger.log(`Saved FCM token to booking data for notification delivery`);
+          }
         }
-
+        
         // Create booking using queryRunner for transaction
         const bookingRepo = queryRunner.manager.getRepository('Booking');
         const newBooking = bookingRepo.create({
