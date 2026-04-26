@@ -508,11 +508,11 @@ export class PaymentsService {
       if (booking.userId) {
         this.logger.log(`Payment complete for booking ${booking.id}, checking customer ${booking.userId}`);
         
-        try {
-          // Load user with fcm token
-          const user = await this.usersRepository.findOne({
-            where: { id: booking.userId }
-          });
+          try {
+            // Load user with fcm token (booking.userId is User.publicId UUID)
+            const user = await this.usersRepository.findOne({
+              where: { publicId: booking.userId }
+            });
           
           if (user && user.fcmToken) {
             notificationFcmToken = user.fcmToken;
@@ -522,7 +522,8 @@ export class PaymentsService {
             // ✅ AUTO-MIGRATION: Save guest token to user profile permanently
             this.logger.log(`🔄 Auto-migrating guest FCM token to user ${booking.userId}`);
             // Direct update via repository (no UsersService dependency required)
-            await this.usersRepository.update(booking.userId, {
+            // Update by publicId since booking.userId is User.publicId (UUID)
+            await this.usersRepository.update({ publicId: booking.userId }, {
               fcmToken: booking.guestFcmToken.trim(),
               updatedAt: new Date()
             });
