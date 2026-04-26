@@ -7,6 +7,8 @@ import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/entities/user.entity';
+import { Worker } from '../workers/entities/worker.entity';
+import { Service } from '../services/entities/service.entity';
 import Razorpay = require('razorpay');
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +23,10 @@ export class PaymentsService {
     private paymentsRepository: Repository<Payment>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Worker)
+    private workersRepository: Repository<Worker>,
+    @InjectRepository(Service)
+    private servicesRepository: Repository<Service>,
     private configService: ConfigService,
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
@@ -305,6 +311,11 @@ export class PaymentsService {
           if (serviceRequest && serviceRequest.length > 0 && serviceRequest[0].date) {
             validBookingData.date = this.convertToDateString(serviceRequest[0].date);
             this.logger.debug(`Got date from service request: ${validBookingData.date}`);
+            // Also get serviceId from service request if not already set
+            if (serviceRequest[0].serviceId && !validBookingData.serviceId) {
+              validBookingData.serviceId = serviceRequest[0].serviceId;
+              this.logger.debug(`Got serviceId from service request: ${validBookingData.serviceId}`);
+            }
           } else {
             // FIX: Throw error if service request doesn't have a date
             // This ensures the bug is caught rather than silently defaulting to today
@@ -331,10 +342,43 @@ export class PaymentsService {
               validBookingData.userId = bookingData.userId;
             }
           }
-          if (bookingData.workerId)
-            validBookingData.workerId = bookingData.workerId;
-          if (bookingData.serviceId)
-            validBookingData.serviceId = bookingData.serviceId;
+          // Handle workerId (supports both 'worker' and 'workerId' keys from frontend)
+          const workerIdValue = bookingData.worker || bookingData.workerId;
+          if (workerIdValue) {
+            const workerIdStr = String(workerIdValue);
+            if (workerIdStr.includes('-')) {
+              // UUID (publicId) → lookup internal integer ID
+              const worker = await this.workersRepository.findOne({
+                where: { publicId: workerIdStr },
+              });
+              if (worker) {
+                validBookingData.workerId = worker.id;
+              } else {
+                this.logger.warn(`Worker not found for publicId: ${workerIdStr}`);
+              }
+            } else {
+              validBookingData.workerId = parseInt(workerIdStr);
+            }
+          }
+
+          // Handle serviceId (supports both 'service' and 'serviceId' keys from frontend)
+          const serviceIdValue = bookingData.service || bookingData.serviceId;
+          if (serviceIdValue) {
+            const serviceIdStr = String(serviceIdValue);
+            if (serviceIdStr.includes('-')) {
+              // UUID (publicId) → lookup internal integer ID
+              const service = await this.servicesRepository.findOne({
+                where: { publicId: serviceIdStr },
+              });
+              if (service) {
+                validBookingData.serviceId = service.id;
+              } else {
+                this.logger.warn(`Service not found for publicId: ${serviceIdStr}`);
+              }
+            } else {
+              validBookingData.serviceId = parseInt(serviceIdStr);
+            }
+          }
           if (bookingData.startTime)
             validBookingData.startTime = this.convertToTimeString(bookingData.startTime);
           if (bookingData.endTime)
@@ -524,7 +568,7 @@ export class PaymentsService {
 
       // Serialize the booking to ensure relations are included in response
       return this.serializeBooking(booking);
-    } catch (error) {
+    } catch (error: any) {
       // Rollback transaction on error
       await queryRunner.rollbackTransaction();
       this.logger.error(
@@ -584,45 +628,95 @@ export class PaymentsService {
         // 🔍 DEBUG LOG
         this.logger.log('🔍 subscriptionData payload:', JSON.stringify(subscriptionData, null, 2));
         
-        // Extract service profile id from any possible field, fallback to BASIC profile (id=1 which always exists)
-        const serviceProfileId = subscriptionData.serviceProfileId
-          ?? subscriptionData.id
-          ?? subscriptionData.profileId
-          ?? 1; // Default to BASIC profile which is guaranteed to exist
+        // Extract service profile id - ONLY from fields that actually represent serviceProfileId
+        // NOTE: Do NOT use subscriptionData.id as fallback - that field is for updating existing subscriptions
+        let serviceProfileId = subscriptionData.serviceProfileId
+          ?? subscriptionData.profileId;
+        
+        // If serviceProfileId is null, check if customPlanData is provided
+        if (serviceProfileId == null) {
+          if (subscriptionData.customPlanData) {
+            // Use customPlanData as primary source - no need to look up ServiceProfile
+            this.logger.log(`🔍 Using customPlanData for subscription creation (no serviceProfileId provided)`);
+            // serviceProfileId remains null, which is now allowed
+          } else {
+            // Neither serviceProfileId nor customPlanData provided - throw error
+            throw new Error('Cannot create subscription: Neither serviceProfileId nor customPlanData provided');
+          }
+        }
         
         this.logger.log(`🔍 Final selected serviceProfileId: ${serviceProfileId}`);
 
-        // ✅ IDENTIFIED BUG: UNIQUE CONSTRAINT VIOLATION
-        // Check if user already has an ACTIVE subscription for this service profile type
-        this.logger.log(`🔍 Checking for existing active subscription for user ${subscriptionData.userId} with serviceProfileId ${serviceProfileId}`);
+        // ✅ FIX: For custom plans, ALWAYS create a NEW subscription (don't reuse existing ones)
+        // A user can have MULTIPLE active subscriptions for DIFFERENT service types
+        let existingSubscription = null;
         
-        const existingSubscription = await subscriptionRepo.findOne({
-          select: ['id'],
-          where: {
-            userId: subscriptionData.userId,
-            serviceProfileId: serviceProfileId,
-            status: SubscriptionStatus.ACTIVE
-          }
-        });
+        if (subscriptionData.customPlanData) {
+          // For custom plans, NEVER reuse existing subscriptions
+          // User might want multiple different custom services
+          this.logger.log(`🔍 Custom plan detected - always creating NEW subscription (not reusing existing)`);
+        } else if (serviceProfileId) {
+          // For serviceProfileId subscriptions, only reuse if SAME serviceProfileId
+          this.logger.log(`🔍 Checking for existing active subscription for user ${subscriptionData.userId} with serviceProfileId ${serviceProfileId}`);
+          
+          existingSubscription = await subscriptionRepo.findOne({
+            select: ['id'],
+            where: {
+              userId: subscriptionData.userId,
+              serviceProfileId: serviceProfileId,
+              status: SubscriptionStatus.ACTIVE
+            }
+          });
+        }
 
         if (existingSubscription) {
-          this.logger.log(`✅ Found existing active subscription id=${existingSubscription.id}, reusing instead of creating new one`);
+          this.logger.log(`✅ Found existing active subscription id=${existingSubscription.id} for same serviceProfileId, reusing instead of creating new one`);
           // Existing active subscription is already paid - no need to update
           subscription = existingSubscription;
         } else {
-          this.logger.log(`🔄 No existing active subscription found, creating new subscription`);
-          const newSubscription = subscriptionRepo.create({
-            publicId: uuidv4(), // Generate unique publicId
-            userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
-            serviceProfileId: serviceProfileId,
-            preferredTimeWindow: subscriptionData.preferredTimeWindow,
-            startDate: new Date(subscriptionData.startDate),
-            location: subscriptionData.location,
-            monthlyPriceSnapshot: subscriptionData.monthlyPriceSnapshot ?? 0, // Default to 0 if null
-            status: SubscriptionStatus.ACTIVE,
-            isPaid: true,
-          });
-          subscription = await subscriptionRepo.save(newSubscription);
+          this.logger.log(`🔄 No existing active subscription found (or custom plan), creating new subscription`);
+          try {
+            const newSubscription = subscriptionRepo.create({
+              publicId: uuidv4(), // Generate unique publicId
+              userId: subscriptionData.userId, // ✅ Using UUID publicId directly as expected by schema
+              serviceProfileId: serviceProfileId,
+              preferredTimeWindow: subscriptionData.preferredTimeWindow,
+              startDate: new Date(subscriptionData.startDate),
+              location: subscriptionData.location,
+              monthlyPriceSnapshot: subscriptionData.monthlyPriceSnapshot ?? 0, // Default to 0 if null
+              status: SubscriptionStatus.ACTIVE,
+              isPaid: true,
+              customPlanData: subscriptionData.customPlanData || null, // ✅ Save custom plan data
+            });
+            subscription = await subscriptionRepo.save(newSubscription);
+          } catch (error: any) {
+            // Handle duplicate key violation (race condition)
+            if (error.code === '23505') { // PostgreSQL unique violation error code
+              this.logger.warn(`Duplicate key error caught for user ${subscriptionData.userId} and serviceProfileId ${serviceProfileId}. Fetching existing subscription.`);
+               
+              // Query for the existing active subscription and return it
+              const existingSubscription = await subscriptionRepo.findOne({
+                select: ['id'],
+                where: {
+                  userId: subscriptionData.userId,
+                  serviceProfileId: serviceProfileId,
+                  status: SubscriptionStatus.ACTIVE
+                }
+              });
+               
+              if (existingSubscription) {
+                this.logger.log(`✅ Found existing active subscription id=${existingSubscription.id} after duplicate key error, returning it`);
+                subscription = existingSubscription;
+              } else {
+                // If we somehow still don't find it, re-throw the original error
+                this.logger.error(`Duplicate key error but no existing subscription found for user ${subscriptionData.userId} and serviceProfileId ${serviceProfileId}`);
+                throw error;
+              }
+            } else {
+              // Re-throw non-duplicate key errors
+              throw error;
+            }
+          }
         }
       }
 
@@ -707,7 +801,7 @@ export class PaymentsService {
             }
           }
         }
-      } catch (assignmentError) {
+      } catch (assignmentError: any) {
         this.logger.error(
           `Failed to trigger immediate assignment for subscription ${subscription.id}: ${assignmentError.message}`,
           assignmentError.stack,
@@ -716,7 +810,7 @@ export class PaymentsService {
       }
 
       return subscription;
-    } catch (error) {
+    } catch (error: any) {
       // Rollback transaction on error
       await queryRunner.rollbackTransaction();
       this.logger.error(
