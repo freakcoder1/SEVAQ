@@ -611,12 +611,17 @@ extension PaymentApi on ApiService {
     required String razorpayOrderId,
     required String razorpayPaymentId,
     required String signature,
+    String? fcmToken,
   }) async {
-    return await post('payments/verify', {
+    final data = {
       'razorpayOrderId': razorpayOrderId,
       'razorpayPaymentId': razorpayPaymentId,
       'signature': signature,
-    });
+    };
+    if (fcmToken != null) {
+      data['fcmToken'] = fcmToken;
+    }
+    return await post('payments/verify', data);
   }
 }
 
