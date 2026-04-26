@@ -8,7 +8,7 @@ export class AddPreServiceReminderSentToBooking1745676600000 implements Migratio
     const columns = await queryRunner.query(`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'booking' AND column_name = 'preserviceremindersent'
+      WHERE table_name = 'booking' AND LOWER(column_name) = 'preserviceremindersent'
     `);
 
     if (columns.length === 0) {
