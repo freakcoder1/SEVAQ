@@ -148,8 +148,8 @@ async function runMigrations() {
     }
     catch (error) {
         console.error('❌ Error during migration:', error);
-        process.exit(1);
+        throw error;
     }
 }
-runMigrations();
+module.exports = runMigrations;
 //# sourceMappingURL=run-migration.js.map
