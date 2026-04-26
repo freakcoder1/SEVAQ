@@ -7,7 +7,7 @@
   "build": {
     "builder": "NIXPACKS",
     "nodeVersion": "22",
-    "buildCommand": "npm install && npx tsc && npm run seed:railway",
+    "buildCommand": "npm install --legacy-peer-deps && npm run build && npm run seed:railway",
     "workingDirectory": "flutter-nest-househelp-master"
   },
   "deploy": {
@@ -15,13 +15,13 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
     "sleepApplication": false,
-    "startCommand": "node dist/run-migration.js && node dist/database/seed.js && node dist/main"
+    "workingDirectory": "flutter-nest-househelp-master",
+    "startCommand": "node dist/run-migration.js && node dist/main.js"
   },
   "env": {
     "SYNCHRONIZE": "false",
     "NODE_ENV": "production",
     "LOG_LEVEL": "info",
-    "DB_SSL_REQUIRE": "true",
-    "NIXPACKS_START_COMMAND": "node dist/run-migration.js && node dist/database/seed.js && node dist/main"
+    "DB_SSL_REQUIRE": "true"
   }
 }
