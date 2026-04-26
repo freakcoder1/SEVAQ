@@ -4,9 +4,7 @@
   "watchPatterns": [
     "flutter-nest-househelp-master/**/*"
   ],
-  "build": {
-    "builder": "DOCKER"
-  },
+  "build": {},
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
