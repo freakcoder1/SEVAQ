@@ -104,7 +104,7 @@ export async function createAppDataSourceWithRetry(): Promise<DataSource> {
         password: configService.get('DB_PASSWORD', 'sevaq_password'),
         database: configService.get('DB_NAME', 'sevaq_db'),
         entities: ['src/**/*.entity.ts'],
-        migrations: ['src/migrations/*.ts'],
+        migrations: ['src/database/migrations/*.ts'],
         // Connection pool settings
         extra: {
           connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
@@ -186,7 +186,7 @@ export const AppDataSource = new DataSource({
   password,
   database,
   entities: ['dist/**/*.entity.js'],
-  migrations: ['dist/migrations/*.js'],
+  migrations: ['dist/database/migrations/*.js'],
   synchronize: false,
   migrationsRun: false,
   ssl: process.env.RAILWAY_ENVIRONMENT_ID || databaseUrl ? { rejectUnauthorized: false } : false,
