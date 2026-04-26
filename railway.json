@@ -16,7 +16,7 @@
     "restartPolicyLimit": 5,
     "sleepApplication": false,
     "workingDirectory": "flutter-nest-househelp-master",
-    "startCommand": "node start.js"
+    "startCommand": "cd flutter-nest-househelp-master && node start.js"
   },
   "env": {
     "SYNCHRONIZE": "false",
