@@ -35,6 +35,8 @@ import { AddYearsOfExperienceToWorker1768351862230 } from './src/migrations/1768
 import { AddPhoneUniqueConstraint1738467600000 } from './src/migrations/1738467600000-AddPhoneUniqueConstraint';
 import { AddBookingTypeColumn1736660000002 } from './src/migrations/add-booking-type-column';
 import { AddFcmTokenToWorker1739999999999 } from './src/migrations/add-fcm-token-to-worker';
+import { DropUniqueConstraintOnSubscriptionServiceProfile } from './src/migrations/1769856000000-DropUniqueConstraintOnSubscriptionServiceProfile';
+import { AddPreServiceReminderSentToBooking1745676600000 } from './src/database/migrations/add-pre-service-reminder-sent-to-booking';
 
 async function runMigrations() {
   const configService = new ConfigService();
@@ -80,14 +82,16 @@ async function runMigrations() {
     database = configService.get('DB_NAME', 'sevaq_db');
   }
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: host,
-    port: port,
-    username: username,
-    password: password,
-    database: database,
-    entities: [
+    const dataSource = new DataSource({
+      type: 'postgres',
+      host: host,
+      port: port,
+      username: username,
+      password: password,
+      database: database,
+      // Disable SSL for local development
+      ssl: false,
+      entities: [
       User,
       Service,
       Worker,
@@ -119,18 +123,20 @@ async function runMigrations() {
     ],
     synchronize: false,
     logging: true,
-    migrations: [
-      FixWorkerLocationData1736660000000,
-      AddMissingServiceBookingColumns1736660000001,
-      AddMissingServiceDetailColumns1736660000002,
-      AddMissingMicroZoneColumns1736660000003,
-      CreateServiceRequestsTable1736660000004,
-      AddPhoneUniqueConstraint1738467600000,
-      AddYearsOfExperienceToWorker1768351862230,
-      RenameWorkerUserIdToUserId1768351862231,
-      AddBookingTypeColumn1736660000002,
-      AddFcmTokenToWorker1739999999999
-    ],
+  migrations: [
+    FixWorkerLocationData1736660000000,
+    AddMissingServiceBookingColumns1736660000001,
+    AddMissingServiceDetailColumns1736660000002,
+    AddMissingMicroZoneColumns1736660000003,
+    CreateServiceRequestsTable1736660000004,
+    AddPhoneUniqueConstraint1738467600000,
+    AddYearsOfExperienceToWorker1768351862230,
+    RenameWorkerUserIdToUserId1768351862231,
+    AddBookingTypeColumn1736660000002,
+    AddFcmTokenToWorker1739999999999,
+    DropUniqueConstraintOnSubscriptionServiceProfile,
+    AddPreServiceReminderSentToBooking1745676600000
+  ],
   });
 
   try {
