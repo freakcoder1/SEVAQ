@@ -89,8 +89,8 @@ async function runMigrations() {
       username: username,
       password: password,
       database: database,
-      // Disable SSL for local development
-      ssl: false,
+      // Enable SSL for Railway, disable for local development
+      ssl: process.env.RAILWAY_ENVIRONMENT_ID || databaseUrl ? { rejectUnauthorized: false } : false,
       entities: [
       User,
       Service,
