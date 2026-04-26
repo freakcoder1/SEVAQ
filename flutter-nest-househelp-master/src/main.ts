@@ -7,7 +7,6 @@ if (process.env.DEBUG) {
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import './database/seed';
 import {
   Logger,
   ValidationPipe,
