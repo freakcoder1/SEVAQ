@@ -8,7 +8,7 @@ export class AddNotificationSentToBooking1712217600000 implements MigrationInter
     const columns = await queryRunner.query(`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'booking' AND column_name = 'notificationsent'
+      WHERE table_name = 'booking' AND LOWER(column_name) = 'notificationsent'
     `);
 
     if (columns.length === 0) {
