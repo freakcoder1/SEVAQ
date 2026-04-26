@@ -324,22 +324,32 @@ export class PaymentsService {
             throw new Error(errorMsg);
           }
         } else {
-          // Handle userId - convert from UUID (publicId) to internal integer ID
+          // Handle userId - ensure it's the User's publicId (UUID) for the booking.userId column
           if (bookingData.userId) {
             const userIdStr = String(bookingData.userId);
             if (userIdStr.includes('-')) {
-              // It's a UUID (publicId), find the internal user ID
+              // Input is already a UUID (publicId), validate user exists
               const user = await this.usersRepository.findOne({
                 where: { publicId: userIdStr },
               });
               if (user) {
-                validBookingData.userId = user.id;
+                validBookingData.userId = userIdStr; // Use the UUID directly
               } else {
                 this.logger.warn(`User not found for publicId: ${userIdStr}`);
-                validBookingData.userId = bookingData.userId;
+                throw new Error(`User with publicId ${userIdStr} not found`);
               }
             } else {
-              validBookingData.userId = bookingData.userId;
+              // Input is integer user ID, lookup user to get publicId
+              const userIdInt = parseInt(userIdStr);
+              const user = await this.usersRepository.findOne({
+                where: { id: userIdInt },
+              });
+              if (user) {
+                validBookingData.userId = user.publicId; // Use the UUID publicId
+              } else {
+                this.logger.warn(`User not found for id: ${userIdInt}`);
+                throw new Error(`User with id ${userIdInt} not found`);
+              }
             }
           }
           // Handle workerId (supports both 'worker' and 'workerId' keys from frontend)
