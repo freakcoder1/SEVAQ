@@ -7,6 +7,7 @@ import 'package:flutter_house_help/providers/auth_provider.dart';
 import 'package:flutter_house_help/providers/location_provider.dart';
 import 'package:flutter_house_help/screens/schedule_pricing_screen.dart';
 import 'package:flutter_house_help/screens/subscription_profiles_screen.dart';
+import 'package:flutter_house_help/screens/subscription_pricing_screen.dart';
 import 'package:flutter_house_help/utils/service_mapper.dart';
 
 /// Service Engagement Type Screen
@@ -342,17 +343,18 @@ class _ServiceEngagementTypeScreenState
 
     if (_selectedEngagementType == EngagementType.monthly) {
       debugPrint(
-        'DEBUG: Navigating to SubscriptionProfilesScreen with userId: ${widget.userId}',
+        'DEBUG: Navigating directly to SubscriptionPricingScreen (custom plan) with userId: ${widget.userId}',
       );
-      // Navigate to subscription profiles screen with location
+      // Navigate directly to custom subscription pricing screen (no profile selection)
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SubscriptionProfilesScreen(
+          builder: (_) => SubscriptionPricingScreen(
             serviceType: widget.selectedServiceOption.id.toLowerCase(),
             serviceName: widget.selectedServiceOption.name,
             userId: widget.userId,
             initialLocation: currentLocation,
+            selectedProfile: null, // No profile selected - custom plan
           ),
         ),
       );

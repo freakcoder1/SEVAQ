@@ -6,6 +6,7 @@ import '../models/location.dart';
 import '../models/service_profile.dart';
 import '../services/api_service.dart';
 import 'subscription_confirmation_screen.dart';
+import '../services/pricing_service.dart';
 
 /// Subscription Scheduling Screen (Canonical v1)
 ///
@@ -16,12 +17,15 @@ class SubscriptionSchedulingScreen extends StatefulWidget {
   final dynamic
   userId; // Accept both int and String (UUID) - kept for backward compat
   final Location? initialLocation; // Pass location from parent
+  final Map<String, dynamic>?
+  customConfig; // Custom plan configuration (persons, mealPlan, bhk)
 
   const SubscriptionSchedulingScreen({
     Key? key,
     required this.serviceProfile,
     this.userId,
     this.initialLocation,
+    this.customConfig,
   }) : super(key: key);
 
   @override
@@ -168,17 +172,70 @@ class _SubscriptionSchedulingScreenState
 
       // Handle custom plans (id=0 means dynamic pricing)
       if (widget.serviceProfile.id == 0) {
-        // Custom plan - send calculated price directly
-        orderParams['customPrice'] = widget.serviceProfile.monthlyPrice.toInt();
-        orderParams['customPlanData'] = {
-          'serviceType': widget.serviceProfile.serviceType,
-          'profileName': widget.serviceProfile.profileName,
-          'scopeDefinition': widget.serviceProfile.scopeDefinition,
-        };
+        final pricingService = PricingService();
+        int finalPrice;
+        Map<String, dynamic> customPlanData;
+
+        // Determine service type and calculate price accordingly
+        final serviceType = widget.serviceProfile.serviceType.toUpperCase();
+
+        if (serviceType == 'COOKING' || serviceType == 'COOK') {
+          // Cooking service - use persons and mealPlan
+          final int persons = widget.customConfig?['persons'] ?? 1;
+          final String mealPlan =
+              widget.customConfig?['mealPlan'] ?? 'FULL_DAY';
+
+          finalPrice = pricingService.calculateCookingPrice(persons, mealPlan);
+
+          customPlanData = {
+            'serviceType': widget.serviceProfile.serviceType,
+            'scopeDefinition': widget.serviceProfile.scopeDefinition,
+            'publicId': widget.serviceProfile.publicId,
+            'numberOfPeople': persons,
+            'mealPlan': mealPlan,
+            'calculatedPrice': finalPrice,
+          };
+        } else if (serviceType == 'CLEANING' || serviceType == 'CLEAN') {
+          // Cleaning service - use BHK type
+          final int bhk = widget.customConfig?['bhk'] ?? 1;
+
+          finalPrice = pricingService.calculateCleaningPrice(bhk);
+
+          customPlanData = {
+            'serviceType': widget.serviceProfile.serviceType,
+            'scopeDefinition': widget.serviceProfile.scopeDefinition,
+            'publicId': widget.serviceProfile.publicId,
+            'bhk': bhk,
+            'calculatedPrice': finalPrice,
+          };
+        } else {
+          // Maid or other services - use provided price or default
+          finalPrice = widget.customConfig?['price'] ?? 3000;
+
+          customPlanData = {
+            'serviceType': widget.serviceProfile.serviceType,
+            'scopeDefinition': widget.serviceProfile.scopeDefinition,
+            'publicId': widget.serviceProfile.publicId,
+            'calculatedPrice': finalPrice,
+          };
+        }
+
+        // Debug log to confirm price
+        print(
+          '🔍 FIX VERIFICATION: serviceType=$serviceType, finalPrice=$finalPrice',
+        );
+
+        orderParams['customPrice'] = finalPrice;
+        orderParams['customPlanData'] = customPlanData;
       } else {
         // Standard predefined profile
         orderParams['serviceProfileId'] = widget.serviceProfile.id;
       }
+
+      // Debug logging for custom plan data
+      print(
+        '🔍 DEBUG: Creating subscription order with customPlanData: ${orderParams['customPlanData']}',
+      );
 
       final paymentOrder = await _apiService.createSubscriptionOrder(
         userId: orderParams['userId'],
@@ -205,7 +262,7 @@ class _SubscriptionSchedulingScreenState
         'currency': 'INR',
         'name': 'SEVAQ Services',
         'description':
-            'Daily Service Subscription - ${widget.serviceProfile.profileName}',
+            'Daily Service Subscription - ${widget.serviceProfile.serviceType} (${widget.serviceProfile.publicId})',
         'order_id': paymentOrder['id'],
         'prefill': {
           'contact':
@@ -261,6 +318,15 @@ class _SubscriptionSchedulingScreenState
         throw Exception('Payment verification failed: missing payment details');
       }
 
+      // Debug logging for customPlanData
+      print('🔍 DEBUG: Payment Success - paymentOrder: $paymentOrder');
+      print(
+        '🔍 DEBUG: Subscription data from paymentOrder: ${paymentOrder['subscription']}',
+      );
+      print(
+        '🔍 DEBUG: customPlanData in paymentOrder subscription: ${paymentOrder['subscription']?['customPlanData']}',
+      );
+
       final subscriptionResponse = await _apiService
           .createSubscriptionAfterPayment(
             paymentId: paymentId,
@@ -276,6 +342,10 @@ class _SubscriptionSchedulingScreenState
               'location': paymentOrder['subscription']['location'],
               'monthlyPriceSnapshot':
                   paymentOrder['subscription']['monthlyPriceSnapshot'],
+              // Include customPlanData if present (for custom plans)
+              if (paymentOrder['subscription'].containsKey('customPlanData'))
+                'customPlanData':
+                    paymentOrder['subscription']['customPlanData'],
             },
           );
 
@@ -460,7 +530,7 @@ class _SubscriptionSchedulingScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            '${widget.serviceProfile.profileName} — ${widget.serviceProfile.serviceType}',
+            '${widget.serviceProfile.serviceType} (${widget.serviceProfile.publicId}) — ₹${widget.serviceProfile.monthlyPrice.toInt()}/month',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),

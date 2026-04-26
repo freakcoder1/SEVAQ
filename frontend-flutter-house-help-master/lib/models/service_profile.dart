@@ -3,7 +3,6 @@ class ServiceProfile {
   final dynamic id;
   final String publicId;
   final String serviceType; // COOK, MAID, CLEANING
-  final String profileName; // BASIC, STANDARD, EXTENDED
   final String description;
   final String scopeDefinition;
   final String maxCapacityHint;
@@ -18,7 +17,6 @@ class ServiceProfile {
     required this.id,
     required this.publicId,
     required this.serviceType,
-    required this.profileName,
     required this.description,
     required this.scopeDefinition,
     required this.maxCapacityHint,
@@ -35,7 +33,6 @@ class ServiceProfile {
       id: _parseId(json['id']),
       publicId: json['publicId'] as String,
       serviceType: json['serviceType'] as String,
-      profileName: json['profileName'] as String,
       description: json['description'] as String? ?? '',
       scopeDefinition: json['scopeDefinition'] as String? ?? '',
       maxCapacityHint: json['maxCapacityHint'] as String? ?? '',
@@ -61,7 +58,6 @@ class ServiceProfile {
       'id': id,
       'publicId': publicId,
       'serviceType': serviceType,
-      'profileName': profileName,
       'description': description,
       'scopeDefinition': scopeDefinition,
       'maxCapacityHint': maxCapacityHint,

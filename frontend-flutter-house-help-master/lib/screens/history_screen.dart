@@ -61,6 +61,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  /// Get display text for custom plan based on service type
+  String _getCustomPlanDisplayText(Subscription subscription) {
+    final serviceType = subscription.serviceType.toUpperCase();
+    final customPlanData = subscription.customPlanData!;
+
+    if (serviceType == 'COOKING' || serviceType == 'COOK') {
+      final persons = customPlanData['numberOfPeople'] ?? 1;
+      final mealPlan = customPlanData['mealPlan'] ?? 'all';
+      return '$persons person(s), $mealPlan';
+    } else if (serviceType == 'CLEANING') {
+      final bhk = customPlanData['bhk'] ?? 1;
+      return '$bhk BHK';
+    } else if (serviceType == 'MAID' || serviceType == 'MAID_SERVICE') {
+      return 'Maid Service';
+    }
+    return 'Custom Plan';
+  }
+
   String _getPriceLabel(Booking booking) {
     if (booking.amount == null || booking.amount == 0) {
       return 'Price pending';
@@ -123,7 +141,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
                     // Bookings Section
                     if (hasBookings) ...[
-                      _buildBookingsSection(provider.bookings),
+                      _buildBookingsSection(
+                        provider.bookings,
+                        provider.subscriptions,
+                      ),
                     ] else ...[
                       // No bookings but show a message
                       Padding(
@@ -266,6 +287,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ],
               ),
               SizedBox(height: 8),
+              // Custom Plan Details (if available)
+              if (subscription.customPlanData != null)
+                Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.purple[700], size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      _getCustomPlanDisplayText(subscription),
+                      style: TextStyle(color: Colors.purple[700], fontSize: 13),
+                    ),
+                  ],
+                ),
+              if (subscription.customPlanData != null) SizedBox(height: 8),
               // Worker Name (if assigned)
               if (subscription.workerName != null)
                 Row(
@@ -417,7 +451,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildBookingsSection(List<Booking> bookings) {
+  Widget _buildBookingsSection(
+    List<Booking> bookings,
+    List<Subscription> subscriptions,
+  ) {
     // Group bookings by date
     final Map<DateTime, List<Booking>> bookingsByDate = {};
     for (final booking in bookings) {
@@ -473,7 +510,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               // Bookings for this date
-              ...dateBookings.map((booking) => _buildBookingCard(booking)),
+              ...dateBookings.map(
+                (booking) => _buildBookingCard(booking, subscriptions),
+              ),
               SizedBox(height: 16),
             ],
           );
@@ -482,7 +521,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildBookingCard(Booking booking) {
+  Widget _buildBookingCard(Booking booking, List<Subscription> subscriptions) {
+    // Use booking.serviceName which already handles subscription lookup
+    final displayServiceName = booking.serviceName;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -516,7 +558,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    booking.service.name,
+                    displayServiceName,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,

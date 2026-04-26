@@ -126,7 +126,7 @@ class _SubscriptionConfirmationScreenState
                     _buildDetailRow(
                       Icons.work,
                       'Service',
-                      '${widget.serviceProfile.profileName} — ${widget.serviceProfile.serviceType}',
+                      '${widget.serviceProfile.serviceType} (${widget.serviceProfile.publicId})',
                     ),
                     const SizedBox(height: 12),
                     _buildDetailRow(

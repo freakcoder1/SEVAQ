@@ -98,14 +98,14 @@ export class Booking {
   @JoinColumn({ name: 'workerId' })
   worker: Worker;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, name: 'workerId' })
   workerId: number;
 
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'assignedWorkerId' })
   assignedWorker: Worker;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, name: 'assignedWorkerId' })
   assignedWorkerId: number;
 
   @Column({ name: 'serviceId', type: 'int', nullable: true })
@@ -215,6 +215,7 @@ export class Booking {
   @Column({ type: 'int', nullable: true })
   subscriptionId: number;
 
+  @Expose()
   @ManyToOne(() => Subscription, { nullable: true })
   @JoinColumn({ name: 'subscriptionId' })
   subscription: Subscription;

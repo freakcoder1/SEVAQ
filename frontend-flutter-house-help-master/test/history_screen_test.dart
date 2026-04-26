@@ -87,7 +87,7 @@ void main() {
 
     final testBookings = [
       Booking(
-        id: 1,
+        id: '1',
         publicId: 'test-booking-1',
         startTime: DateTime.now().add(Duration(days: -1)),
         endTime: DateTime.now().add(Duration(days: -1, hours: 2)),
@@ -99,7 +99,7 @@ void main() {
         worker: testWorker,
       ),
       Booking(
-        id: 2,
+        id: '2',
         publicId: 'test-booking-2',
         startTime: DateTime.now().add(Duration(days: -1)),
         endTime: DateTime.now().add(Duration(days: -1, hours: 3)),

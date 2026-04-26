@@ -61,6 +61,8 @@ export class PaymentsController {
         startDate: body.startDate,
         location: body.location,
         monthlyPriceSnapshot: monthlyPriceInRupees, // Store in rupees for scheduler
+        // Include customPlanData if provided (for custom plans)
+        ...(body.customPlanData && { customPlanData: body.customPlanData }),
       },
     };
   }

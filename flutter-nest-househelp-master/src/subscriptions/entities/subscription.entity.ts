@@ -10,6 +10,7 @@ import {
   BeforeInsert,
   VersionColumn,
 } from 'typeorm';
+import { Expose } from 'class-transformer';
 import { ServiceProfile } from '../../service-profiles/entities/service-profile.entity';
 import { User } from '../../users/entities/user.entity';
 import { Worker } from '../../workers/entities/worker.entity';
@@ -55,12 +56,12 @@ export class Subscription {
   @JoinColumn({ name: 'userId', referencedColumnName: 'publicId' })
   user: User;
 
-  @Column('int')
-  serviceProfileId: number;
+  @Column('int', { nullable: true })
+  serviceProfileId: number | null;
 
-  @OneToOne(() => ServiceProfile)
+  @ManyToOne(() => ServiceProfile, { nullable: true })
   @JoinColumn()
-  serviceProfile: ServiceProfile;
+  serviceProfile: ServiceProfile | null;
 
   @Column({ type: 'json', nullable: true })
   location?: { lat: number; lng: number; address?: string };
@@ -119,6 +120,10 @@ export class Subscription {
 
   @Column({ type: 'boolean', default: false })
   isPaid: boolean;
+
+  @Expose()
+  @Column({ type: 'json', nullable: true, name: 'custom_plan_data' })
+  customPlanData?: any;
 
   @VersionColumn()
   version: number;

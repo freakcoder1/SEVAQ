@@ -128,10 +128,18 @@ class BookingProvider with ChangeNotifier {
 
       // Process subscriptions
       if (subscriptionsResponse != null) {
+        debugPrint(
+          'BookingProvider: Subscriptions response: $subscriptionsResponse',
+        );
         _subscriptions = (subscriptionsResponse as List)
             .map((s) => Subscription.fromJson(s))
             .toList();
         _subscriptions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        debugPrint(
+          'BookingProvider: Loaded ${_subscriptions.length} subscriptions',
+        );
+      } else {
+        debugPrint('BookingProvider: No subscriptions data in response');
       }
     } on TokenExpiredException {
       debugPrint(

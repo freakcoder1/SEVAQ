@@ -184,7 +184,7 @@ class BookingDetailsScreen extends StatelessWidget {
                         const Icon(Icons.work, color: Colors.black54, size: 20),
                         const SizedBox(width: 12),
                         Text(
-                          booking.service.name,
+                          booking.serviceName,
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],

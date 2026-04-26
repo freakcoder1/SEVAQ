@@ -588,7 +588,7 @@ extension PaymentApi on ApiService {
     required String signature,
     required Map<String, dynamic> subscriptionData,
   }) async {
-    return await post('payments/confirm-subscription', {
+    final body = {
       'razorpayOrderId': orderId,
       'razorpayPaymentId': paymentId,
       'signature': signature,
@@ -598,7 +598,13 @@ extension PaymentApi on ApiService {
       'startDate': subscriptionData['startDate'],
       'location': subscriptionData['location'],
       'monthlyPriceSnapshot': subscriptionData['monthlyPriceSnapshot'],
-    });
+    };
+    // Include customPlanData if present (for custom plans)
+    if (subscriptionData.containsKey('customPlanData') &&
+        subscriptionData['customPlanData'] != null) {
+      body['customPlanData'] = subscriptionData['customPlanData'];
+    }
+    return await post('payments/confirm-subscription', body);
   }
 
   Future<dynamic> verifyPayment({

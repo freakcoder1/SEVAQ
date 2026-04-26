@@ -799,14 +799,14 @@ export class NotificationsService {
       return [];
     }
 
-    // Get active subscription for this user to include subscription bookings
-    const activeSubscription = await this.subscriptionsRepository.findOne({
+    // Get ALL active subscriptions for this user to include all subscription bookings
+    const activeSubscriptions = await this.subscriptionsRepository.find({
       where: {
         userId: userPublicId,
         status: SubscriptionStatus.ACTIVE,
       },
     });
-    const subscriptionId = activeSubscription?.id;
+    const subscriptionIds = activeSubscriptions.map(sub => sub.id).filter(id => id !== undefined);
 
     return this.bookingsRepository
       .createQueryBuilder('booking')
@@ -814,19 +814,27 @@ export class NotificationsService {
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
       .leftJoinAndSelect('booking.service', 'service')
+      .leftJoinAndSelect('booking.subscription', 'subscription')
       .where(
         new Brackets((qb: WhereExpressionBuilder) => {
           qb.where('booking.userId = :userId', { userId: userPublicId });
-          if (subscriptionId) {
-            qb.orWhere('booking.subscriptionId = :subscriptionId', {
-              subscriptionId,
+          if (subscriptionIds.length > 0) {
+            qb.orWhere('booking.subscriptionId IN (:...subscriptionIds)', {
+              subscriptionIds,
             });
           }
         })
       )
       .orderBy('booking.date', 'ASC')
       .addOrderBy('booking.startTime', 'ASC')
-      .getMany();
+      .getMany()
+      .then(bookings => {
+        console.log('🔍 findAllUserBookings: Loaded', bookings.length, 'bookings');
+        bookings.forEach(b => {
+          console.log(`  - Booking ${b.publicId}: subscriptionId=${b.subscriptionId}, subscription=${b.subscription ? b.subscription.publicId : null}`);
+        });
+        return bookings;
+      });
   }
 
   async findAllBookings(): Promise<Booking[]> {

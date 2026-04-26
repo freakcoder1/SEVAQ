@@ -104,6 +104,23 @@ export class ServiceRequestsService {
       ? savedRequest[0]
       : savedRequest;
 
+    // ✅ FIX: Propagate location to user table for worker assignment
+    if (createDto.location && createDto.location.lat && createDto.location.lng) {
+      try {
+        const userToUpdate = await this.usersRepository.findOne({
+          where: { id: numericUserId },
+        });
+        if (userToUpdate) {
+          userToUpdate.latitude = createDto.location.lat;
+          userToUpdate.longitude = createDto.location.lng;
+          await this.usersRepository.save(userToUpdate);
+          this.logger.debug(`Updated user ${numericUserId} location: ${createDto.location.lat}, ${createDto.location.lng}`);
+        }
+      } catch (locErr: any) {
+        this.logger.warn(`Failed to update user location: ${locErr.message || locErr}`);
+      }
+    }
+
     // Trigger assignment processing synchronously
     try {
       await this.assignmentWorker.processAssignment(singleRequest.id);

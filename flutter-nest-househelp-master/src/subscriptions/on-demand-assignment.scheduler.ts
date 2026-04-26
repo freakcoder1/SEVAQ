@@ -14,6 +14,8 @@ import { Worker } from '../workers/entities/worker.entity';
 import { WorkersService } from '../workers/workers.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
 
 // IST timezone offset in milliseconds (UTC+5:30)
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -42,6 +44,10 @@ export class OnDemandAssignmentScheduler {
     private readonly serviceRepository: Repository<Service>,
     @InjectRepository(Worker)
     private readonly workerRepository: Repository<Worker>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepository: Repository<Subscription>,
+    @InjectRepository(ServiceProfile)
+    private readonly serviceProfileRepository: Repository<ServiceProfile>,
     private readonly workersService: WorkersService,
     private readonly notificationsService: NotificationsService,
     private readonly subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
@@ -198,12 +204,70 @@ export class OnDemandAssignmentScheduler {
      this.scheduleNextRun();
    }
 
-  /**
-   * Assign a worker to an on-demand booking
-   */
-  private async assignWorkerForBooking(
-    booking: Booking,
-  ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
+   /**
+    * Derive serviceId from subscription if missing
+    */
+   private async deriveServiceIdFromBooking(booking: Booking): Promise<number | null> {
+     if (!booking.subscriptionId) return null;
+     const subscription = await this.subscriptionRepository.findOne({
+       where: { id: booking.subscriptionId },
+     });
+     if (!subscription) return null;
+
+     let serviceType: string | null = null;
+
+     // Try serviceProfileId
+     if (subscription.serviceProfileId) {
+       const profile = await this.serviceProfileRepository.findOne({
+         where: { id: subscription.serviceProfileId },
+       });
+       if (profile) {
+         serviceType = profile.serviceType as string;
+       }
+     }
+
+     // Fallback to customPlanData
+     if (!serviceType && (subscription as any).customPlanData) {
+       try {
+         const customPlanData = typeof (subscription as any).customPlanData === 'string'
+           ? JSON.parse((subscription as any).customPlanData)
+           : (subscription as any).customPlanData;
+         if (customPlanData.serviceType) {
+           serviceType = customPlanData.serviceType;
+         }
+       } catch (e) {
+         this.logger.warn(`Error parsing customPlanData for subscription ${subscription.id}`);
+       }
+     }
+
+     if (!serviceType) return null;
+
+     // Map serviceType to category
+     const normalizedType = String(serviceType).toUpperCase();
+     let category: string | null = null;
+     if (normalizedType === 'COOK' || normalizedType === 'COOKING') {
+       category = 'Cooking';
+     } else if (normalizedType === 'MAID') {
+       category = 'Maid';
+     } else if (normalizedType === 'CLEANING') {
+       category = 'Cleaning';
+     }
+
+     if (!category) return null;
+
+     const service = await this.serviceRepository.findOne({
+       where: { category },
+     });
+
+     return service?.id ?? null;
+   }
+
+   /**
+    * Assign a worker to an on-demand booking
+    */
+   private async assignWorkerForBooking(
+     booking: Booking,
+   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
     try {
       // Validate booking has required data
       if (!booking.userId) {
@@ -211,9 +275,18 @@ export class OnDemandAssignmentScheduler {
         return { success: false, reason: 'Booking has no userId' };
       }
 
+      // If serviceId is missing, try to derive it from subscription
       if (!booking.serviceId) {
-        this.logger.error(`Booking ${booking.id} has no serviceId`);
-        return { success: false, reason: 'Booking has no serviceId' };
+        const derivedServiceId = await this.deriveServiceIdFromBooking(booking);
+        if (derivedServiceId) {
+          booking.serviceId = derivedServiceId;
+          // Update the booking in DB so other processes see it
+          await this.bookingRepository.update(booking.id, { serviceId: derivedServiceId });
+          this.logger.log(`Derived and set serviceId ${derivedServiceId} for booking ${booking.id}`);
+        } else {
+          this.logger.error(`Booking ${booking.id} has no serviceId and could not derive one`);
+          return { success: false, reason: 'Booking has no serviceId' };
+        }
       }
 
       // Get user from the already-loaded relation (booking.user is loaded via relations: ['user'])

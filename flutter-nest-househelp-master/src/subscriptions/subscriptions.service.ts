@@ -8,9 +8,10 @@ import {
   BillingCycle,
 } from './entities/subscription.entity';
 import { ServiceProfilesService } from '../service-profiles/service-profiles.service';
-import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
+import { ServiceProfile, ServiceType } from '../service-profiles/entities/service-profile.entity';
 import { Booking, BookingStatus, BookingType, LocationData } from '../bookings/entities/booking.entity';
 import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
+import { Service } from '../services/entities/service.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -26,6 +27,74 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     private dataSource: DataSource,
     private subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
   ) {}
+
+  /**
+   * Map service type to a numeric service ID for booking assignment.
+   * This ensures subscription bookings have a valid serviceId so the
+   * OnDemandAssignmentScheduler can assign workers.
+   */
+  private async getServiceIdForSubscription(
+    serviceProfileId: number | null,
+    customPlanData?: any,
+  ): Promise<number | undefined> {
+    let serviceType: string | undefined;
+
+    // 1. Try to get serviceType from serviceProfile
+    if (serviceProfileId !== null && serviceProfileId !== undefined) {
+      try {
+        const serviceProfile = await this.serviceProfilesService.getProfileById(serviceProfileId);
+        if (serviceProfile) {
+          serviceType = serviceProfile.serviceType as string;
+        }
+      } catch (error: unknown) {
+        const err = error as Error;
+        this.logger.warn(`Could not fetch service profile ${serviceProfileId}: ${err.message}`);
+      }
+    }
+
+    // 2. Fallback: try customPlanData.serviceType
+    if (!serviceType && customPlanData && customPlanData.serviceType) {
+      serviceType = customPlanData.serviceType;
+    }
+
+    if (!serviceType) {
+      this.logger.warn('No serviceType found for subscription, cannot determine serviceId');
+      return undefined;
+    }
+
+    // Normalize serviceType to category string (same mapping as assignment.worker.ts)
+    const normalizedType = String(serviceType).toUpperCase();
+    let category: string | null = null;
+
+    // Map using ServiceType enum values and common variants
+    if (normalizedType === ServiceType.COOK || normalizedType === 'COOK' || normalizedType === 'COOKING') {
+      category = 'Cooking';
+    } else if (normalizedType === ServiceType.MAID || normalizedType === 'MAID') {
+      category = 'Maid';
+    } else if (normalizedType === ServiceType.CLEANING || normalizedType === 'CLEANING') {
+      category = 'Cleaning';
+    }
+
+    if (!category) {
+      this.logger.warn(`Unknown serviceType "${serviceType}", cannot map to category`);
+      return undefined;
+    }
+
+    // Find service by category
+    const serviceRepo = this.dataSource.getRepository(Service);
+    const services = await serviceRepo.find({
+      where: { category },
+      take: 1,
+    });
+
+    if (services.length === 0) {
+      this.logger.warn(`No service found for category "${category}"`);
+      return undefined;
+    }
+
+    this.logger.log(`Mapped serviceType "${serviceType}" to service ID ${services[0].id} (category: ${category})`);
+    return services[0].id;
+  }
 
   async createSubscription(
     userId: string,
@@ -47,20 +116,26 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     
     // For custom plans, serviceProfileId can be null - we use the provided monthlyPriceSnapshot directly
 
-    // Check for existing active subscription with the same service profile
-    const existingQuery: any = {
-      where: {
-        userId,
-        status: SubscriptionStatus.ACTIVE,
-      },
-    };
+    // ✅ FIX: For custom plans, ALWAYS create new subscription (don't reuse existing ones)
+    // A user can have MULTIPLE active subscriptions for DIFFERENT service types
+    let existingSubscription = null;
     
-    // Only add serviceProfileId filter if it's not null (custom plan)
-    if (serviceProfileId !== null && serviceProfileId !== undefined) {
-      existingQuery.where.serviceProfileId = serviceProfileId;
+    if (serviceProfileId === null || serviceProfileId === undefined) {
+      // For custom plans, NEVER reuse existing subscriptions
+      // User might want multiple different custom services
+      this.logger.log(`🔍 Custom plan detected - always creating NEW subscription (not reusing existing)`);
+    } else {
+      // For serviceProfileId subscriptions, only check if SAME serviceProfileId exists
+      this.logger.log(`🔍 Checking for existing active subscription for user ${userId} with serviceProfileId ${serviceProfileId}`);
+      
+      existingSubscription = await this.subscriptionRepository.findOne({
+        where: {
+          userId,
+          serviceProfileId: serviceProfileId,
+          status: SubscriptionStatus.ACTIVE,
+        },
+      });
     }
-    
-    const existingSubscription = await this.subscriptionRepository.findOne(existingQuery);
 
     if (existingSubscription) {
       throw new Error(
@@ -93,8 +168,16 @@ export class SubscriptionsService implements OnApplicationBootstrap {
       subscriptionData.serviceProfileId = serviceProfileId;
     }
     
-    // Use provided monthlyPriceSnapshot directly for custom plans
-    if (monthlyPriceSnapshot !== undefined && monthlyPriceSnapshot !== null) {
+    // Store customPlanData if provided (for custom plans)
+    if (customPlanData !== undefined && customPlanData !== null) {
+      subscriptionData.customPlanData = customPlanData;
+    }
+    
+    // ✅ FIX: For custom plans, use calculatedPrice from customPlanData
+    // This ensures monthlyPriceSnapshot matches the actual calculated price
+    if (customPlanData && customPlanData.calculatedPrice !== undefined) {
+      subscriptionData.monthlyPriceSnapshot = Number(customPlanData.calculatedPrice);
+    } else if (monthlyPriceSnapshot !== undefined && monthlyPriceSnapshot !== null) {
       subscriptionData.monthlyPriceSnapshot = monthlyPriceSnapshot;
     } else if (serviceProfile) {
       subscriptionData.monthlyPriceSnapshot = Number(serviceProfile.monthlyPrice);
@@ -109,11 +192,19 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     const savedSubscriptions = await this.subscriptionRepository.save(subscription);
     const savedSubscription = Array.isArray(savedSubscriptions) ? savedSubscriptions[0] : savedSubscriptions;
 
+    // ✅ Determine serviceId for bookings (needed for worker assignment)
+    const mappedServiceId = await this.getServiceIdForSubscription(serviceProfileId, customPlanData);
+    if (mappedServiceId) {
+      this.logger.log(`Using serviceId ${mappedServiceId} for subscription bookings`);
+    } else {
+      this.logger.warn('No serviceId mapped - worker assignment may fail for these bookings');
+    }
+
     // ✅ Generate all 4 weekly bookings UPFRONT immediately at purchase time
     for (let week = 0; week < 4; week++) {
       const bookingDate = new Date(startDate);
       bookingDate.setDate(bookingDate.getDate() + (week * 7));
-      
+       
       // Calculate time window
       let startHour = 8;
       let endHour = 12;
@@ -128,7 +219,7 @@ export class SubscriptionsService implements OnApplicationBootstrap {
       try {
         // Format date as YYYY-MM-DD string for Booking entity
         const dateStr = bookingDate.toISOString().split('T')[0];
-        
+         
         // Build location data matching LocationData entity structure
         const locationData: LocationData = {
           lat: location.lat,
@@ -140,7 +231,7 @@ export class SubscriptionsService implements OnApplicationBootstrap {
 
         const bookingData: DeepPartial<Booking> = {
           userId,
-          serviceId: serviceProfileId ?? undefined,
+          serviceId: mappedServiceId, // Use mapped serviceId instead of serviceProfileId
           date: dateStr,
           startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
           endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
@@ -148,6 +239,7 @@ export class SubscriptionsService implements OnApplicationBootstrap {
           type: BookingType.SUBSCRIPTION,
           subscriptionId: savedSubscription.id,
           status: BookingStatus.REQUESTED,
+          isPaid: savedSubscription.isPaid, // Propagate payment status from subscription
           notes: `Auto generated for subscription ${savedSubscription.id} - Week ${week + 1}`,
         };
 
@@ -217,39 +309,45 @@ export class SubscriptionsService implements OnApplicationBootstrap {
          break;
      }
  
-     // Build location data
-     const locationData: LocationData = {
-       lat: location.lat,
-       lng: location.lng,
-       latitude: location.lat,
-       longitude: location.lng,
-       address: location.address || '',
-     };
- 
-     let createdCount = 0;
- 
-     for (let week = 0; week < weeks; week++) {
-       const bookingDate = new Date(startDate);
-       bookingDate.setDate(bookingDate.getDate() + (week * 7));
-       const dateStr = bookingDate.toISOString().split('T')[0];
- 
-       // Skip if a booking already exists for this subscription on this date
-       const existing = await this.bookingsRepository.findOne({
-         where: {
-           subscriptionId,
-           date: dateStr,
-         },
-       });
-       if (existing) {
-         this.logger.debug(
-           `Booking for ${dateStr} already exists for subscription ${subscriptionId}, skipping`,
-         );
-         continue;
-       }
- 
-       const bookingData: DeepPartial<Booking> = {
-         userId,
-         serviceId: serviceProfileId ?? undefined,
+      // Build location data
+      const locationData: LocationData = {
+        lat: location.lat,
+        lng: location.lng,
+        latitude: location.lat,
+        longitude: location.lng,
+        address: location.address || '',
+      };
+  
+      // ✅ FIX: Derive serviceId from subscription (handles both serviceProfileId and customPlanData)
+      const derivedServiceId = await this.getServiceIdForSubscription(
+        serviceProfileId,
+        (subscription as any).customPlanData,
+      );
+  
+      let createdCount = 0;
+  
+      for (let week = 0; week < weeks; week++) {
+        const bookingDate = new Date(startDate);
+        bookingDate.setDate(bookingDate.getDate() + (week * 7));
+        const dateStr = bookingDate.toISOString().split('T')[0];
+  
+        // Skip if a booking already exists for this subscription on this date
+        const existing = await this.bookingsRepository.findOne({
+          where: {
+            subscriptionId,
+            date: dateStr,
+          },
+        });
+        if (existing) {
+          this.logger.debug(
+            `Booking for ${dateStr} already exists for subscription ${subscriptionId}, skipping`,
+          );
+          continue;
+        }
+  
+        const bookingData: DeepPartial<Booking> = {
+          userId,
+          serviceId: derivedServiceId,
          date: dateStr,
          startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
          endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
@@ -384,25 +482,31 @@ export class SubscriptionsService implements OnApplicationBootstrap {
                  break;
              }
  
-             // Build location data from subscription's location JSON column
-             if (!subscription.location) {
-               this.logger.error(
-                 `Subscription ${subscription.id} has no location data in database. Cannot generate bookings.`,
-               );
-               continue; // Skip this subscription
-             }
-             const locationData: LocationData = {
-               lat: subscription.location.lat,
-               lng: subscription.location.lng,
-               latitude: subscription.location.lat,
-               longitude: subscription.location.lng,
-               address: subscription.location.address || '',
-             };
- 
-             // Create booking
-             const bookingData: DeepPartial<Booking> = {
-               userId: subscription.user.publicId,
-               serviceId: subscription.serviceProfileId ?? undefined,
+              // Build location data from subscription's location JSON column
+              if (!subscription.location) {
+                this.logger.error(
+                  `Subscription ${subscription.id} has no location data in database. Cannot generate bookings.`,
+                );
+                continue; // Skip this subscription
+              }
+              const locationData: LocationData = {
+                lat: subscription.location.lat,
+                lng: subscription.location.lng,
+                latitude: subscription.location.lat,
+                longitude: subscription.location.lng,
+                address: subscription.location.address || '',
+              };
+  
+              // ✅ FIX: Derive serviceId from subscription (handles both serviceProfileId and customPlanData)
+              const derivedServiceId = await this.getServiceIdForSubscription(
+                subscription.serviceProfileId,
+                (subscription as any).customPlanData,
+              );
+  
+              // Create booking
+              const bookingData: DeepPartial<Booking> = {
+                userId: subscription.user.publicId,
+                serviceId: derivedServiceId,
                date: bookingDate.toISOString().split('T')[0],
                startTime: `${startHour.toString().padStart(2, '0')}:00:00`,
                endTime: `${endHour.toString().padStart(2, '0')}:00:00`,
@@ -457,15 +561,15 @@ export class SubscriptionsService implements OnApplicationBootstrap {
       return userId;
     }
 
-    // If it's a legacy integer ID, look up the user's UUID
+     // If it's a legacy integer ID, look up the user's UUID (publicId)
     try {
       const userResult = await this.dataSource.query(
-        'SELECT id FROM "user" WHERE id::text = $1 LIMIT 1',
+        'SELECT "publicId" FROM "user" WHERE id::text = $1 LIMIT 1',
         [userId]
       );
       
       if (userResult && userResult.length > 0) {
-        return userResult[0].id;
+        return userResult[0].publicId;
       }
       
       // If no user found with integer ID, return original userId
@@ -483,7 +587,7 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     
     return this.subscriptionRepository.find({
       where: { userId: resolvedUserId },
-      relations: ['serviceProfile', 'assignedWorker', 'assignedWorker.user'],
+      relations: ['serviceProfile', 'assignedWorker', 'assignedWorker.user', 'bookings', 'bookings.service'],
       order: { createdAt: 'DESC' },
     });
   }

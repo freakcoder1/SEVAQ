@@ -62,6 +62,7 @@ class Booking {
   final String id; // Internal ID
   final String publicId; // Public API ID
   final String? serviceRequestId;
+  final String? subscriptionId; // Links to subscription for custom plans
   final User user;
   final Worker worker;
   final Service service;
@@ -72,11 +73,14 @@ class Booking {
   final double? amount;
   final BookingType? bookingType;
   final BookingAssignmentState? assignmentState; // Worker assignment state
+  final Map<String, dynamic>?
+  subscription; // Subscription data for custom plans
 
   Booking({
     required this.id,
     required this.publicId,
     this.serviceRequestId,
+    this.subscriptionId,
     required this.user,
     required this.worker,
     required this.service,
@@ -87,7 +91,21 @@ class Booking {
     this.amount,
     this.bookingType,
     this.assignmentState,
+    this.subscription,
   });
+
+  // Get display service name (handles custom plans with no linked service)
+  String get serviceName {
+    if (service.name.isNotEmpty) {
+      return service.name;
+    }
+    // Fallback to subscription custom plan data for custom subscriptions
+    if (subscription != null && subscription!['customPlanData'] != null) {
+      return subscription!['customPlanData']['serviceType'] ??
+          'Unknown Service';
+    }
+    return 'Unknown Service';
+  }
 
   // Helper methods to check booking type
   bool get isSubscription => bookingType == BookingType.subscription;
@@ -298,6 +316,7 @@ class Booking {
         id: '',
         publicId: '',
         serviceRequestId: null,
+        subscriptionId: null,
         user: User(
           id: 0,
           publicId: '',
@@ -340,10 +359,16 @@ class Booking {
       );
     }
 
+    // Debug log to check if subscription is present in JSON
+    debugPrint(
+      'Booking.fromJson: booking publicId=${json['publicId']}, subscription=${json['subscription']}',
+    );
+
     return Booking(
       id: _parseId(json['id']),
       publicId: json['publicId'] ?? '',
       serviceRequestId: json['serviceRequestId'],
+      subscriptionId: _parseId(json['subscriptionId']),
       user: json['user'] != null
           ? User.fromJson(json['user'])
           : User(
@@ -404,6 +429,7 @@ class Booking {
                 : 0.0),
       bookingType: _mapType(json['type']),
       assignmentState: _mapAssignmentState(json['assignmentState']),
+      subscription: json['subscription'],
     );
   }
 

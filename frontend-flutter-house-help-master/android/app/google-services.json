@@ -8,9 +8,9 @@
     {
       "client_info": {
         "mobilesdk_app_id": "1:787166049871:android:5374c26588514b0ac81c3a",
-        "android_client_info": {
-          "package_name": "com.example.frontend"
-        }
+      "android_client_info": {
+        "package_name": "com.example.frontend"
+      }
       },
       "oauth_client": [],
       "api_key": [

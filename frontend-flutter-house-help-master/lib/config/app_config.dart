@@ -39,11 +39,12 @@ class AppConfig {
 
   /// Flag to use localhost (for USB debugging with ADB reverse).
   /// In release mode this is ignored because the production URL is used.
-  /// Set to FALSE to use WiFi IP for more reliable connectivity (works in background).
+  /// Set to FALSE to use WiFi IP (192.168.1.38) for physical device testing.
+  /// Set to TRUE only if you run: adb reverse tcp:3000 tcp:3000
   static const bool useLocalhostForUSB = false;
 
-  /// Set to FALSE to use production URL even in debug mode.
-  /// When FALSE, overrides WiFi IP to use production URL instead.
+  /// Set to TRUE to use production URL in debug mode.
+  /// When TRUE, debug builds use the production Railway URL instead of local dev URLs.
   static const bool useProductionForDebug = true;
 
   /// Returns the appropriate API base URL for the current build mode and

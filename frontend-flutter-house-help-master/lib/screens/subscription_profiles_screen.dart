@@ -89,7 +89,7 @@ class _SubscriptionProfilesScreenState
                   items[i] as Map<String, dynamic>,
                 );
                 print(
-                  '🔍 DEBUG: Parsed profile: ${profile.profileName}, isActive: ${profile.isActive}',
+                  '🔍 DEBUG: Parsed profile: ${profile.publicId}, isActive: ${profile.isActive}',
                 );
                 if (profile.isActive) {
                   profiles.add(profile);
@@ -133,7 +133,7 @@ class _SubscriptionProfilesScreenState
       _selectedProfile = profile;
     });
     print(
-      'Selected profile: ${profile.profileName} - ₹${profile.monthlyPrice}/month',
+      'Selected profile: ${profile.serviceType} (${profile.publicId}) - ₹${profile.monthlyPrice}/month',
     );
   }
 
@@ -189,13 +189,11 @@ class _SubscriptionProfilesScreenState
   }
 
   Widget _buildProfilesContent(ThemeData theme) {
-    // Embed full pricing selector UI directly as main content
-    return SubscriptionPricingScreen(
-      serviceType: widget.serviceType,
-      serviceName: widget.serviceName,
-      userId: widget.userId,
-      initialLocation: widget.initialLocation,
-    );
+    // Show profile selection grid first (FIXED: was directly embedding pricing screen)
+    if (_profiles.isEmpty) {
+      return _buildErrorWidget();
+    }
+    return _buildProfilesList(theme);
   }
 
   Widget _buildCustomPlanButton(ThemeData theme) {
@@ -252,7 +250,7 @@ class _SubscriptionProfilesScreenState
         ),
         child: Text(
           _selectedProfile != null
-              ? 'Continue with ${_selectedProfile!.profileName.toUpperCase()}'
+              ? 'Continue with ${_selectedProfile!.serviceType.toUpperCase()} (${_selectedProfile!.publicId})'
               : 'Select a plan to continue',
         ),
       ),
@@ -262,7 +260,7 @@ class _SubscriptionProfilesScreenState
   void _handleContinue() {
     if (_selectedProfile != null) {
       print(
-        '🔍 DEBUG: Continuing with selected profile: ${_selectedProfile!.profileName}',
+        '🔍 DEBUG: Continuing with selected profile: ${_selectedProfile!.publicId}',
       );
       // Use location passed from parent (ServiceEngagementTypeScreen)
       final currentLocation = widget.initialLocation;
@@ -365,7 +363,7 @@ class _SubscriptionProfilesScreenState
                     Expanded(
                       flex: 2,
                       child: Text(
-                        profile.profileName.toUpperCase(),
+                        profile.publicId.toUpperCase(),
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: isSelected

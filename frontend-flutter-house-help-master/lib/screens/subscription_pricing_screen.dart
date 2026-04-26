@@ -55,48 +55,52 @@ class _SubscriptionPricingScreenState extends State<SubscriptionPricingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Customize your plan',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Customize your plan',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Select your requirements below. The price will update automatically.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
-          ),
-          const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            Text(
+              'Select your requirements below. The price will update automatically.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 32),
 
-          // Service specific selection options
-          if (widget.serviceType.toLowerCase() == 'cleaning' ||
-              widget.serviceType.toUpperCase() == 'CLEANING')
-            _buildBhkSelection(theme),
+            // Service specific selection options
+            if (widget.serviceType.toLowerCase() == 'cleaning' ||
+                widget.serviceType.toUpperCase() == 'CLEANING')
+              _buildBhkSelection(theme),
 
-          if (widget.serviceType.toLowerCase() == 'cooking' ||
-              widget.serviceType.toUpperCase() == 'COOK') ...[
-            _buildPersonSelection(theme),
+            if (widget.serviceType.toLowerCase() == 'cooking' ||
+                widget.serviceType.toUpperCase() == 'COOK') ...[
+              _buildPersonSelection(theme),
+              const SizedBox(height: 24),
+              _buildMealPlanSelection(theme),
+            ],
+
+            const SizedBox(height: 32),
+
+            // Price Display
+            if (_calculatedPrice != null) _buildPriceDisplay(theme),
+
+            const SizedBox(height: 32),
+
+            // Continue Button
+            _buildContinueButton(theme),
+
             const SizedBox(height: 24),
-            _buildMealPlanSelection(theme),
           ],
-
-          const SizedBox(height: 32),
-
-          // Price Display
-          if (_calculatedPrice != null) _buildPriceDisplay(theme),
-
-          const SizedBox(height: 32),
-
-          // Continue Button
-          _buildContinueButton(theme),
-
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
@@ -405,6 +409,19 @@ class _SubscriptionPricingScreenState extends State<SubscriptionPricingScreen> {
   void _handleContinue() {
     if (_calculatedPrice == null) return;
 
+    // Build custom config for custom plans (to pass selected options)
+    Map<String, dynamic>? customConfig;
+    if (widget.selectedProfile == null) {
+      customConfig = {};
+      final serviceTypeUpper = widget.serviceType.toUpperCase();
+      if (serviceTypeUpper == 'COOKING' || serviceTypeUpper == 'COOK') {
+        customConfig['persons'] = _selectedPersons;
+        customConfig['mealPlan'] = _selectedMealPlan;
+      } else if (serviceTypeUpper == 'CLEANING') {
+        customConfig['bhk'] = _selectedBhk;
+      }
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -415,7 +432,6 @@ class _SubscriptionPricingScreenState extends State<SubscriptionPricingScreen> {
                 id: 0,
                 publicId: 'custom',
                 serviceType: widget.serviceType.toUpperCase(),
-                profileName: 'Custom Plan',
                 description: 'Customized subscription plan',
                 scopeDefinition: 'Custom plan',
                 maxCapacityHint: '',
@@ -427,6 +443,7 @@ class _SubscriptionPricingScreenState extends State<SubscriptionPricingScreen> {
               ),
           userId: widget.userId,
           initialLocation: widget.initialLocation,
+          customConfig: customConfig,
         ),
       ),
     );

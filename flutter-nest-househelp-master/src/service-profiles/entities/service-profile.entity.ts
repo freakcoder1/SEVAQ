@@ -14,12 +14,7 @@ export enum ServiceType {
   CLEANING = 'CLEANING',
 }
 
-export enum ProfileName {
-  BASIC = 'BASIC',
-  STANDARD = 'STANDARD',
-  EXTENDED = 'EXTENDED',
-  COMPACT = 'COMPACT',
-}
+
 
 export enum VisitPattern {
   DAILY = 'DAILY',
@@ -50,11 +45,7 @@ export class ServiceProfile {
   })
   serviceType: ServiceType;
 
-  @Column({
-    type: 'varchar',
-    enum: ProfileName,
-  })
-  profileName: ProfileName;
+
 
   @Column({ type: 'text' })
   description: string;

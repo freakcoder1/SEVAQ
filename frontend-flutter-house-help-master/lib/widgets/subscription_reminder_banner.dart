@@ -303,7 +303,7 @@ class _SubscriptionReminderBannerState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${subscription.profileName} - ${subscription.priceDisplay}',
+                    '${_getCustomPlanDisplayText(subscription)} - ${subscription.priceDisplay}',
                     style: TextStyle(
                       color: const Color(0xFF2E7D32).withOpacity(0.8),
                       fontSize: 12,
@@ -330,5 +330,25 @@ class _SubscriptionReminderBannerState
       default:
         return 'Service';
     }
+  }
+
+  /// Get display text for custom plan based on service type
+  String _getCustomPlanDisplayText(Subscription subscription) {
+    final serviceType = subscription.serviceType.toUpperCase();
+    final customPlanData = subscription.customPlanData;
+
+    if (customPlanData == null) return '';
+
+    if (serviceType == 'COOKING' || serviceType == 'COOK') {
+      final persons = customPlanData['numberOfPeople'] ?? 1;
+      final mealPlan = customPlanData['mealPlan'] ?? 'all';
+      return '$persons person(s), $mealPlan';
+    } else if (serviceType == 'CLEANING') {
+      final bhk = customPlanData['bhk'] ?? 1;
+      return '$bhk BHK';
+    } else if (serviceType == 'MAID' || serviceType == 'MAID_SERVICE') {
+      return 'Maid Service';
+    }
+    return 'Custom Plan';
   }
 }

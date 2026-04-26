@@ -18,7 +18,50 @@ export class WorkersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
-  ) {}
+  ) {
+    // Link workers to CLEANING service on startup
+    this.linkWorkersToCleaningService().catch(e =>
+      this.logger.error('Failed to link workers to CLEANING service:', e)
+    );
+  }
+
+  private async linkWorkersToCleaningService() {
+    try {
+      const cleaningService = await this.servicesRepository.findOne({
+        where: { category: 'Cleaning' },
+      });
+      
+      if (!cleaningService) {
+        this.logger.warn('CLEANING service not found, skipping worker linking');
+        return;
+      }
+      
+      const workerIds = [1, 3, 4, 5, 15];
+      for (const workerId of workerIds) {
+        // Check if worker exists
+        const worker = await this.workersRepository.findOne({
+          where: { id: workerId },
+        });
+        if (!worker) continue;
+        
+        // Check if already linked
+        const existingLink = await this.workersRepository
+          .createQueryBuilder('worker')
+          .innerJoin('worker.services', 'service')
+          .where('worker.id = :workerId', { workerId })
+          .andWhere('service.id = :serviceId', { serviceId: cleaningService.id })
+          .getOne();
+        
+        if (!existingLink) {
+          worker.services = [...(worker.services || []), cleaningService];
+          await this.workersRepository.save(worker);
+          this.logger.log(`Linked worker ${workerId} to CLEANING service`);
+        }
+      }
+    } catch (e) {
+      this.logger.error('Error linking workers to CLEANING service:', e);
+    }
+  }
 
   async findAll() {
     return this.workersRepository.find({ relations: ['user', 'services'] });

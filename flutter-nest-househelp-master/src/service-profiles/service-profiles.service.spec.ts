@@ -4,7 +4,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   ServiceProfile,
   ServiceType,
-  ProfileName,
 } from './entities/service-profile.entity';
 
 describe('ServiceProfilesService', () => {
@@ -35,8 +34,8 @@ describe('ServiceProfilesService', () => {
 
   it('should return all service profiles', async () => {
     const mockProfiles = [
-      { id: 1, serviceType: 'COOK', profileName: 'BASIC' },
-      { id: 2, serviceType: 'COOK', profileName: 'STANDARD' },
+      { id: 1, serviceType: 'COOK' },
+      { id: 2, serviceType: 'COOK' },
     ];
     jest
       .spyOn(service, 'getAllProfiles')
@@ -47,7 +46,7 @@ describe('ServiceProfilesService', () => {
   });
 
   it('should return profiles by service type', async () => {
-    const mockProfiles = [{ id: 1, serviceType: 'COOK', profileName: 'BASIC' }];
+    const mockProfiles = [{ id: 1, serviceType: 'COOK' }];
     jest
       .spyOn(service, 'getProfilesByServiceType')
       .mockResolvedValue(mockProfiles as any);
@@ -57,7 +56,7 @@ describe('ServiceProfilesService', () => {
   });
 
   it('should return profile by id', async () => {
-    const mockProfile = { id: 1, serviceType: 'COOK', profileName: 'BASIC' };
+    const mockProfile = { id: 1, serviceType: 'COOK' };
     jest.spyOn(service, 'getProfileById').mockResolvedValue(mockProfile as any);
 
     const profile = await service.getProfileById(1);
@@ -69,7 +68,6 @@ describe('ServiceProfilesService', () => {
       id: 1,
       publicId: 'test-public-id',
       serviceType: 'COOK',
-      profileName: 'BASIC',
     };
     jest
       .spyOn(service, 'getProfileByPublicId')
