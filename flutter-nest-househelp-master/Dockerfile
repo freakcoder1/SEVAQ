@@ -5,8 +5,7 @@ COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 COPY src ./src
-# Copy run-migration.ts to src/ to include in TypeScript compilation
-COPY run-migration.ts ./src/run-migration.ts
+
 # Copy start.js to app directory
 COPY start.js ./start.js
 RUN npm install --legacy-peer-deps
