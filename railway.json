@@ -5,18 +5,13 @@
     "flutter-nest-househelp-master/**/*"
   ],
   "build": {
-    "builder": "NIXPACKS",
-    "nodeVersion": "22",
-    "buildCommand": "npm install --legacy-peer-deps && npm run build && npm run seed:railway",
-    "workingDirectory": "flutter-nest-househelp-master"
+    "builder": "DOCKER"
   },
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
-    "sleepApplication": false,
-    "workingDirectory": "flutter-nest-househelp-master",
-    "startCommand": "cd flutter-nest-househelp-master && node start.js"
+    "sleepApplication": false
   },
   "env": {
     "SYNCHRONIZE": "false",

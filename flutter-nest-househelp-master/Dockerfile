@@ -5,6 +5,10 @@ COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 COPY src ./src
+# Copy run-migration.ts to src/ to include in TypeScript compilation
+COPY run-migration.ts ./src/run-migration.ts
+# Copy start.js to app directory
+COPY start.js ./start.js
 RUN npm install --legacy-peer-deps
 RUN npm run build
 
@@ -15,5 +19,8 @@ COPY package*.json ./
 RUN npm install --legacy-peer-deps --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+# Copy start.js from builder stage
+COPY --from=builder /app/start.js ./start.js
+ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["node", "dist/main"]
+CMD ["node", "start.js"]
