@@ -365,7 +365,9 @@ export class BookingsService {
           const endHours = parseTimeToHours(createBookingDto.endTime);
           const durationHours = Math.max(0, endHours - startHours);
 
-          amount = basePrice * durationHours;
+          // Flat rate pricing for one-time bookings
+          // Time slot is for worker availability, not billing duration
+          amount = basePrice;
         } else {
           amount = 0;
         }
