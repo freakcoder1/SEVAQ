@@ -118,9 +118,10 @@ class _BookingScreenState extends State<BookingScreen> {
       final duration = widget.slot.endTime
           .difference(widget.slot.startTime)
           .inHours;
+      // Flat rate pricing - time slot is for worker availability, not billing
       final amountInRupees = selectedService != null
-          ? (selectedService.basePrice * duration)
-          : 500.0;
+          ? selectedService.basePrice
+          : 49.0; // Default to Home Cleaning price
 
       // Create order on backend
       final orderResponse = await _apiService.post('payments/create-order', {
@@ -223,9 +224,10 @@ class _BookingScreenState extends State<BookingScreen> {
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
+    // Flat rate pricing - time slot is for worker availability, not billing
     final amount = selectedService != null
-        ? (selectedService.basePrice * duration * 100).toInt()
-        : 50000;
+        ? (selectedService.basePrice * 100).toInt()
+        : 4900; // Default: ₹49 * 100
 
     // Build location data from saved address
     Map<String, dynamic>? locationData;
@@ -292,9 +294,10 @@ class _BookingScreenState extends State<BookingScreen> {
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
+    // Flat rate pricing - time slot is for worker availability, not billing
     final amount = selectedService != null
-        ? (selectedService.basePrice * duration * 100).toInt()
-        : 50000;
+        ? (selectedService.basePrice * 100).toInt()
+        : 4900; // Default: ₹49 * 100
 
     // Build location data from saved address
     Map<String, dynamic>? locationData;
@@ -357,9 +360,10 @@ class _BookingScreenState extends State<BookingScreen> {
     final duration = widget.slot.endTime
         .difference(widget.slot.startTime)
         .inHours;
+    // Flat rate pricing - time slot is for worker availability, not billing
     final totalAmount = selectedService != null
-        ? (selectedService.basePrice * duration)
-        : 500.0;
+        ? selectedService.basePrice
+        : 49.0; // Default to Home Cleaning price
 
     return Scaffold(
       appBar: AppBar(title: Text('Confirm Booking')),

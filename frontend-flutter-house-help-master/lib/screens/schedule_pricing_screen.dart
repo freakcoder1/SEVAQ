@@ -137,7 +137,9 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
           _selectedTimeWindow!.endTime - _selectedTimeWindow!.startTime;
 
       setState(() {
-        _calculatedPrice = basePrice * durationHours;
+        // Flat rate pricing for one-time bookings
+        // Time slot is for worker availability, not billing duration
+        _calculatedPrice = basePrice;
       });
     }
   }

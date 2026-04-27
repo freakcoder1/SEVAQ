@@ -35,7 +35,7 @@ class ServiceOption {
       description: 'Structured home cleanliness & maintenance',
       icon: Icons.cleaning_services,
       type: ServiceType.cleaning,
-      basePrice: 500.0, // Matches Home Cleaning (ID: 1) base price
+      basePrice: 49.0, // Matches Home Cleaning (ID: 1) base price ₹49/hr
     ),
     ServiceOption(
       id: 'cooking',
@@ -43,7 +43,7 @@ class ServiceOption {
       description: 'Meal preparation & kitchen assistance',
       icon: Icons.restaurant,
       type: ServiceType.cooking,
-      basePrice: 400.0, // Matches Cooking (ID: 3) base price
+      basePrice: 149.0, // Matches Cooking Service (ID: 9) base price ₹149/hr
     ),
   ];
 
