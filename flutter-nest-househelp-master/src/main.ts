@@ -225,15 +225,26 @@ async function bootstrap() {
    if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_ID) {
      try {
        winstonLogger.log('info', 'Running migrations on startup...');
-       const { exec } = require('child_process');
-       const util = require('util');
-       const execPromise = util.promisify(exec);
-       const { stdout, stderr } = await execPromise('npm run migration:run');
-       if (stdout) winstonLogger.log('info', 'Migration output: ' + stdout);
-       if (stderr) winstonLogger.log('warn', 'Migration stderr: ' + stderr);
-       winstonLogger.log('info', 'Migrations completed successfully');
+       
+       // Dynamic import to avoid issues with TypeORM in different environments
+       const { AppDataSource } = require('./database/data-source');
+       const { MigrationExecutor } = require('typeorm');
+       
+       await AppDataSource.initialize();
+       const migrationExecutor = new MigrationExecutor(AppDataSource);
+       const migrations = await migrationExecutor.getPendingMigrations();
+       
+       if (migrations.length > 0) {
+         winstonLogger.log('info', `Found ${migrations.length} pending migrations. Running...`);
+         await migrationExecutor.executePendingMigrations();
+         winstonLogger.log('info', 'Migrations completed successfully');
+       } else {
+         winstonLogger.log('info', 'No pending migrations found');
+       }
+       
+       await AppDataSource.destroy();
      } catch (error: any) {
-       winstonLogger.error('Failed to run migrations', { error: error.message });
+       winstonLogger.error('Failed to run migrations', { error: error.message, stack: error.stack });
        // Don't exit - let the app start anyway
      }
    }
