@@ -188,13 +188,20 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     
     // ✅ FIX: For custom plans, use calculatedPrice from customPlanData
     // This ensures monthlyPriceSnapshot matches the actual calculated price
+    this.logger.log(`🔍 DEBUG createSubscription: monthlyPriceSnapshot param=${monthlyPriceSnapshot}, customPlanData=${JSON.stringify(customPlanData)}`);
+    
     if (customPlanData && customPlanData.calculatedPrice !== undefined) {
+      this.logger.log(`🔍 DEBUG: Using calculatedPrice from customPlanData: ${customPlanData.calculatedPrice}`);
       subscriptionData.monthlyPriceSnapshot = Number(customPlanData.calculatedPrice);
     } else if (monthlyPriceSnapshot !== undefined && monthlyPriceSnapshot !== null) {
+      this.logger.log(`🔍 DEBUG: Using monthlyPriceSnapshot param: ${monthlyPriceSnapshot}`);
       subscriptionData.monthlyPriceSnapshot = monthlyPriceSnapshot;
     } else if (serviceProfile) {
+      this.logger.log(`🔍 DEBUG: Using serviceProfile.monthlyPrice: ${serviceProfile.monthlyPrice}`);
       subscriptionData.monthlyPriceSnapshot = Number(serviceProfile.monthlyPrice);
     }
+    
+    this.logger.log(`🔍 DEBUG: Final monthlyPriceSnapshot=${subscriptionData.monthlyPriceSnapshot}`);
     
     const subscription = this.subscriptionRepository.create(subscriptionData);
 
