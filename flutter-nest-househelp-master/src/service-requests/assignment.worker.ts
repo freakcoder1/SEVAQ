@@ -93,11 +93,17 @@ export class AssignmentWorker {
         }
       }
 
-      // Fallback to default service if no mapping found or invalid (0)
-      // Use ID 2 (Home Cleaning) as default - matches seeded service
+      // If no serviceId and no valid mapping from serviceProfileId, this is an error
+      // Do NOT default to Cleaning - this causes workers to get wrong service assignments
       if (!serviceId || serviceId === 0) {
-        serviceId = 2; // Default to Home Cleaning (ID: 2) if not specified
-        this.logger.log(`Using default service ${serviceId} for assignment (original: ${serviceId})`);
+        this.logger.error(`No valid serviceId found for request ${requestId}. serviceId: ${serviceId}, serviceProfileId: ${request.serviceProfileId}`);
+        await this.serviceRequestsRepository.update(requestId, {
+          assignmentStatus: 'FAILED_TO_ASSIGN',
+          failureReason: 'No valid service specified for assignment',
+          assignedWorkerId: null,
+          assignedSlotId: null,
+        });
+        return; // Stop processing - don't default to Cleaning
       }
 
       const bestWorker = await this.findBestWorker(

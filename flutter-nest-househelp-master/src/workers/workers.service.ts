@@ -19,10 +19,11 @@ export class WorkersService {
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
   ) {
-    // Link workers to CLEANING service on startup
-    this.linkWorkersToCleaningService().catch(e =>
-      this.logger.error('Failed to link workers to CLEANING service:', e)
-    );
+    // DISABLED: Link workers to CLEANING service on startup
+    // This was causing issues by adding Cleaning service to workers who didn't register for it
+    // this.linkWorkersToCleaningService().catch(e =>
+    //   this.logger.error('Failed to link workers to CLEANING service:', e)
+    // );
   }
 
   private async linkWorkersToCleaningService() {
