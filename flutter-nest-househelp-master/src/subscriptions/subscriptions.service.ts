@@ -12,6 +12,8 @@ import { ServiceProfile, ServiceType } from '../service-profiles/entities/servic
 import { Booking, BookingStatus, BookingType, LocationData } from '../bookings/entities/booking.entity';
 import { SubscriptionWorkerSyncService } from '../subscriptions/subscription-worker-sync.service';
 import { Service } from '../services/entities/service.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { User } from '../users/entities/user.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -26,6 +28,7 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     private serviceProfilesService: ServiceProfilesService,
     private dataSource: DataSource,
     private subscriptionWorkerSyncService: SubscriptionWorkerSyncService,
+    private notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -256,6 +259,32 @@ export class SubscriptionsService implements OnApplicationBootstrap {
         const booking = this.bookingsRepository.create(bookingData);
         await this.bookingsRepository.save(booking);
         this.logger.log(`✅ Created booking ${week + 1} for subscription ${savedSubscription.id}`);
+
+        // Send customer notification for subscription booking
+        try {
+          // Load user with fcmToken
+          const user = await this.dataSource.getRepository(User).findOne({
+            where: { publicId: userId }
+          });
+          
+          if (user) {
+            // Reload booking with service relation for notification
+            const savedBooking = await this.bookingsRepository.findOne({
+              where: { id: booking.id },
+              relations: ['service'],
+            });
+            
+            if (savedBooking) {
+              await this.notificationsService.notifyUserBookingConfirmation(user, savedBooking);
+              this.logger.log(`✅ Customer notification sent for booking ${booking.id} to user ${user.id}`);
+            }
+          } else {
+            this.logger.warn(`Could not find user ${userId} for customer notification`);
+          }
+        } catch (notifyError: unknown) {
+          const errorMessage = notifyError instanceof Error ? notifyError.message : 'Unknown error';
+          this.logger.error(`Failed to send customer notification: ${errorMessage}`);
+        }
       } catch (error: any) {
         this.logger.error(`❌ FAILED to create booking ${week + 1} for subscription ${savedSubscription.id}: ${error?.message ?? String(error)}`, error?.stack);
         throw error;
@@ -368,12 +397,35 @@ export class SubscriptionsService implements OnApplicationBootstrap {
          notes: `Auto-generated for subscription ${subscriptionId} - Week ${week + 1}`,
        };
  
-       const booking = this.bookingsRepository.create(bookingData);
-       await this.bookingsRepository.save(booking);
-       createdCount++;
-       this.logger.log(
-         `✅ Created booking ${week + 1} for subscription ${subscriptionId} on ${dateStr}`,
-       );
+        const booking = this.bookingsRepository.create(bookingData);
+        await this.bookingsRepository.save(booking);
+        createdCount++;
+
+        // Send customer notification for subscription booking
+        try {
+          const user = await this.dataSource.getRepository(User).findOne({
+            where: { publicId: userId }
+          });
+          
+          if (user) {
+            const savedBooking = await this.bookingsRepository.findOne({
+              where: { id: booking.id },
+              relations: ['service'],
+            });
+            
+            if (savedBooking) {
+              await this.notificationsService.notifyUserBookingConfirmation(user, savedBooking);
+              this.logger.log(`✅ Customer notification sent for booking ${booking.id} to user ${user.id}`);
+            }
+          }
+        } catch (notifyError: unknown) {
+          const errorMessage = notifyError instanceof Error ? notifyError.message : 'Unknown error';
+          this.logger.error(`Failed to send customer notification: ${errorMessage}`);
+        }
+
+        this.logger.log(
+          `✅ Created booking ${week + 1} for subscription ${subscriptionId} on ${dateStr}`,
+        );
      }
  
      this.logger.log(
