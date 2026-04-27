@@ -212,17 +212,34 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  // Runtime Environment Validation
-  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
-  const missingEnv = requiredEnvVars.filter(v => !process.env[v]);
-  
-  if (missingEnv.length > 0) {
-    winstonLogger.error('Missing required environment variables', { missing: missingEnv });
-    process.exit(1);
-  }
+   // Runtime Environment Validation
+   const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+   const missingEnv = requiredEnvVars.filter(v => !process.env[v]);
+   
+   if (missingEnv.length > 0) {
+     winstonLogger.error('Missing required environment variables', { missing: missingEnv });
+     process.exit(1);
+   }
 
-  const port = process.env.PORT ?? 45357;
-  await app.listen(port, '0.0.0.0');
+   // Run migrations on startup (for Railway deployment where preDeploy may not work)
+   if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_ID) {
+     try {
+       winstonLogger.log('info', 'Running migrations on startup...');
+       const { exec } = require('child_process');
+       const util = require('util');
+       const execPromise = util.promisify(exec);
+       const { stdout, stderr } = await execPromise('npm run migration:run');
+       if (stdout) winstonLogger.log('info', 'Migration output: ' + stdout);
+       if (stderr) winstonLogger.log('warn', 'Migration stderr: ' + stderr);
+       winstonLogger.log('info', 'Migrations completed successfully');
+     } catch (error: any) {
+       winstonLogger.error('Failed to run migrations', { error: error.message });
+       // Don't exit - let the app start anyway
+     }
+   }
+
+   const port = process.env.PORT ?? 45357;
+   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: http://0.0.0.0:${port}/api`);
 
   winstonLogger.log('info', 'Application started', {
