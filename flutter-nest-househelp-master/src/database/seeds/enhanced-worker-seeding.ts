@@ -458,7 +458,7 @@ export class EnhancedWorkerSeeding {
         name: 'Home Cleaning',
         description: 'Complete home cleaning service',
         category: 'Cleaning',
-        basePrice: 500,
+        basePrice: 49,
       },
       {
         name: 'Deep Cleaning',
@@ -467,16 +467,10 @@ export class EnhancedWorkerSeeding {
         basePrice: 800,
       },
       {
-        name: 'Cooking',
+        name: 'Cooking Service',
         description: 'Home cooking service',
         category: 'Cooking',
-        basePrice: 400,
-      },
-      {
-        name: 'Meal Preparation',
-        description: 'Daily meal preparation',
-        category: 'Cooking',
-        basePrice: 600,
+        basePrice: 149,
       },
       {
         name: 'Driver',
@@ -515,10 +509,10 @@ export class EnhancedWorkerSeeding {
         basePrice: 600,
       },
       {
-        name: 'Healthy Meals',
+        name: 'Cooking Service',
         description: 'Nutritious and balanced meal preparation',
         category: 'Cooking',
-        basePrice: 500,
+        basePrice: 149,
       },
       {
         name: 'Shopping',

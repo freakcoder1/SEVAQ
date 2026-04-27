@@ -25,7 +25,7 @@ export class SeedServices {
         publicId: randomUUID(),
         name: 'Home Cleaning',
         description: 'Complete home cleaning service',
-        basePrice: 500,
+        basePrice: 49,
         reassuranceText: 'A safe choice for most homes',
         whatWillHappen: [
           'Helper will arrive and confirm task',
@@ -197,9 +197,9 @@ export class SeedServices {
       },
       {
         publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
-        name: 'Cooking',
+        name: 'Cooking Service',
         description: 'Home cooking service',
-        basePrice: 1200,
+        basePrice: 149,
         reassuranceText: 'Professional home cooked meals',
         whatWillHappen: [
           'Cook will arrive with required ingredients',

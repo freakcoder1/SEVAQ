@@ -42,7 +42,8 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
 
   // Constants
   static const int MAX_DATE_PILLS = 7;
-  static const double BASE_SERVICE_PRICE = 500.0; // Base price for maid service
+  static const double BASE_SERVICE_PRICE =
+      49.0; // Base price for maid service (matches new ₹49/hour rate)
 
   @override
   void initState() {
