@@ -333,3 +333,4 @@ async function bootstrap() {
   });
 }
 bootstrap();
+"// Trigger restart"  
