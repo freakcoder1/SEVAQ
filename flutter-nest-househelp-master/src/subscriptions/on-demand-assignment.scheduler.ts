@@ -136,10 +136,39 @@ export class OnDemandAssignmentScheduler {
       try {
         // Ensure "Cooking" service exists (added for production fix)
         try {
-          const cookingService = await this.serviceRepository.findOne({
-            where: { name: 'Cooking Service', category: 'Cooking' }
+          // Use upsert logic - find by publicId or name
+          let cookingService = await this.serviceRepository.findOne({
+            where: [
+              { publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d' },
+              { name: 'Cooking Service' }
+            ]
           });
-          if (!cookingService) {
+          
+          if (cookingService) {
+            // Update existing service with correct values
+            this.logger.log('Cooking Service exists, updating if needed...');
+            cookingService.basePrice = 149;
+            cookingService.category = 'Cooking';
+            cookingService.description = 'Home cooking service';
+            cookingService.reassuranceText = 'Professional home cooked meals';
+            cookingService.whatWillHappen = [
+              'Cook will arrive with required ingredients',
+              'Prepare fresh healthy meals',
+              'Clean up kitchen after cooking',
+            ];
+            cookingService.whatWillNotHappen = [
+              'No extra items without approval',
+              'No unhygienic food preparation',
+            ];
+            cookingService.ifSomethingGoesWrong = 'Sevaq will replace cook or refund immediately';
+            cookingService.isAvailable = true;
+            cookingService.isFastBooking = false;
+            cookingService.estimatedWaitTime = 120;
+            cookingService.workerCount = 6;
+            await this.serviceRepository.save(cookingService);
+            this.logger.log('Cooking service updated successfully');
+          } else {
+            // Create new service
             this.logger.log('Cooking Service missing, adding it...');
             const newService = this.serviceRepository.create({
               publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
