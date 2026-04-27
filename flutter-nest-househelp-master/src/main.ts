@@ -250,13 +250,46 @@ async function bootstrap() {
          winstonLogger.log('warn', 'serviceProfileId constraint change: ' + e.message);
        }
        
-       await AppDataSource.destroy();
-       winstonLogger.log('info', 'Schema updates completed');
-     } catch (error: any) {
-       winstonLogger.error('Failed to run schema updates', { error: error.message, stack: error.stack });
-       // Don't exit - let the app start anyway
-     }
-   }
+        // Check and add "Cooking" service if missing
+        try {
+          const existingCooking = await AppDataSource.query(`
+            SELECT id FROM "services" WHERE "category" = 'Cooking' LIMIT 1;
+          `);
+          
+          if (existingCooking.length === 0) {
+            winstonLogger.log('info', 'Adding missing "Cooking" service...');
+            await AppDataSource.query(`
+              INSERT INTO "services" (
+                "publicId", "name", "description", "basePrice", 
+                "reassuranceText", "whatWillHappen", "whatWillNotHappen", 
+                "ifSomethingGoesWrong", "category", "isAvailable", 
+                "isFastBooking", "estimatedWaitTime", "workerCount",
+                "createdAt", "updatedAt"
+              ) VALUES (
+                gen_random_uuid(), 'Cooking', 'Home cooking service', 1200,
+                'Professional home cooked meals',
+                '{"Cook will arrive with required ingredients","Prepare fresh healthy meals","Clean up kitchen after cooking"}',
+                '{"No extra items without approval","No unhygienic food preparation"}',
+                'Sevaq will replace cook or refund immediately',
+                'Cooking', true, false, 120, 6,
+                NOW(), NOW()
+              );
+            `);
+            winstonLogger.log('info', 'Added "Cooking" service successfully');
+          } else {
+            winstonLogger.log('info', '"Cooking" service already exists');
+          }
+        } catch (e: any) {
+          winstonLogger.log('warn', 'Cooking service check/creation: ' + e.message);
+        }
+        
+        await AppDataSource.destroy();
+        winstonLogger.log('info', 'Schema updates completed');
+      } catch (error: any) {
+        winstonLogger.error('Failed to run schema updates', { error: error.message, stack: error.stack });
+        // Don't exit - let the app start anyway
+      }
+    }
 
    const port = process.env.PORT ?? 45357;
    await app.listen(port, '0.0.0.0');
