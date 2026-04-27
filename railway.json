@@ -9,7 +9,10 @@
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyLimit": 5,
-    "sleepApplication": false
+    "sleepApplication": false,
+    "preDeploy": {
+      "command": "npm run migration:run"
+    }
   },
   "env": {
     "SYNCHRONIZE": "false",
