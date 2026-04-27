@@ -133,11 +133,47 @@ export class OnDemandAssignmentScheduler {
        this.scheduleNextRun();
      }, this.MAX_EXECUTION_TIME_MS);
 
-     try {
-       // Find on-demand bookings that need worker assignment
-       // - type is 'on_demand'
-       // - status is 'requested' or 'confirmed' (not completed/cancelled)
-       // - no worker assigned (workerId is null)
+      try {
+        // Ensure "Cooking" service exists (added for production fix)
+        try {
+          const cookingService = await this.serviceRepository.findOne({
+            where: { category: 'Cooking' }
+          });
+          if (!cookingService) {
+            this.logger.log('Cooking service missing, adding it...');
+            const newService = this.serviceRepository.create({
+              publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
+              name: 'Cooking',
+              description: 'Home cooking service',
+              basePrice: 1200,
+              reassuranceText: 'Professional home cooked meals',
+              whatWillHappen: [
+                'Cook will arrive with required ingredients',
+                'Prepare fresh healthy meals',
+                'Clean up kitchen after cooking',
+              ],
+              whatWillNotHappen: [
+                'No extra items without approval',
+                'No unhygienic food preparation',
+              ],
+              ifSomethingGoesWrong: 'Sevaq will replace cook or refund immediately',
+              category: 'Cooking',
+              isAvailable: true,
+              isFastBooking: false,
+              estimatedWaitTime: 120,
+              workerCount: 6,
+            });
+            await this.serviceRepository.save(newService);
+            this.logger.log('Cooking service added successfully');
+          }
+        } catch (e: any) {
+          this.logger.warn(`Cooking service check/creation: ${e.message}`);
+        }
+
+        // Find on-demand bookings that need worker assignment
+        // - type is 'on_demand'
+        // - status is 'requested' or 'confirmed' (not completed/cancelled)
+        // - no worker assigned (workerId is null)
         const bookingsToAssign = await this.bookingRepository.find({
           where: {
             type: In([BookingType.ON_DEMAND, BookingType.SUBSCRIPTION]),
