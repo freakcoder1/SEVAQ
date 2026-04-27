@@ -170,6 +170,38 @@ export class OnDemandAssignmentScheduler {
           this.logger.warn(`Cooking service check/creation: ${e.message}`);
         }
 
+        // Ensure workers have Cooking service assigned
+        try {
+          const cookingService = await this.serviceRepository.findOne({
+            where: { category: 'Cooking' }
+          });
+          
+          if (cookingService) {
+            const workers = await this.workerRepository.find({
+              relations: ['services']
+            });
+            let updatedCount = 0;
+            
+            for (const worker of workers) {
+              const services = worker.services || [];
+              const hasCookingService = services.some(s => s.id === cookingService.id);
+              
+              if (!hasCookingService) {
+                worker.services = [...services, cookingService];
+                await this.workerRepository.save(worker);
+                updatedCount++;
+                this.logger.log(`Added Cooking service to worker ${worker.id}`);
+              }
+            }
+            
+            if (updatedCount > 0) {
+              this.logger.log(`Added Cooking service to ${updatedCount} workers`);
+            }
+          }
+        } catch (e: any) {
+          this.logger.warn(`Worker service update: ${e.message}`);
+        }
+
         // Find on-demand bookings that need worker assignment
         // - type is 'on_demand'
         // - status is 'requested' or 'confirmed' (not completed/cancelled)
