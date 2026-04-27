@@ -95,8 +95,13 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     this.logger.log(`Looking for service with category "${category}"...`);
     const services = await serviceRepo.find({
       where: { category },
+      order: { basePrice: 'ASC' }, // Pick service with lowest price (typically "Home Cleaning")
       take: 1,
     });
+    
+    if (services.length > 0) {
+      this.logger.log(`Found service: id=${services[0].id}, name="${services[0].name}", basePrice=${services[0].basePrice}`);
+    }
 
     if (services.length === 0) {
       this.logger.error(`No service found for category "${category}". Checking all services...`);
