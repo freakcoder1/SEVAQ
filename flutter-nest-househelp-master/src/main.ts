@@ -226,25 +226,34 @@ async function bootstrap() {
      try {
        winstonLogger.log('info', 'Running migrations on startup...');
        
-       // Dynamic import to avoid issues with TypeORM in different environments
+       // Use TypeORM to add missing columns directly
        const { AppDataSource } = require('./database/data-source');
-       const { MigrationExecutor } = require('typeorm');
-       
        await AppDataSource.initialize();
-       const migrationExecutor = new MigrationExecutor(AppDataSource);
-       const migrations = await migrationExecutor.getPendingMigrations();
        
-       if (migrations.length > 0) {
-         winstonLogger.log('info', `Found ${migrations.length} pending migrations. Running...`);
-         await migrationExecutor.executePendingMigrations();
-         winstonLogger.log('info', 'Migrations completed successfully');
-       } else {
-         winstonLogger.log('info', 'No pending migrations found');
+       // Check and add custom_plan_data column
+       try {
+         await AppDataSource.query(`
+           ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "custom_plan_data" JSON DEFAULT NULL;
+         `);
+         winstonLogger.log('info', 'Added custom_plan_data column (if not exists)');
+       } catch (e: any) {
+         winstonLogger.log('warn', 'custom_plan_data column may already exist: ' + e.message);
+       }
+       
+       // Check and drop NOT NULL constraint on serviceProfileId
+       try {
+         await AppDataSource.query(`
+           ALTER TABLE "subscriptions" ALTER COLUMN "serviceProfileId" DROP NOT NULL;
+         `);
+         winstonLogger.log('info', 'Dropped NOT NULL constraint on serviceProfileId');
+       } catch (e: any) {
+         winstonLogger.log('warn', 'serviceProfileId constraint change: ' + e.message);
        }
        
        await AppDataSource.destroy();
+       winstonLogger.log('info', 'Schema updates completed');
      } catch (error: any) {
-       winstonLogger.error('Failed to run migrations', { error: error.message, stack: error.stack });
+       winstonLogger.error('Failed to run schema updates', { error: error.message, stack: error.stack });
        // Don't exit - let the app start anyway
      }
    }
