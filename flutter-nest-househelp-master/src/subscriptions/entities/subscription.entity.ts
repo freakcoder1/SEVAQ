@@ -121,9 +121,9 @@ export class Subscription {
   @Column({ type: 'boolean', default: false })
   isPaid: boolean;
 
-  // @Expose()
-  // @Column({ type: 'json', nullable: true, name: 'custom_plan_data' })
-  // customPlanData?: any;
+  @Expose()
+  @Column({ type: 'json', nullable: true, name: 'custom_plan_data' })
+  customPlanData?: any;
 
   @VersionColumn()
   version: number;
