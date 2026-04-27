@@ -67,28 +67,38 @@ export class SubscriptionsService implements OnApplicationBootstrap {
     let category: string | null = null;
 
     // Map using ServiceType enum values and common variants
-    if (normalizedType === ServiceType.COOK || normalizedType === 'COOK' || normalizedType === 'COOKING') {
+    // Handle both 'COOK' and 'COOKING' variants
+    if (normalizedType === ServiceType.COOK || normalizedType === 'COOK' || normalizedType === 'COOKING' || normalizedType.includes('COOK')) {
       category = 'Cooking';
-    } else if (normalizedType === ServiceType.MAID || normalizedType === 'MAID') {
+      this.logger.log(`Mapped serviceType "${serviceType}" to category "Cooking"`);
+    } else if (normalizedType === ServiceType.MAID || normalizedType === 'MAID' || normalizedType.includes('MAID')) {
       category = 'Maid';
-    } else if (normalizedType === ServiceType.CLEANING || normalizedType === 'CLEANING') {
+      this.logger.log(`Mapped serviceType "${serviceType}" to category "Maid"`);
+    } else if (normalizedType === ServiceType.CLEANING || normalizedType === 'CLEANING' || normalizedType.includes('CLEAN')) {
       category = 'Cleaning';
+      this.logger.log(`Mapped serviceType "${serviceType}" to category "Cleaning"`);
+    } else {
+      this.logger.warn(`Unknown serviceType "${serviceType}" (normalized: "${normalizedType}"), cannot map to category`);
     }
 
     if (!category) {
-      this.logger.warn(`Unknown serviceType "${serviceType}", cannot map to category`);
+      this.logger.error(`No category mapped for serviceType "${serviceType}"`);
       return undefined;
     }
 
     // Find service by category
     const serviceRepo = this.dataSource.getRepository(Service);
+    
+    this.logger.log(`Looking for service with category "${category}"...`);
     const services = await serviceRepo.find({
       where: { category },
       take: 1,
     });
 
     if (services.length === 0) {
-      this.logger.warn(`No service found for category "${category}"`);
+      this.logger.error(`No service found for category "${category}". Checking all services...`);
+      const allServices = await serviceRepo.find();
+      this.logger.error(`Available services: ${JSON.stringify(allServices.map(s => ({ id: s.id, category: s.category, name: s.name })))}`);
       return undefined;
     }
 
