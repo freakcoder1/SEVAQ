@@ -254,24 +254,41 @@ export class OnDemandAssignmentScheduler {
 
      if (!serviceType) return null;
 
-     // Map serviceType to category
-     const normalizedType = String(serviceType).toUpperCase();
-     let category: string | null = null;
-     if (normalizedType === 'COOK' || normalizedType === 'COOKING') {
-       category = 'Cooking';
-     } else if (normalizedType === 'MAID') {
-       category = 'Maid';
-     } else if (normalizedType === 'CLEANING') {
-       category = 'Cleaning';
-     }
+      // Map serviceType to category
+      const normalizedType = String(serviceType).toUpperCase();
+      let category: string | null = null;
+      if (normalizedType === 'COOK' || normalizedType === 'COOKING' || normalizedType.includes('COOK')) {
+        category = 'Cooking';
+        this.logger.log(`Mapped serviceType "${serviceType}" to category "Cooking"`);
+      } else if (normalizedType === 'MAID' || normalizedType.includes('MAID')) {
+        category = 'Maid';
+        this.logger.log(`Mapped serviceType "${serviceType}" to category "Maid"`);
+      } else if (normalizedType === 'CLEANING' || normalizedType.includes('CLEAN')) {
+        category = 'Cleaning';
+        this.logger.log(`Mapped serviceType "${serviceType}" to category "Cleaning"`);
+      } else {
+        this.logger.warn(`Unknown serviceType "${serviceType}" (normalized: "${normalizedType}"), cannot map to category`);
+      }
 
-     if (!category) return null;
+      if (!category) {
+        this.logger.error(`No category mapped for serviceType "${serviceType}"`);
+        return null;
+      }
 
-     const service = await this.serviceRepository.findOne({
-       where: { category },
-     });
+      this.logger.log(`Looking for service with category "${category}"...`);
+      const service = await this.serviceRepository.findOne({
+        where: { category },
+      });
 
-     return service?.id ?? null;
+      if (!service) {
+        this.logger.error(`No service found with category "${category}". Checking all services...`);
+        const allServices = await this.serviceRepository.find();
+        this.logger.error(`Available services: ${JSON.stringify(allServices.map(s => ({ id: s.id, category: s.category, name: s.name })))}`);
+        return null;
+      }
+
+      this.logger.log(`Found service ID ${service.id} for category "${category}"`);
+      return service.id;
    }
 
    /**
