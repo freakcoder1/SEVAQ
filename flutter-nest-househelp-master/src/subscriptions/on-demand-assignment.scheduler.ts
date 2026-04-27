@@ -216,29 +216,41 @@ export class OnDemandAssignmentScheduler {
 
      let serviceType: string | null = null;
 
-     // Try serviceProfileId
-     if (subscription.serviceProfileId) {
-       const profile = await this.serviceProfileRepository.findOne({
-         where: { id: subscription.serviceProfileId },
-       });
-       if (profile) {
-         serviceType = profile.serviceType as string;
-       }
-     }
+      // Try serviceProfileId
+      if (subscription.serviceProfileId) {
+        const profile = await this.serviceProfileRepository.findOne({
+          where: { id: subscription.serviceProfileId },
+        });
+        if (profile) {
+          serviceType = profile.serviceType as string;
+          this.logger.log(`Derived serviceType "${serviceType}" from serviceProfileId ${subscription.serviceProfileId}`);
+        }
+      }
 
-     // Fallback to customPlanData
-     if (!serviceType && (subscription as any).customPlanData) {
-       try {
-         const customPlanData = typeof (subscription as any).customPlanData === 'string'
-           ? JSON.parse((subscription as any).customPlanData)
-           : (subscription as any).customPlanData;
-         if (customPlanData.serviceType) {
-           serviceType = customPlanData.serviceType;
-         }
-       } catch (e) {
-         this.logger.warn(`Error parsing customPlanData for subscription ${subscription.id}`);
-       }
-     }
+      // Fallback to customPlanData
+      if (!serviceType && (subscription as any).customPlanData) {
+        try {
+          const rawCustomPlanData = (subscription as any).customPlanData;
+          this.logger.log(`customPlanData raw type: ${typeof rawCustomPlanData}, value: ${JSON.stringify(rawCustomPlanData).substring(0, 100)}...`);
+          
+          const customPlanData = typeof rawCustomPlanData === 'string'
+            ? JSON.parse(rawCustomPlanData)
+            : rawCustomPlanData;
+          
+          this.logger.log(`Parsed customPlanData: serviceType=${customPlanData.serviceType}, category=${customPlanData.category}, bhk=${customPlanData.bhk}`);
+          
+          if (customPlanData.serviceType) {
+            serviceType = customPlanData.serviceType;
+            this.logger.log(`Derived serviceType "${serviceType}" from customPlanData.serviceType`);
+          } else if (customPlanData.category) {
+            serviceType = customPlanData.category;
+            this.logger.log(`Derived serviceType "${serviceType}" from customPlanData.category`);
+          }
+        } catch (e: unknown) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          this.logger.warn(`Error parsing customPlanData for subscription ${subscription.id}: ${errorMessage}`);
+        }
+      }
 
      if (!serviceType) return null;
 
