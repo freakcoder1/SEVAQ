@@ -111,8 +111,31 @@ export class FirebaseAuthService {
       return this._handleDevLogin(phone);
     }
 
-    // Bypass Firebase for development - always use fallback mode
-    this.logger.warn('Development mode - using fallback without Firebase verification');
+    // In production, verify Firebase ID token
+    // Only bypass if explicitly in development mode AND Firebase is not initialized
+    if (!this.firebaseInitialized) {
+      this.logger.warn('Firebase not initialized - using fallback login for development');
+      return this._handleDevLogin(phone, firstName, lastName);
+    }
+
+    // Production: Verify the Firebase ID token
+    try {
+      this.logger.log('Verifying Firebase ID token...');
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      
+      // Verify the phone number matches
+      if (decodedToken.phone_number !== phone) {
+        this.logger.error(`Phone number mismatch: token has ${decodedToken.phone_number}, request has ${phone}`);
+        throw new UnauthorizedException('Phone number mismatch');
+      }
+
+      this.logger.log(`Firebase token verified for UID: ${decodedToken.uid}, Phone: ${decodedToken.phone_number}`);
+    } catch (error) {
+      this.logger.error(`Firebase token verification failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid authentication token');
+    }
+
+    // Token is valid, proceed with login
     return this._handleDevLogin(phone, firstName, lastName);
   }
 

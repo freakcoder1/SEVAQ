@@ -1,0 +1,119 @@
+/**
+ * Script to add Cooking service to workers in Railway production database
+ * Run with: node add-cooking-to-workers.js
+ */
+
+const { DataSource } = require('typeorm');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config({ path: '.env' });
+
+// Parse Railway DATABASE_URL if available
+function parseDatabaseUrl(url) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '5432'),
+      username: parsed.username,
+      password: decodeURIComponent(parsed.password || ''),
+      database: parsed.pathname.replace(/^\//, ''),
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function main() {
+  const databaseUrl = process.env.DATABASE_URL;
+  const railwayConfig = parseDatabaseUrl(databaseUrl);
+
+  const config = railwayConfig || {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    username: process.env.DB_USERNAME || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_DATABASE || 'sevaq_db',
+  };
+
+  console.log('Connecting to database:', {
+    host: config.host,
+    port: config.port,
+    username: config.username,
+    database: config.database,
+    hasPassword: !!config.password,
+  });
+
+  const dataSource = new DataSource({
+    type: 'postgres',
+    ...config,
+    synchronize: false,
+    entities: ['dist/**/*.entity.js'],
+  });
+
+  try {
+    await dataSource.initialize();
+    console.log('Database connected successfully');
+
+    // Find the Cooking service (ID 9 from the logs)
+    const cookingService = await dataSource.query(`SELECT id, name, category FROM services WHERE category = 'Cooking' LIMIT 1`);
+    
+    if (cookingService.length === 0) {
+      console.log('Cooking service not found. Creating it...');
+      await dataSource.query(`
+        INSERT INTO services (public_id, name, description, "basePrice", "reassuranceText", "whatWillHappen", "whatWillNotHappen", "ifSomethingGoesWrong", category, "isAvailable", "isFastBooking", "estimatedWaitTime", "workerCount")
+        VALUES ('7f8e4b5c-a883-4c6c-b348-f966508fd49d', 'Cooking', 'Home cooking service', 1200, 'Professional home cooked meals', '{"Cook will arrive with required ingredients","Prepare fresh healthy meals","Clean up kitchen after cooking"}', '{"No extra items without approval","No unhygienic food preparation"}', 'Sevaq will replace cook or refund immediately', 'Cooking', true, false, 120, 6)
+      `);
+      console.log('Cooking service created successfully');
+    } else {
+      console.log('Found Cooking service:', cookingService[0]);
+    }
+
+    // Get all workers
+    const workers = await dataSource.query(`SELECT id, name, email, services FROM workers`);
+    console.log(`Found ${workers.length} workers`);
+
+    // Get Cooking service ID
+    const serviceResult = await dataSource.query(`SELECT id FROM services WHERE category = 'Cooking' LIMIT 1`);
+    if (serviceResult.length === 0) {
+      console.error('Cooking service not found after creation attempt');
+      return;
+    }
+    const cookingServiceId = serviceResult[0].id;
+    console.log(`Cooking service ID: ${cookingServiceId}`);
+
+    // Update each worker to add Cooking service
+    for (const worker of workers) {
+      const currentServices = worker.services || [];
+      console.log(`Worker ${worker.name} (${worker.email}) - Current services:`, currentServices);
+
+      if (!currentServices.includes(cookingServiceId)) {
+        const updatedServices = [...currentServices, cookingServiceId];
+        await dataSource.query(`UPDATE workers SET services = $1 WHERE id = $2`, [JSON.stringify(updatedServices), worker.id]);
+        console.log(`  -> Added Cooking service. New services:`, updatedServices);
+      } else {
+        console.log(`  -> Already has Cooking service`);
+      }
+    }
+
+    // Verify the update
+    const updatedWorkers = await dataSource.query(`SELECT id, name, email, services FROM workers`);
+    console.log('\nUpdated workers:');
+    updatedWorkers.forEach(w => {
+      console.log(`  - ${w.name}: services = ${JSON.stringify(w.services)}`);
+    });
+
+    console.log('\nDone! Workers now have Cooking service added.');
+  } catch (error) {
+    console.error('Error:', error.message);
+    console.error(error.stack);
+  } finally {
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+  }
+}
+
+main();
