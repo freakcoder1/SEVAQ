@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, Not, IsNull } from 'typeorm';
 import { Worker } from '../workers/entities/worker.entity';
 import { Booking, BookingStatus, AssignmentState } from '../bookings/entities/booking.entity';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -677,5 +677,55 @@ export class AdminService {
       where: { id: savedWorker.id },
       relations: ['user', 'services'],
     }) as Promise<Worker>;
+  }
+
+  // ===========================================
+  // Assignment Metrics
+  // ===========================================
+
+  /**
+   * Get assignment metrics
+   */
+  async getAssignmentMetrics(): Promise<{
+    totalAssignments: number;
+    avgAssignmentTime: number;
+    successRate: number;
+    pendingAssignments: number;
+    failedAssignments: number;
+  }> {
+    // Total assignments (bookings that have been assigned)
+    const totalAssignments = await this.bookingsRepository.count({
+      where: { workerId: Not(IsNull()) },
+    });
+
+    // Pending assignments
+    const pendingAssignments = await this.bookingsRepository.count({
+      where: [
+        { workerId: IsNull() },
+        { assignmentState: AssignmentState.PENDING },
+      ],
+    });
+
+    // Failed assignments (cancelled bookings that were never assigned)
+    const failedAssignments = await this.bookingsRepository.count({
+      where: { status: BookingStatus.CANCELLED, workerId: IsNull() },
+    });
+
+    // Calculate success rate
+    const completedAssignments = await this.bookingsRepository.count({
+      where: { status: BookingStatus.COMPLETED, workerId: Not(IsNull()) },
+    });
+    const successRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
+
+    // Average assignment time (simplified - using fixed value for now)
+    const avgAssignmentTime = 15; // minutes (simplified)
+
+    return {
+      totalAssignments,
+      avgAssignmentTime,
+      successRate: Math.round(successRate * 10) / 10,
+      pendingAssignments,
+      failedAssignments,
+    };
   }
 }

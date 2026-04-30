@@ -227,4 +227,113 @@ export class AdminController {
       body.longitude || 77.4392951,
     );
   }
+
+  // ============================================
+  // Analytics - Phase 2 Stubs
+  // ============================================
+
+  /**
+   * Get revenue trend (Phase 2 - stub)
+   * GET /admin/analytics/revenue-trend
+   */
+  @Get('analytics/revenue-trend')
+  async getRevenueTrend(@Query('days') days?: string) {
+    return {
+      labels: [],
+      datasets: [{ data: [], label: 'Revenue' }],
+      message: 'Feature coming soon',
+    };
+  }
+
+  /**
+   * Get booking trend (Phase 2 - stub)
+   * GET /admin/analytics/booking-trend
+   */
+  @Get('analytics/booking-trend')
+  async getBookingTrend(@Query('days') days?: string) {
+    return {
+      labels: [],
+      datasets: [{ data: [], label: 'Bookings' }],
+      message: 'Feature coming soon',
+    };
+  }
+
+  /**
+   * Get service popularity (Phase 2 - stub)
+   * GET /admin/analytics/service-popularity
+   */
+  @Get('analytics/service-popularity')
+  async getServicePopularity() {
+    return {
+      services: [],
+      message: 'Feature coming soon',
+    };
+  }
+
+  /**
+   * Get worker performance (Phase 2 - stub)
+   * GET /admin/analytics/worker-performance
+   */
+  @Get('analytics/worker-performance')
+  async getWorkerPerformance() {
+    return {
+      workers: [],
+      message: 'Feature coming soon',
+    };
+  }
+
+  /**
+   * Get customer retention (Phase 2 - stub)
+   * GET /admin/analytics/customer-retention
+   */
+  @Get('analytics/customer-retention')
+  async getCustomerRetention() {
+    return {
+      retentionRate: 0,
+      repeatCustomers: 0,
+      newCustomers: 0,
+      message: 'Feature coming soon',
+    };
+  }
+
+  // ============================================
+  // Monitoring - Phase 2 Stubs
+  // ============================================
+
+  /**
+   * Get worker locations for real-time monitoring (Phase 2 - stub)
+   * GET /admin/monitoring/workers/locations
+   */
+  @Get('monitoring/workers/locations')
+  async getWorkerLocations() {
+    return {
+      workers: [],
+      message: 'Feature coming soon',
+    };
+  }
+
+  /**
+   * Get active bookings for real-time monitoring (Phase 2 - stub)
+   * GET /admin/monitoring/bookings/active
+   */
+  @Get('monitoring/bookings/active')
+  async getActiveBookings() {
+    return {
+      bookings: [],
+      message: 'Feature coming soon',
+    };
+  }
+
+  // ============================================
+  // Assignment Metrics
+  // ============================================
+
+  /**
+   * Get assignment metrics
+   * GET /admin/metrics/assignments
+   */
+  @Get('metrics/assignments')
+  async getAssignmentMetrics() {
+    return this.adminService.getAssignmentMetrics();
+  }
 }
