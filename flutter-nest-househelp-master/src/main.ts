@@ -127,7 +127,7 @@ async function bootstrap() {
   // Enable CORS with production-safe configuration
   // Read allowed origins from CORS_ORIGINS env var (comma-separated)
   const corsOriginsEnv =
-    process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:8080';
+    process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:8080,http://localhost:5173,http://localhost:5174';
   
   // Debug: Log CORS configuration
   winstonLogger.log('info', 'CORS Configuration', {
