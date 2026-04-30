@@ -377,9 +377,10 @@ export class AdminService {
 
   /**
    * Get all unassigned bookings (workerId IS NULL)
+   * Returns flattened data with customerName, serviceName, etc.
    */
-  async getUnassignedBookings(): Promise<Booking[]> {
-    return this.bookingsRepository
+  async getUnassignedBookings(): Promise<any[]> {
+    const bookings = await this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.service', 'service')
@@ -388,6 +389,20 @@ export class AdminService {
       .orWhere('booking.assignmentState = :state', { state: AssignmentState.PENDING })
       .orderBy('booking.createdAt', 'DESC')
       .getMany();
+
+    // Flatten the data for frontend consumption
+    return bookings.map(booking => ({
+      ...booking,
+      customerName: booking.user ? `${booking.user.firstName || ''} ${booking.user.lastName || ''}`.trim() : 'Unknown Customer',
+      customerPhone: booking.user?.phone || '',
+      customerAddress: booking.location?.address || booking.user?.address || '',
+      serviceName: booking.service?.name || 'N/A',
+      serviceId: booking.service?.id || booking.serviceId,
+      // Ensure startTime and endTime are properly formatted
+      startTime: booking.startTime || '',
+      endTime: booking.endTime || '',
+      date: booking.date || '',
+    }));
   }
 
   /**
