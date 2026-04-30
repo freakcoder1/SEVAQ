@@ -125,7 +125,7 @@ const LiveMonitoringPage: React.FC = () => {
                         <p className="text-sm text-gray-500">
                           Status: {worker.isAvailable ? 'Available' : 'Busy'}
                         </p>
-                        <p className="text-sm text-gray-500">Rating: {worker.rating.toFixed(1)}</p>
+                        <p className="text-sm text-gray-500">Rating: {(worker.rating || 0).toFixed(1)}</p>
                         {worker.currentBookingStatus && (
                           <p className="text-sm text-blue-600">
                             Booking: {worker.currentBookingStatus}

@@ -855,11 +855,11 @@ export class AdminService {
           workerName: worker.user ? `${worker.user.firstName || ''} ${worker.user.lastName || ''}`.trim() : 'Unknown',
           email: worker.user?.email || '',
           phone: worker.user?.phone || '',
-          latitude: latitude || null,
-          longitude: longitude || null,
+          latitude: latitude ? Number(latitude) : null,
+          longitude: longitude ? Number(longitude) : null,
           isAvailable: worker.isAvailable,
           isActive: worker.isActive,
-          rating: worker.rating,
+          rating: worker.rating ? Number(worker.rating) : 0,
           services: worker.services?.map((s: any) => ({ id: s.id, name: s.name })) || [],
         };
       })
