@@ -128,6 +128,17 @@ async function bootstrap() {
   // Read allowed origins from CORS_ORIGINS env var (comma-separated)
   const corsOriginsEnv =
     process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:8080';
+  
+  // Debug: Log CORS configuration
+  winstonLogger.log('info', 'CORS Configuration', {
+    corsOriginsEnv,
+    allowedOrigins: corsOriginsEnv
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0),
+    nodeEnv: process.env.NODE_ENV,
+  });
+  
   const allowedOrigins = corsOriginsEnv
     .split(',')
     .map((origin) => origin.trim())
