@@ -781,4 +781,95 @@ export class AdminService {
       onDemandPending,
     };
   }
+
+  // ===========================================
+  // Live Monitoring Implementation
+  // ===========================================
+
+  /**
+   * Get worker locations for real-time monitoring
+   * Returns workers with their current location data
+   */
+  async getWorkerLocations(): Promise<any[]> {
+    const workers = await this.workersRepository
+      .createQueryBuilder('worker')
+      .leftJoinAndSelect('worker.user', 'user')
+      .leftJoinAndSelect('worker.services', 'service')
+      .where('worker.isActive = :isActive', { isActive: true })
+      .getMany();
+
+    // Get latest location for each worker from the addresses table
+    const workersWithLocations = await Promise.all(
+      workers.map(async (worker) => {
+        // Try to get location from worker's location data or user's address
+        let latitude = (worker as any).latitude;
+        let longitude = (worker as any).longitude;
+
+        // If not on worker, try to get from addresses table
+        if (!latitude || !longitude) {
+          const address = await this.usersRepository.manager
+            .createQueryBuilder()
+            .select('*')
+            .from('address', 'addr')
+            .where('addr.userId = :userId AND addr.isDefault = true', { userId: worker.userId })
+            .getOne();
+          
+          if (address) {
+            latitude = address.latitude;
+            longitude = address.longitude;
+          }
+        }
+
+        return {
+          id: worker.id,
+          name: worker.user ? `${worker.user.firstName || ''} ${worker.user.lastName || ''}`.trim() : 'Unknown',
+          phone: worker.user?.phone || '',
+          latitude: latitude || null,
+          longitude: longitude || null,
+          isAvailable: worker.isAvailable,
+          isActive: worker.isActive,
+          rating: worker.rating,
+          services: worker.services?.map((s: any) => ({ id: s.id, name: s.name })) || [],
+        };
+      })
+    );
+
+    return workersWithLocations;
+  }
+
+  /**
+   * Get active bookings for real-time monitoring
+   * Returns bookings that are pending, confirmed, or in_progress
+   */
+  async getActiveBookings(): Promise<any[]> {
+    const bookings = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.worker', 'worker')
+      .leftJoinAndSelect('worker.user', 'workerUser')
+      .leftJoinAndSelect('booking.service', 'service')
+      .where('booking.status IN (:...statuses)', {
+        statuses: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS],
+      })
+      .orWhere('booking.assignmentState = :state', { state: AssignmentState.PENDING })
+      .orderBy('booking.createdAt', 'DESC')
+      .getMany();
+
+    return bookings.map((booking: any) => ({
+      id: booking.id,
+      publicId: booking.publicId,
+      customerName: booking.user ? `${booking.user.firstName || ''} ${booking.user.lastName || ''}`.trim() : 'Unknown',
+      customerPhone: booking.user?.phone || '',
+      workerName: booking.worker ? `${booking.worker.user?.firstName || ''} ${booking.worker.user?.lastName || ''}`.trim() : 'Unassigned',
+      serviceName: booking.service?.name || 'N/A',
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      status: booking.status,
+      assignmentState: booking.assignmentState,
+      amount: booking.amount,
+      location: booking.location,
+      createdAt: booking.createdAt,
+    }));
+  }
 }

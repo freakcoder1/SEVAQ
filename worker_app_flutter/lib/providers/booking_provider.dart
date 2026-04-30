@@ -256,8 +256,6 @@ class BookingProvider extends ChangeNotifier with WidgetsBindingObserver {
               debugPrint('Error parsing booking at index $i: $e');
               debugPrint('Booking keys: ${(response[i] as Map).keys.toList()}');
             }
-            debugPrint(
-                'Parsed booking $i: ${booking.id} - ${booking.serviceName} - ${booking.status}');
           } catch (e, stackTrace) {
             debugPrint('Error parsing booking at index $i: $e');
             debugPrint('Booking keys: ${(response[i] as Map).keys.toList()}');

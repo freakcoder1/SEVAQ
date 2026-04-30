@@ -4,6 +4,10 @@ import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'edit_profile_screen.dart';
 import 'addresses_screen.dart';
+import 'policy_screen.dart';
+import '../policies/terms_of_use.dart';
+import '../policies/refund_policy.dart';
+import '../policies/privacy_policy.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -71,6 +75,52 @@ class ProfileScreen extends StatelessWidget {
                   onChanged: (value) {
                     themeProvider.toggleTheme();
                   },
+                );
+              },
+            ),
+            Divider(height: 40),
+            ListTile(
+              leading: Icon(Icons.description_outlined),
+              title: Text('Terms of Use'),
+              trailing: Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PolicyScreen(
+                      title: TermsOfUse.title,
+                      content: TermsOfUse.content,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.policy_outlined),
+              title: Text('Refund Policy'),
+              trailing: Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PolicyScreen(
+                      title: RefundPolicy.title,
+                      content: RefundPolicy.content,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.privacy_tip_outlined),
+              title: Text('Privacy Policy'),
+              trailing: Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PolicyScreen(
+                      title: PrivacyPolicy.title,
+                      content: PrivacyPolicy.content,
+                    ),
+                  ),
                 );
               },
             ),

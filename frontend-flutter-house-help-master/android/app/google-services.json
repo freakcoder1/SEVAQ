@@ -7,10 +7,29 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:787166049871:android:5374c26588514b0ac81c3a",
-      "android_client_info": {
-        "package_name": "com.example.frontend"
+        "mobilesdk_app_id": "1:787166049871:android:7882d8b14ebc5c35c81c3a",
+        "android_client_info": {
+          "package_name": "com.sevaq.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvqqcSlnym-IQIrZQsp2Zkk1iDenO-oQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787166049871:android:b2ef7882056f0f2cc81c3a",
+        "android_client_info": {
+          "package_name": "com.sevaq.worker_app_flutter"
+        }
       },
       "oauth_client": [],
       "api_key": [

@@ -306,10 +306,7 @@ export class AdminController {
    */
   @Get('monitoring/workers/locations')
   async getWorkerLocations() {
-    return {
-      workers: [],
-      message: 'Feature coming soon',
-    };
+    return this.adminService.getWorkerLocations();
   }
 
   /**
@@ -318,10 +315,7 @@ export class AdminController {
    */
   @Get('monitoring/bookings/active')
   async getActiveBookings() {
-    return {
-      bookings: [],
-      message: 'Feature coming soon',
-    };
+    return this.adminService.getActiveBookings();
   }
 
   // ============================================

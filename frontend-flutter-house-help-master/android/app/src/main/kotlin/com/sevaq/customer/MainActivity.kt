@@ -1,4 +1,4 @@
-package com.example.frontend
+package com.sevaq.customer
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

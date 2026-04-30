@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '787166049871',
     projectId: 'sevaq-6fcc4',
     storageBucket: 'sevaq-6fcc4.firebasestorage.app',
-    iosBundleId: 'com.example.frontend',
+    iosBundleId: 'com.sevaq.customer',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '787166049871',
     projectId: 'sevaq-6fcc4',
     storageBucket: 'sevaq-6fcc4.firebasestorage.app',
-    iosBundleId: 'com.example.frontend',
+    iosBundleId: 'com.sevaq.customer',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
