@@ -282,6 +282,42 @@ async function bootstrap() {
         } catch (e: any) {
           winstonLogger.log('warn', 'Cooking service check/creation: ' + e.message);
         }
+
+        // Auto-create admin user if not exists
+        try {
+          const bcrypt = require('bcrypt');
+          const { randomUUID } = require('crypto');
+          
+          const existingAdmin = await AppDataSource.query(`
+            SELECT id FROM "user" WHERE email = 'admin@sevaq.com' LIMIT 1;
+          `);
+          
+          if (existingAdmin.length === 0) {
+            winstonLogger.log('info', 'Creating admin user...');
+            const hashedPassword = await bcrypt.hash('Admin@123456', 10);
+            await AppDataSource.query(`
+              INSERT INTO "user" (
+                "publicId", email, password, "firstName", "lastName", 
+                phone, role, "createdAt", "updatedAt"
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+              );
+            `, [
+              randomUUID(),
+              'admin@sevaq.com',
+              hashedPassword,
+              'Admin',
+              'User',
+              '+919999999999',
+              'admin'
+            ]);
+            winstonLogger.log('info', 'Admin user created: admin@sevaq.com / Admin@123456');
+          } else {
+            winstonLogger.log('info', 'Admin user already exists');
+          }
+        } catch (e: any) {
+          winstonLogger.log('warn', 'Admin user creation: ' + e.message);
+        }
         
         await AppDataSource.destroy();
         winstonLogger.log('info', 'Schema updates completed');
