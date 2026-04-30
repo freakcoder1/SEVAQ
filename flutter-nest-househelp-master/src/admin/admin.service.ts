@@ -547,6 +547,36 @@ export class AdminService {
   }
 
   /**
+   * Get revenue trend over specified number of days
+   */
+  async getRevenueTrend(days: number = 30): Promise<{
+    labels: string[];
+    data: number[];
+    label: string;
+  }> {
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    const revenueByDate = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .select(`TO_CHAR(booking.date, 'YYYY-MM-DD')`, 'date')
+      .addSelect('SUM(booking.amount)', 'revenue')
+      .where('booking.status = :status', { status: BookingStatus.COMPLETED })
+      .andWhere('booking.date >= :startDate', { startDate: startDate.toISOString().split('T')[0] })
+      .groupBy(`TO_CHAR(booking.date, 'YYYY-MM-DD')`)
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    const labels = revenueByDate.map(row => row.date);
+    const data = revenueByDate.map(row => parseFloat(row.revenue) || 0);
+
+    return {
+      labels,
+      data,
+      label: 'Revenue',
+    };
+  }
+
+  /**
    * Get booking analytics
    */
   async getBookingAnalytics(): Promise<{
@@ -871,5 +901,141 @@ export class AdminService {
       location: booking.location,
       createdAt: booking.createdAt,
     }));
+  }
+
+  /**
+   * Get booking trend over specified number of days
+   */
+  async getBookingTrend(days: number = 30): Promise<{
+    labels: string[];
+    data: number[];
+    label: string;
+  }> {
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    const bookingsByDate = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .select(`TO_CHAR(booking.date, 'YYYY-MM-DD')`, 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('booking.date >= :startDate', { startDate: startDate.toISOString().split('T')[0] })
+      .groupBy(`TO_CHAR(booking.date, 'YYYY-MM-DD')`)
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    const labels = bookingsByDate.map(row => row.date);
+    const data = bookingsByDate.map(row => parseInt(row.count) || 0);
+
+    return {
+      labels,
+      data,
+      label: 'Bookings',
+    };
+  }
+
+  /**
+   * Get service popularity analytics
+   */
+  async getServicePopularity(): Promise<{
+    services: Array<{ name: string; bookingCount: number; percentage: number }>;
+  }> {
+    const totalBookings = await this.bookingsRepository.count();
+
+    const servicePopularity = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoin('booking.service', 'service')
+      .select('service.name', 'name')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('service.name')
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
+    const services = servicePopularity.map(row => ({
+      name: row.name || 'Unknown',
+      bookingCount: parseInt(row.count) || 0,
+      percentage: totalBookings > 0 ? Math.round((parseInt(row.count) / totalBookings) * 1000) / 10 : 0,
+    }));
+
+    return { services };
+  }
+
+  /**
+   * Get worker performance analytics
+   */
+  async getWorkerPerformance(): Promise<{
+    workers: Array<{
+      id: number;
+      name: string;
+      completedJobs: number;
+      rating: number;
+      revenue: number;
+    }>;
+  }> {
+    const workers = await this.workersRepository
+      .createQueryBuilder('worker')
+      .leftJoinAndSelect('worker.user', 'user')
+      .leftJoin('worker.bookings', 'booking')
+      .leftJoin('booking.service', 'service')
+      .select('worker.id', 'id')
+      .addSelect('CONCAT(user.firstName, \' \', user.lastName)', 'name')
+      .addSelect('worker.rating', 'rating')
+      .addSelect(
+        (qb) =>
+          qb
+            .from(Booking, 'b')
+            .select('COUNT(*)')
+            .where('b.workerId = worker.id')
+            .andWhere('b.status = :status', { status: BookingStatus.COMPLETED }),
+        'completedJobs',
+      )
+      .addSelect(
+        (qb) =>
+          qb
+            .from(Booking, 'b')
+            .select('SUM(b.amount)')
+            .where('b.workerId = worker.id')
+            .andWhere('b.status = :status', { status: BookingStatus.COMPLETED }),
+        'revenue',
+      )
+      .orderBy('completedJobs', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    return {
+      workers: workers.map(w => ({
+        id: w.id,
+        name: w.name || 'Unknown',
+        completedJobs: parseInt(w.completedJobs) || 0,
+        rating: parseFloat(w.rating) || 0,
+        revenue: parseFloat(w.revenue) || 0,
+      })),
+    };
+  }
+
+  /**
+   * Get customer retention analytics
+   */
+  async getCustomerRetention(): Promise<{
+    retentionRate: number;
+    repeatCustomers: number;
+    newCustomers: number;
+  }> {
+    // Get all customers with booking counts
+    const customerBookings = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .select('booking.userId', 'userId')
+      .addSelect('COUNT(*)', 'bookingCount')
+      .groupBy('booking.userId')
+      .getRawMany();
+
+    const totalCustomers = customerBookings.length;
+    const repeatCustomers = customerBookings.filter(c => parseInt(c.bookingCount) > 1).length;
+    const newCustomers = totalCustomers - repeatCustomers;
+    const retentionRate = totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 1000) / 10 : 0;
+
+    return {
+      retentionRate,
+      repeatCustomers,
+      newCustomers,
+    };
   }
 }

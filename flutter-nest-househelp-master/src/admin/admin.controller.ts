@@ -229,79 +229,62 @@ export class AdminController {
   }
 
   // ============================================
-  // Analytics - Phase 2 Stubs
+  // Analytics - Implemented Features
   // ============================================
 
   /**
-   * Get revenue trend (Phase 2 - stub)
+   * Get revenue trend
    * GET /admin/analytics/revenue-trend
    */
   @Get('analytics/revenue-trend')
   async getRevenueTrend(@Query('days') days?: string) {
-    return {
-      labels: [],
-      datasets: [{ data: [], label: 'Revenue' }],
-      message: 'Feature coming soon',
-    };
+    const daysNum = days ? parseInt(days, 10) : 30;
+    return this.adminService.getRevenueTrend(daysNum);
   }
 
   /**
-   * Get booking trend (Phase 2 - stub)
+   * Get booking trend
    * GET /admin/analytics/booking-trend
    */
   @Get('analytics/booking-trend')
   async getBookingTrend(@Query('days') days?: string) {
-    return {
-      labels: [],
-      datasets: [{ data: [], label: 'Bookings' }],
-      message: 'Feature coming soon',
-    };
+    const daysNum = days ? parseInt(days, 10) : 30;
+    return this.adminService.getBookingTrend(daysNum);
   }
 
   /**
-   * Get service popularity (Phase 2 - stub)
+   * Get service popularity
    * GET /admin/analytics/service-popularity
    */
   @Get('analytics/service-popularity')
   async getServicePopularity() {
-    return {
-      services: [],
-      message: 'Feature coming soon',
-    };
+    return this.adminService.getServicePopularity();
   }
 
   /**
-   * Get worker performance (Phase 2 - stub)
+   * Get worker performance
    * GET /admin/analytics/worker-performance
    */
   @Get('analytics/worker-performance')
   async getWorkerPerformance() {
-    return {
-      workers: [],
-      message: 'Feature coming soon',
-    };
+    return this.adminService.getWorkerPerformance();
   }
 
   /**
-   * Get customer retention (Phase 2 - stub)
+   * Get customer retention
    * GET /admin/analytics/customer-retention
    */
   @Get('analytics/customer-retention')
   async getCustomerRetention() {
-    return {
-      retentionRate: 0,
-      repeatCustomers: 0,
-      newCustomers: 0,
-      message: 'Feature coming soon',
-    };
+    return this.adminService.getCustomerRetention();
   }
 
   // ============================================
-  // Monitoring - Phase 2 Stubs
+  // Monitoring - Implemented Features
   // ============================================
 
   /**
-   * Get worker locations for real-time monitoring (Phase 2 - stub)
+   * Get worker locations for real-time monitoring
    * GET /admin/monitoring/workers/locations
    */
   @Get('monitoring/workers/locations')
@@ -310,7 +293,7 @@ export class AdminController {
   }
 
   /**
-   * Get active bookings for real-time monitoring (Phase 2 - stub)
+   * Get active bookings for real-time monitoring
    * GET /admin/monitoring/bookings/active
    */
   @Get('monitoring/bookings/active')
