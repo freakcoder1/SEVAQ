@@ -1,25 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
-
-interface ActiveBooking {
-  id: number;
-  customerName: string;
-  customerPhone: string;
-  workerName: string;
-  serviceName: string;
-  status: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  amount: number;
-  address: string;
-}
+import { Booking } from '../types';
 
 const ActiveBookingsPage: React.FC = () => {
-  const [bookings, setBookings] = useState<ActiveBooking[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [selectedBooking, setSelectedBooking] = useState<ActiveBooking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   const fetchData = async () => {
     try {
@@ -126,7 +113,7 @@ const ActiveBookingsPage: React.FC = () => {
                     <td className="px-4 py-3 text-sm">
                       {booking.startTime} - {booking.endTime}
                     </td>
-                    <td className="px-4 py-3 text-sm">₹{booking.amount.toFixed(2)}</td>
+                     <td className="px-4 py-3 text-sm">₹{Number(booking.amount).toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -184,7 +171,7 @@ const ActiveBookingsPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Amount</p>
-                <p className="font-medium text-lg">₹{selectedBooking.amount.toFixed(2)}</p>
+                 <p className="font-medium text-lg">₹{Number(selectedBooking.amount).toFixed(2)}</p>
               </div>
             </div>
           </div>

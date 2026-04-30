@@ -53,6 +53,7 @@ export interface Booking {
   serviceId: number | string;
   serviceName?: string;
   status: BookingStatus | string;
+  assignmentState?: string;
   amount: number | string;
   date: string;
   startTime?: string;
@@ -61,6 +62,11 @@ export interface Booking {
   customerPhone?: string;
   customerAddress?: string;
   workerName?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  };
   type?: string;
   notes?: string | null;
   isPaid?: boolean;
@@ -217,9 +223,17 @@ export interface CustomerRetention {
 export interface WorkerLocation {
   workerId: number | string;
   workerName: string;
+  email: string;
+  phone: string;
   latitude: number;
   longitude: number;
-  lastUpdate: string;
+  isAvailable: boolean;
+  isActive: boolean;
+  rating: number;
+  currentBookingId?: number;
+  currentBookingStatus?: string;
+  services?: Array<{ id: number; name: string }>;
+  lastUpdate?: string;
 }
 
 export interface BookingTimelineItem {

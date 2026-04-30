@@ -2,6 +2,9 @@ import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { LoginRequest, LoginResponse, DashboardStats, Worker, Booking, RevenueAnalytics, BookingAnalytics, Service, ServiceFormData, AdminUser, AdminUserFormData, AuditLog, PaginatedResponse, CustomerUser, SystemMetrics, AssignmentMetrics, RevenueTrendPoint, BookingTrendPoint, ServicePopularity, WorkerPerformance, CustomerRetention, WorkerLocation, BookingTimelineItem } from '../types';
 
+// Re-export types for use in other files
+export type { Booking, Worker, Service, AdminUser, CustomerUser, DashboardStats } from '../types';
+
 // New types for Phase 2.3, 2.4, 2.5
 export interface Payout {
   id: number;
