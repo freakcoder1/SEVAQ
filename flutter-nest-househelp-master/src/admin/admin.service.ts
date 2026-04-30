@@ -851,8 +851,9 @@ export class AdminService {
         }
 
         return {
-          id: worker.id,
-          name: worker.user ? `${worker.user.firstName || ''} ${worker.user.lastName || ''}`.trim() : 'Unknown',
+          workerId: worker.id,
+          workerName: worker.user ? `${worker.user.firstName || ''} ${worker.user.lastName || ''}`.trim() : 'Unknown',
+          email: worker.user?.email || '',
           phone: worker.user?.phone || '',
           latitude: latitude || null,
           longitude: longitude || null,
