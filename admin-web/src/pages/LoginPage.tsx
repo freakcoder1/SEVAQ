@@ -18,8 +18,7 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await apiService.login({ email, password });
-      // Backend returns 'access_token' (snake_case), not 'accessToken'
-      const token = response.access_token || response.accessToken;
+      const token = response.access_token;
       login(token, response.user);
       navigate('/dashboard');
     } catch (err: any) {

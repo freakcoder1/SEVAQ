@@ -67,11 +67,6 @@ const AnalyticsPage: React.FC = () => {
     );
   }
 
-  // Convert bookingsByStatus array to a map for easier access
-  const statusMap = bookingData?.bookingsByStatus
-    ? Object.fromEntries(bookingData.bookingsByStatus.map(s => [s.status, parseInt(s.count, 10)]))
-    : {};
-
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Analytics</h1>

@@ -35,7 +35,7 @@ const UsersPage: React.FC = () => {
     setShowBookingsModal(true);
     setBookingsLoading(true);
     try {
-      const bookings = await apiService.getUserBookings(user.id);
+      const bookings = await apiService.getUserBookings(Number(user.id));
       setUserBookings(bookings);
     } catch (err) {
       console.error('Failed to fetch user bookings:', err);

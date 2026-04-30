@@ -84,12 +84,12 @@ const DashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <MetricCard
-          title="Today's Bookings"
-          value={stats?.todayBookings || 0}
+          title="Completed Today"
+          value={stats?.completedJobsToday || 0}
           icon="📆"
           color="bg-cyan-100"
           clickable={true}
-          onClick={() => navigate('/bookings?filter=today')}
+          onClick={() => navigate('/bookings?status=completed')}
         />
         <MetricCard
           title="Total Bookings"

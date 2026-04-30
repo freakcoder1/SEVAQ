@@ -15,48 +15,17 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { apiService } from '../services/api';
+import { RevenueTrendPoint, BookingTrendPoint, ServicePopularity, WorkerPerformance, CustomerRetention } from '../types';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
-interface RevenueTrendData {
-  date: string;
-  revenue: number;
-}
-
-interface BookingTrendData {
-  date: string;
-  count: number;
-}
-
-interface ServicePopularityData {
-  service: string;
-  count: number;
-  revenue: number;
-}
-
-interface WorkerPerformanceData {
-  workerId: number;
-  workerName: string;
-  completedJobs: number;
-  rating: number;
-  reviewCount: number;
-  completionRate: number;
-}
-
-interface CustomerRetentionData {
-  totalCustomers: number;
-  repeatCustomers: number;
-  retentionRate: number;
-  averageBookingsPerCustomer: number;
-}
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const AdvancedAnalyticsPage: React.FC = () => {
   const [days, setDays] = useState<number>(30);
-  const [revenueTrend, setRevenueTrend] = useState<RevenueTrendData[]>([]);
-  const [bookingTrend, setBookingTrend] = useState<BookingTrendData[]>([]);
-  const [servicePopularity, setServicePopularity] = useState<ServicePopularityData[]>([]);
-  const [workerPerformance, setWorkerPerformance] = useState<WorkerPerformanceData[]>([]);
-  const [customerRetention, setCustomerRetention] = useState<CustomerRetentionData | null>(null);
+  const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
+  const [bookingTrend, setBookingTrend] = useState<BookingTrendPoint[]>([]);
+  const [servicePopularity, setServicePopularity] = useState<ServicePopularity[]>([]);
+  const [workerPerformance, setWorkerPerformance] = useState<WorkerPerformance[]>([]);
+  const [customerRetention, setCustomerRetention] = useState<CustomerRetention | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,6 +57,11 @@ const AdvancedAnalyticsPage: React.FC = () => {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatTooltipLabel = (label: any) => {
+    const labelStr = typeof label === 'string' ? label : String(label);
+    return formatDate(labelStr);
   };
 
   if (loading) {
@@ -127,8 +101,8 @@ const AdvancedAnalyticsPage: React.FC = () => {
             <p className="text-2xl font-bold">{customerRetention.totalCustomers}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <p className="text-sm text-gray-500">Repeat Customers</p>
-            <p className="text-2xl font-bold">{customerRetention.repeatCustomers}</p>
+            <p className="text-sm text-gray-500">Returning Customers</p>
+            <p className="text-2xl font-bold">{customerRetention.returningCustomers}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <p className="text-sm text-gray-500">Retention Rate</p>
@@ -136,7 +110,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <p className="text-sm text-gray-500">Avg Bookings/Customer</p>
-            <p className="text-2xl font-bold">{customerRetention.averageBookingsPerCustomer.toFixed(1)}</p>
+            <p className="text-2xl font-bold">{customerRetention.avgBookingsPerCustomer.toFixed(1)}</p>
           </div>
         </div>
       )}
@@ -149,7 +123,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" tickFormatter={formatDate} />
             <YAxis />
-            <Tooltip labelFormatter={formatDate} />
+            <Tooltip labelFormatter={formatTooltipLabel} />
             <Legend />
             <Line type="monotone" dataKey="revenue" stroke="#0088FE" name="Revenue" />
           </LineChart>
@@ -164,7 +138,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" tickFormatter={formatDate} />
             <YAxis />
-            <Tooltip labelFormatter={formatDate} />
+            <Tooltip labelFormatter={formatTooltipLabel} />
             <Legend />
             <Bar dataKey="count" fill="#00C49F" name="Bookings" />
           </BarChart>
@@ -180,12 +154,14 @@ const AdvancedAnalyticsPage: React.FC = () => {
             <PieChart>
               <Pie
                 data={servicePopularity}
-                dataKey="count"
-                nameKey="service"
+                dataKey="bookingCount"
+                nameKey="serviceName"
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
-                label={({ service, percent }) => `${service} (${(percent * 100).toFixed(0)}%)`}
+                label={({ serviceName, percent }: { serviceName?: string; percent?: number }) => 
+                  `${serviceName || 'Unknown'} ${((percent || 0) * 100).toFixed(0)}%`
+                }
               >
                 {servicePopularity.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -215,9 +191,11 @@ const AdvancedAnalyticsPage: React.FC = () => {
                     <td className="px-3 py-2 text-sm">{worker.workerName}</td>
                     <td className="px-3 py-2 text-sm">{worker.completedJobs}</td>
                     <td className="px-3 py-2 text-sm">
-                      <span className="text-yellow-500">★</span> {worker.rating.toFixed(1)}
+                      <span className="text-yellow-500">★</span> {Number(worker.rating).toFixed(1)}
                     </td>
-                    <td className="px-3 py-2 text-sm">{worker.completionRate.toFixed(0)}%</td>
+                    <td className="px-3 py-2 text-sm">
+                      {worker.avgCompletionTime ? `${Math.round(worker.avgCompletionTime)} min` : 'N/A'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

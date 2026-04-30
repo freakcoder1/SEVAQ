@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { apiService } from '../services/api';
-import { playNotificationSound } from '../hooks/useBookingNotifications';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -65,7 +64,6 @@ const NavSection: React.FC<{ title: string; items: typeof navItems }> = ({ title
 };
 
 const Sidebar: React.FC = () => {
-  const location = useLocation();
   const [pendingCount, setPendingCount] = useState(0);
 
   // Poll for unassigned bookings count using the correct API endpoint
@@ -100,7 +98,7 @@ const Sidebar: React.FC = () => {
       </div>
       <nav className="flex-1 p-4 overflow-y-auto">
         <NavSection title="Main" items={navItems} />
-        <NavSectionWithBadge title="Assignments" items={pendingAssignmentsItem} pendingCount={pendingCount} />
+        <NavSectionWithBadge title="Assignments" items={pendingAssignmentsItem} />
         <NavSection title="Finance" items={financeNavItems} />
         <NavSection title="Support" items={supportNavItems} />
         <NavSection title="Configuration" items={configNavItems} />
@@ -112,7 +110,7 @@ const Sidebar: React.FC = () => {
   );
 };
 
-const NavSectionWithBadge: React.FC<{ title: string; items: Array<{ path: string; label: string; icon: string; badge?: number }>; pendingCount: number }> = ({ title, items, pendingCount }) => {
+const NavSectionWithBadge: React.FC<{ title: string; items: Array<{ path: string; label: string; icon: string; badge?: number }> }> = ({ title, items }) => {
   const location = useLocation();
   return (
     <div className="mb-4">
