@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
+import { config } from '../config';
 import { Booking, Worker } from '../types';
 
 interface PendingAssignmentsPageProps {
@@ -43,7 +44,11 @@ export default function PendingAssignmentsPage({ onNotification }: PendingAssign
   // WebSocket connection for real-time updates
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:45357/monitoring`;
+    // Use the backend URL from config, fallback to current host with backend port
+    const backendUrl = config.apiBaseUrl.replace('/api', '');
+    const wsHost = backendUrl ? new URL(backendUrl).hostname + ':' + (new URL(backendUrl).port || '3000') : window.location.hostname + ':3000';
+    const wsUrl = `${protocol}//${wsHost}/monitoring`;
+    console.log('Connecting to WebSocket:', wsUrl);
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -109,7 +114,11 @@ export default function PendingAssignmentsPage({ onNotification }: PendingAssign
     if (!booking.serviceId) return workers;
     return workers.filter((w) => {
       if (!w.services || w.services.length === 0) return true;
-      return w.services.some((s) => String(s) === String(booking.serviceId));
+      // Compare service IDs - w.services can be an array of service objects or IDs
+      return w.services.some((s: any) => {
+        const serviceId = typeof s === 'object' ? s.id : s;
+        return String(serviceId) === String(booking.serviceId);
+      });
     });
   };
 
@@ -128,6 +137,17 @@ export default function PendingAssignmentsPage({ onNotification }: PendingAssign
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
     try {
+      // Handle time-only strings like "14:30:00"
+      if (timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        const [hours, minutes] = timeStr.split(':');
+        const date = new Date();
+        date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        return date.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+      // Handle full date strings
       return new Date(timeStr).toLocaleTimeString('en-IN', {
         hour: '2-digit',
         minute: '2-digit',
