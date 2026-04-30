@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not, IsNull } from 'typeorm';
 import { Worker } from '../workers/entities/worker.entity';
-import { Booking, BookingStatus, AssignmentState } from '../bookings/entities/booking.entity';
+import { Booking, BookingStatus, AssignmentState, BookingType } from '../bookings/entities/booking.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { Service } from '../services/entities/service.entity';
@@ -692,17 +692,50 @@ export class AdminService {
     successRate: number;
     pendingAssignments: number;
     failedAssignments: number;
+    subscriptionAssignments: number;
+    onDemandAssignments: number;
+    scheduledAssignments: number;
+    subscriptionPending: number;
+    onDemandPending: number;
   }> {
     // Total assignments (bookings that have been assigned)
     const totalAssignments = await this.bookingsRepository.count({
       where: { workerId: Not(IsNull()) },
     });
 
-    // Pending assignments
+    // Assignments by type
+    const subscriptionAssignments = await this.bookingsRepository.count({
+      where: { workerId: Not(IsNull()), type: BookingType.SUBSCRIPTION },
+    });
+
+    const onDemandAssignments = await this.bookingsRepository.count({
+      where: { workerId: Not(IsNull()), type: BookingType.ON_DEMAND },
+    });
+
+    const scheduledAssignments = await this.bookingsRepository.count({
+      where: { workerId: Not(IsNull()), type: BookingType.SCHEDULED },
+    });
+
+    // Pending assignments (unassigned)
     const pendingAssignments = await this.bookingsRepository.count({
       where: [
-        { workerId: IsNull() },
-        { assignmentState: AssignmentState.PENDING },
+        { workerId: IsNull(), assignmentState: AssignmentState.PENDING },
+        { workerId: IsNull(), status: BookingStatus.PENDING },
+      ],
+    });
+
+    // Pending by type
+    const subscriptionPending = await this.bookingsRepository.count({
+      where: [
+        { workerId: IsNull(), type: BookingType.SUBSCRIPTION, assignmentState: AssignmentState.PENDING },
+        { workerId: IsNull(), type: BookingType.SUBSCRIPTION, status: BookingStatus.PENDING },
+      ],
+    });
+
+    const onDemandPending = await this.bookingsRepository.count({
+      where: [
+        { workerId: IsNull(), type: BookingType.ON_DEMAND, assignmentState: AssignmentState.PENDING },
+        { workerId: IsNull(), type: BookingType.ON_DEMAND, status: BookingStatus.PENDING },
       ],
     });
 
@@ -726,6 +759,11 @@ export class AdminService {
       successRate: Math.round(successRate * 10) / 10,
       pendingAssignments,
       failedAssignments,
+      subscriptionAssignments,
+      onDemandAssignments,
+      scheduledAssignments,
+      subscriptionPending,
+      onDemandPending,
     };
   }
 }
