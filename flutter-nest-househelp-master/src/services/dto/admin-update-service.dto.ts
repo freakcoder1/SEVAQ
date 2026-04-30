@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -39,6 +40,7 @@ export class AdminUpdateServiceDto {
   subcategory?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber({}, { message: 'Base price must be a number' })
   @Min(0, { message: 'Base price must be greater than or equal to 0' })
   basePrice?: number;
