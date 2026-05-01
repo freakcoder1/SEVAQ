@@ -997,7 +997,7 @@ export class AdminService {
             .andWhere('b.status = :status', { status: BookingStatus.COMPLETED }),
         'revenue',
       )
-      .orderBy('completedJobs', 'DESC')
+      .orderBy('"completedJobs"', 'DESC') // Quote alias to match case-sensitive SQL identifier
       .limit(10)
       .getRawMany();
 
