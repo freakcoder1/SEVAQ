@@ -59,6 +59,7 @@ import { PricingRule } from './config/entities/pricing-rule.entity';
 import { Payout } from './finance/entities/payout.entity';
 import { Refund } from './finance/entities/refund.entity';
 import { Address } from './addresses/entities/address.entity';
+import { RefreshToken } from './auth/entities/refresh-token.entity';
 
 // Reliability Services
 import { IdempotencyGuard } from './common/guards/idempotency.guard';
@@ -164,7 +165,8 @@ import { ObservabilityService } from './common/services/observability.service';
           Payout,
           Refund,
           Address,
-        ];
+          RefreshToken,
+         ];
 
         return {
           type: 'postgres',

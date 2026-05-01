@@ -41,7 +41,7 @@ export class AuthController {
 
   @Post('login')
   @Throttle({ default: { ttl: 60000, limit: 5 } }) // Max 5 login attempts per minute
-  async login(@Body() loginDto: LoginDto) {
+  async login(@Body() loginDto: LoginDto, @Request() req: JwtRequest) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
 
@@ -67,7 +67,7 @@ export class AuthController {
         `✅ [${requestId}] User authenticated successfully - ID: ${user.id}, Email: ${user.email}, Role: ${user.role}`,
       );
 
-      const result = this.authService.login(user);
+      const result = await this.authService.login(user);
       const duration = Date.now() - startTime;
 
       this.logger.log(
@@ -81,6 +81,20 @@ export class AuthController {
       this.logger.error(
         `💥 [${requestId}] Login failed - Email: ${loginDto.email || 'N/A'}, Error: ${errorMessage}, Duration: ${duration}ms`,
       );
+      throw error;
+    }
+  }
+
+  @Post('refresh')
+  @Throttle({ default: { ttl: 60000, limit: 10 } }) // Max 10 refresh attempts per minute
+  async refresh(@Body() body: { refresh_token: string }) {
+    this.logger.log('Refresh token request received');
+    try {
+      const result = await this.authService.refreshToken(body.refresh_token);
+      return result;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Refresh token failed: ${errorMessage}`);
       throw error;
     }
   }

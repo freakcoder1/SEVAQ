@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 import { Address } from '../../addresses/entities/address.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { randomUUID } from 'crypto';
 
 export enum UserRole {
@@ -90,10 +91,15 @@ export class User {
   @OneToMany(() => ServiceRequest, (serviceRequest) => serviceRequest.user)
   serviceRequests: ServiceRequest[];
 
-  @OneToMany(() => Address, (address) => address.user)
-  addresses: Address[];
+   @OneToMany(() => Address, (address) => address.user)
+   addresses: Address[];
 
-  @CreateDateColumn()
+   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, {
+     cascade: true,
+   })
+   refreshTokens: RefreshToken[];
+
+   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()

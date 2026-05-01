@@ -1,13 +1,17 @@
-import { Injectable, UnauthorizedException, Logger, ConflictException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger, ConflictException, Inject, ForbiddenException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { WorkersService } from '../workers/workers.service';
 import { ServicesService } from '../services/services.service';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { CreateWorkerRegistrationDto } from './dto/create-worker-registration.dto';
 import { UserRole } from '../users/entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +22,8 @@ export class AuthService {
     private workersService: WorkersService,
     private servicesService: ServicesService,
     private jwtService: JwtService,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -42,7 +48,7 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  async login(user: any, userAgent?: string, ipAddress?: string) {
     // Use publicId (UUID) instead of internal numeric id for JWT
     const payload = {
       email: user.email,
@@ -50,8 +56,20 @@ export class AuthService {
       role: user.role,
     };
 
+    // Generate access token (short-lived, e.g., 1 hour)
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+
+    // Generate refresh token (long-lived, e.g., 30 days)
+    const refreshToken = new RefreshToken();
+    refreshToken.userId = user.id;
+    refreshToken.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    refreshToken.userAgent = userAgent ?? '';
+    refreshToken.ipAddress = ipAddress ?? '';
+    await this.refreshTokenRepository.save(refreshToken);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      refresh_token: refreshToken.token,
       user: {
         id: user.id, // Return numeric database id
         publicId: user.publicId, // Also return publicId for reference
@@ -60,6 +78,45 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
       },
+    };
+  }
+
+  async refreshToken(refreshTokenStr: string) {
+    // Find the refresh token in the database
+    const refreshToken = await this.refreshTokenRepository.findOne({
+      where: { token: refreshTokenStr },
+      relations: ['user'],
+    });
+
+    if (!refreshToken || !refreshToken.isValid()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = refreshToken.user;
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Generate new access token
+    const payload = {
+      email: user.email,
+      sub: user.publicId,
+      role: user.role,
+    };
+    const newAccessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+
+    // Rotate refresh token: revoke old one, create new one
+    refreshToken.isRevoked = true;
+    await this.refreshTokenRepository.save(refreshToken);
+
+    const newRefreshToken = new RefreshToken();
+    newRefreshToken.userId = user.id;
+    newRefreshToken.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await this.refreshTokenRepository.save(newRefreshToken);
+
+    return {
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken.token,
     };
   }
 
