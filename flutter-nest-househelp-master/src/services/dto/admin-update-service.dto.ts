@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsNumber,
+  IsBoolean,
   MinLength,
   MaxLength,
   IsUrl,
@@ -50,4 +51,12 @@ export class AdminUpdateServiceDto {
   @IsUrl({}, { message: 'Image URL must be a valid URL' })
   @MaxLength(500, { message: 'Image URL must not exceed 500 characters' })
   imageUrl?: string;
+
+  @IsOptional()
+  @IsBoolean({ message: 'isAvailable must be a boolean' })
+  isAvailable?: boolean;
+
+  @IsOptional()
+  @IsBoolean({ message: 'isFastBooking must be a boolean' })
+  isFastBooking?: boolean;
 }
