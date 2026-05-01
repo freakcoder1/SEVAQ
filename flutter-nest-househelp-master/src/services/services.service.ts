@@ -87,13 +87,19 @@ export class ServicesService {
   }
 
   async findOne(id: string) {
+    // Check if id is a UUID (publicId) or numeric id
+    const isUUID = id.includes('-');
     return await this.servicesRepository.findOne({
-      where: { id: parseInt(id) },
+      where: isUUID ? { publicId: id } : { id: parseInt(id) },
     });
   }
 
   async update(id: string, updateServiceDto: UpdateServiceDto) {
-    await this.servicesRepository.update(id, updateServiceDto);
+    // Check if id is a UUID (publicId) or numeric id
+    const isUUID = id.includes('-');
+    const whereClause = isUUID ? { publicId: id } : { id: parseInt(id) };
+    
+    await this.servicesRepository.update(whereClause, updateServiceDto);
     return await this.findOne(id);
   }
 
@@ -105,7 +111,10 @@ export class ServicesService {
     if (service.category === 'Cleaning' || service.category === 'Cooking') {
       throw new ForbiddenException('Cannot delete critical services');
     }
-    await this.servicesRepository.delete(id);
+    // Handle both UUID (publicId) and numeric id
+    const isUUID = id.includes('-');
+    const whereClause = isUUID ? { publicId: id } : { id: parseInt(id) };
+    await this.servicesRepository.delete(whereClause);
     return { deleted: true };
   }
 
