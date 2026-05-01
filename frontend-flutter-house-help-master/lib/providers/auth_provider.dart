@@ -30,6 +30,7 @@ class AuthProvider with ChangeNotifier {
 
   // Persistent cache keys
   static const String _TOKEN_KEY = 'jwt_token';
+  static const String _REFRESH_TOKEN_KEY = 'refresh_token';
   static const String _USER_ID_KEY = 'user_id';
   static const String _CACHED_USER_KEY = 'cached_user';
 
@@ -156,6 +157,7 @@ class AuthProvider with ChangeNotifier {
         final token = prefs.getString(_TOKEN_KEY);
         final userId = prefs.getString(_USER_ID_KEY);
         final cachedUserJson = prefs.getString(_CACHED_USER_KEY);
+        final refreshToken = prefs.getString(_REFRESH_TOKEN_KEY);
 
         if (token != null && userId != null) {
           _cachedToken = token;
@@ -187,6 +189,7 @@ class AuthProvider with ChangeNotifier {
               final token = prefs.getString(_TOKEN_KEY);
               final userId = prefs.getString(_USER_ID_KEY);
               final cachedUserJson = prefs.getString(_CACHED_USER_KEY);
+              final refreshToken = prefs.getString(_REFRESH_TOKEN_KEY);
 
               if (token != null && userId != null) {
                 _cachedToken = token;
@@ -271,6 +274,7 @@ class AuthProvider with ChangeNotifier {
       final token = prefs.getString(_TOKEN_KEY);
       final userId = prefs.getString(_USER_ID_KEY);
       final cachedUserJson = prefs.getString(_CACHED_USER_KEY);
+      final refreshToken = prefs.getString(_REFRESH_TOKEN_KEY);
 
       _cachedToken = token;
       _cachedUserId = userId;
@@ -393,6 +397,11 @@ class AuthProvider with ChangeNotifier {
             key: 'user_id',
             value: user['publicId'] ?? user['id'].toString(),
           );
+          // Store refresh token if available
+          final refreshToken = response['refresh_token'];
+          if (refreshToken != null) {
+            await _storage.write(key: _REFRESH_TOKEN_KEY, value: refreshToken);
+          }
           debugPrint('AuthProvider: Secure storage write complete');
 
           // Also save to SharedPreferences for synchronous restore on app resume
@@ -405,6 +414,10 @@ class AuthProvider with ChangeNotifier {
           );
           // Cache the FRESH user with publicId, not the old cached one
           await prefs.setString(_CACHED_USER_KEY, freshUser.toJsonString());
+          // Save refresh token to SharedPreferences
+          if (refreshToken != null) {
+            await prefs.setString(_REFRESH_TOKEN_KEY, refreshToken);
+          }
           debugPrint('AuthProvider: SharedPreferences write complete');
 
           // Update static cache immediately
@@ -493,10 +506,14 @@ class AuthProvider with ChangeNotifier {
       if (response != null) {
         final token = response['access_token'];
         final user = response['user'];
+        final refreshToken = response['refresh_token'];
 
         if (token != null && user != null) {
           await _storage.write(key: 'jwt_token', value: token);
           await _storage.write(key: 'user_id', value: user['id'].toString());
+          if (refreshToken != null) {
+            await _storage.write(key: _REFRESH_TOKEN_KEY, value: refreshToken);
+          }
 
           // Also save to SharedPreferences for synchronous restore on app resume
           final prefs = await SharedPreferences.getInstance();
@@ -505,6 +522,9 @@ class AuthProvider with ChangeNotifier {
             _USER_ID_KEY,
             user['publicId'] ?? user['id'].toString(),
           );
+          if (refreshToken != null) {
+            await prefs.setString(_REFRESH_TOKEN_KEY, refreshToken);
+          }
           _currentUser = User.fromJson(user);
           await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
 
@@ -550,12 +570,14 @@ class AuthProvider with ChangeNotifier {
       await _storage.delete(key: 'jwt_token');
       await _storage.delete(key: 'user_id');
       await _storage.delete(key: 'cached_user');
+      await _storage.delete(key: _REFRESH_TOKEN_KEY);
 
       // Also clear from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_TOKEN_KEY);
       await prefs.remove(_USER_ID_KEY);
       await prefs.remove(_CACHED_USER_KEY);
+      await prefs.remove(_REFRESH_TOKEN_KEY);
 
       // Sign out from Firebase
       try {
@@ -584,11 +606,68 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Handle TokenExpiredException by clearing auth state and redirecting to login
-  /// This method should be called when a TokenExpiredException is caught
+  /// Try to refresh the access token using the refresh token
+  Future<bool> refreshAccessToken() async {
+    try {
+      // Get refresh token from storage
+      final refreshToken = await _storage.read(key: _REFRESH_TOKEN_KEY);
+      if (refreshToken == null) {
+        debugPrint('AuthProvider: No refresh token found');
+        return false;
+      }
+
+      // Call refresh endpoint
+      final response = await _apiService.post('auth/refresh', {
+        'refresh_token': refreshToken,
+      });
+
+      if (response != null && response['access_token'] != null) {
+        final newAccessToken = response['access_token'];
+        final newRefreshToken = response['refresh_token'];
+
+        // Update stored tokens
+        await _storage.write(key: _TOKEN_KEY, value: newAccessToken);
+        if (newRefreshToken != null) {
+          await _storage.write(key: _REFRESH_TOKEN_KEY, value: newRefreshToken);
+        }
+
+        // Update SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_TOKEN_KEY, newAccessToken);
+        if (newRefreshToken != null) {
+          await prefs.setString(_REFRESH_TOKEN_KEY, newRefreshToken);
+        }
+
+        // Update static cache
+        _cachedToken = newAccessToken;
+
+        debugPrint('AuthProvider: Token refreshed successfully');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('AuthProvider: Error refreshing token: $e');
+      return false;
+    }
+  }
+
+  /// Handle TokenExpiredException by trying to refresh token first
+  /// If refresh fails, clear auth state and redirect to login
   Future<void> handleTokenExpired() async {
+    debugPrint('AuthProvider: Token expired, attempting to refresh...');
+
+    // Try to refresh the token first
+    final refreshed = await refreshAccessToken();
+    if (refreshed) {
+      debugPrint(
+        'AuthProvider: Token refreshed successfully, no need to logout',
+      );
+      notifyListeners();
+      return;
+    }
+
     debugPrint(
-      'AuthProvider: Token expired, clearing session and redirecting to login',
+      'AuthProvider: Token refresh failed, clearing session and redirecting to login',
     );
 
     // Clear all auth state
@@ -603,6 +682,7 @@ class AuthProvider with ChangeNotifier {
       await _storage.delete(key: 'jwt_token');
       await _storage.delete(key: 'user_id');
       await _storage.delete(key: 'cached_user');
+      await _storage.delete(key: _REFRESH_TOKEN_KEY);
     } catch (e) {
       debugPrint('AuthProvider: Error clearing secure storage: $e');
     }
@@ -613,6 +693,7 @@ class AuthProvider with ChangeNotifier {
       await prefs.remove(_TOKEN_KEY);
       await prefs.remove(_USER_ID_KEY);
       await prefs.remove(_CACHED_USER_KEY);
+      await prefs.remove(_REFRESH_TOKEN_KEY);
     } catch (e) {
       debugPrint('AuthProvider: Error clearing SharedPreferences: $e');
     }

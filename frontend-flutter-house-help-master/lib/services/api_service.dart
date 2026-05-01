@@ -94,23 +94,42 @@ class ApiService {
         );
       }
 
-      // Check token expiry (PRODUCTION-READY: Expired tokens are now cleared)
+      // Check token expiry (PRODUCTION-READY: Try to refresh expired tokens)
       final tokenData = decodeJwt(token);
       if (tokenData != null) {
         if (isTokenExpired(tokenData)) {
           debugPrint(
-            'ApiService: _getHeaders - Token has expired, clearing token',
+            'ApiService: _getHeaders - Token has expired, attempting refresh',
           );
-          // Clear expired token from all storage locations
-          await clearToken();
-          await _storage.delete(key: 'user_id');
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('jwt_token');
-          await prefs.remove('user_id');
-          await prefs.remove('refresh_token');
-          token = null;
-          // Notify that token has expired - app should redirect to login
-          throw TokenExpiredException('Session expired. Please log in again.');
+          // Try to refresh the access token
+          final refreshed = await _refreshAccessToken();
+          if (refreshed) {
+            // Get the new token from storage
+            token = await _storage.read(key: 'jwt_token');
+            if (token == null) {
+              token = (await SharedPreferences.getInstance()).getString(
+                'jwt_token',
+              );
+            }
+            debugPrint(
+              'ApiService: _getHeaders - Token refreshed successfully',
+            );
+          } else {
+            // Refresh failed, clear token
+            debugPrint(
+              'ApiService: _getHeaders - Token refresh failed, clearing token',
+            );
+            await clearToken();
+            await _storage.delete(key: 'user_id');
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('jwt_token');
+            await prefs.remove('user_id');
+            await prefs.remove('refresh_token');
+            token = null;
+            throw TokenExpiredException(
+              'Session expired. Please log in again.',
+            );
+          }
         }
       } else {
         debugPrint('ApiService: _getHeaders - Invalid token');
@@ -143,7 +162,12 @@ class ApiService {
             body: jsonEncode(data),
           )
           .timeout(AppConfig.requestTimeout);
-      return await _processResponse(response);
+      return await _processResponse(
+        response,
+        method: 'POST',
+        endpoint: endpoint,
+        body: data,
+      );
     } catch (e) {
       debugPrint('POST Error to $endpoint: $e');
       debugPrint('POST Error details: baseUrl=$baseUrl, endpoint=$endpoint');
@@ -174,7 +198,11 @@ class ApiService {
       debugPrint(
         'ApiService: GET response received in ${stopwatch.elapsedMilliseconds}ms for $url',
       );
-      return await _processResponse(response);
+      return await _processResponse(
+        response,
+        method: 'GET',
+        endpoint: endpoint,
+      );
     } catch (e) {
       debugPrint('GET Error to $endpoint: $e');
       if (e is SocketException) {
@@ -199,7 +227,12 @@ class ApiService {
             body: jsonEncode(data),
           )
           .timeout(AppConfig.requestTimeout);
-      return await _processResponse(response);
+      return await _processResponse(
+        response,
+        method: 'PATCH',
+        endpoint: endpoint,
+        body: data,
+      );
     } catch (e) {
       debugPrint('PATCH Error to $endpoint: $e');
       if (e is SocketException) {
@@ -238,15 +271,46 @@ class ApiService {
     }
   }
 
-  Future<dynamic> _processResponse(http.Response response) async {
+  Future<dynamic> _processResponse(
+    http.Response response, {
+    String? method,
+    String? endpoint,
+    Map<String, dynamic>? body,
+  }) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else if (response.statusCode == 401) {
       // Handle 401 Unauthorized - token expired or invalid
       debugPrint(
-        'ApiService: 401 Unauthorized received - token is expired or invalid',
+        'ApiService: 401 Unauthorized received - attempting to refresh token',
       );
+
+      // Attempt to refresh the access token
+      final refreshed = await _refreshAccessToken();
+      if (refreshed && method != null && endpoint != null) {
+        debugPrint('ApiService: Token refreshed, retrying request...');
+        // Retry the original request with new token
+        try {
+          final retriedResponse = await _retryRequest(
+            method,
+            endpoint,
+            body: body,
+          );
+          return await _processResponse(
+            retriedResponse,
+            method: method,
+            endpoint: endpoint,
+            body: body,
+          );
+        } catch (e) {
+          debugPrint('ApiService: Retry after refresh failed: $e');
+          // Fall through to clear token and throw
+        }
+      }
+
+      // If refresh failed or no method/endpoint provided, clear token and throw
+      debugPrint('ApiService: Token refresh failed, clearing session');
       // Clear token from all storage locations
       await clearToken();
       await _storage.delete(key: 'user_id');
@@ -278,6 +342,92 @@ class ApiService {
       }
     } else {
       throw Exception('Error ${response.statusCode}: ${response.body}');
+    }
+  }
+
+  // Method to refresh access token using refresh token
+  Future<bool> _refreshAccessToken() async {
+    try {
+      final refreshToken = await _storage.read(key: 'refresh_token');
+      if (refreshToken == null) {
+        debugPrint('ApiService: No refresh token found');
+        return false;
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/refresh'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refresh_token': refreshToken}),
+          )
+          .timeout(AppConfig.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final newAccessToken = data['access_token'];
+        final newRefreshToken = data['refresh_token'];
+
+        if (newAccessToken != null) {
+          // Update stored tokens
+          await _storage.write(key: 'jwt_token', value: newAccessToken);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jwt_token', newAccessToken);
+
+          if (newRefreshToken != null) {
+            await _storage.write(key: 'refresh_token', value: newRefreshToken);
+            await prefs.setString('refresh_token', newRefreshToken);
+          }
+
+          debugPrint('ApiService: Token refreshed successfully');
+          return true;
+        }
+      }
+      debugPrint(
+        'ApiService: Token refresh failed with status ${response.statusCode}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('ApiService: Error refreshing token: $e');
+      return false;
+    }
+  }
+
+  // Helper to retry a request with new token
+  Future<http.Response> _retryRequest(
+    String method,
+    String endpoint, {
+    Map<String, dynamic>? body,
+  }) async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/${normalizeEndpoint(endpoint)}';
+
+    switch (method) {
+      case 'GET':
+        return await http
+            .get(Uri.parse(url), headers: headers)
+            .timeout(AppConfig.requestTimeout);
+      case 'POST':
+        return await http
+            .post(
+              Uri.parse(url),
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(AppConfig.requestTimeout);
+      case 'PATCH':
+        return await http
+            .patch(
+              Uri.parse(url),
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(AppConfig.requestTimeout);
+      case 'DELETE':
+        return await http
+            .delete(Uri.parse(url), headers: headers)
+            .timeout(AppConfig.requestTimeout);
+      default:
+        throw Exception('Unsupported HTTP method: $method');
     }
   }
 
@@ -504,10 +654,7 @@ extension ServiceProfileApi on ApiService {
       case 'cooking':
         mappedType = 'COOK';
         break;
-      case 'maid':
-      case 'house help':
-        mappedType = 'MAID';
-        break;
+
       case 'cleaning':
         mappedType = 'CLEANING';
         break;
