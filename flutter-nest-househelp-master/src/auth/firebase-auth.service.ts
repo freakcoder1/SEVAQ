@@ -97,6 +97,36 @@ export class FirebaseAuthService {
     return randomBytes(32).toString('hex');
   }
 
+  /**
+   * Generate all common phone number variations for lookup
+   * Handles formats like: +919876543210, 919876543210, 9876543210
+   */
+  private generatePhoneVariations(phone: string): string[] {
+    const digitsOnly = phone.replace(/[^0-9]/g, '');
+    const variations = new Set<string>();
+    
+    // Add original phone
+    variations.add(phone);
+    
+    // Add digits only
+    variations.add(digitsOnly);
+    
+    // Extract last 10 digits (assuming Indian phone number)
+    const last10Digits = digitsOnly.slice(-10);
+    variations.add(last10Digits);
+    
+    // With +91 prefix
+    variations.add(`+91${last10Digits}`);
+    
+    // With 91 prefix (no +)
+    variations.add(`91${last10Digits}`);
+    
+    // With + and last 10 digits
+    variations.add(`+${last10Digits}`);
+    
+    return Array.from(variations);
+  }
+
   async verifyPhoneAndLogin(
     phone: string,
     idToken: string,
@@ -146,22 +176,27 @@ export class FirebaseAuthService {
     this.logger.log(`Dev login for phone: ${phone}`);
 
     try {
-      // Normalize phone number: strip all non-numeric characters for consistent lookup
-      const normalizedPhone = phone.replace(/[^0-9]/g, '');
-      this.logger.log(`Normalized phone for lookup: ${normalizedPhone}`);
+      // Generate all possible phone number variations for lookup
+      const phoneVariations = this.generatePhoneVariations(phone);
+      this.logger.log(`Checking phone variations: ${JSON.stringify(phoneVariations)}`);
       
-      // Find existing user by phone - try both original and normalized formats
-      let user = await this.usersService.findOneByPhone(phone);
-      
-      // If not found, try with normalized phone number
-      if (!user) {
-        this.logger.log(`User not found with original phone, trying normalized: ${normalizedPhone}`);
-        user = await this.usersService.findOneByPhone(`+${normalizedPhone}`);
+      let user = null;
+      for (const variant of phoneVariations) {
+        this.logger.log(`Trying phone variant: ${variant}`);
+        user = await this.usersService.findOneByPhone(variant);
+        if (user) {
+          this.logger.log(`User found with phone variant: ${variant}`);
+          break;
+        }
       }
 
       if (!user) {
-        // Create new user
-        this.logger.log(`Creating new user with phone: ${phone}`);
+        // Create new user with consistent phone format
+        const digitsOnly = phone.replace(/[^0-9]/g, '');
+        const last10Digits = digitsOnly.slice(-10);
+        const consistentPhone = `+91${last10Digits}`;
+        
+        this.logger.log(`Creating new user with normalized phone: ${consistentPhone}`);
         const securePassword = this.generateSecurePassword();
         
         // Sanitize incoming names
@@ -169,11 +204,11 @@ export class FirebaseAuthService {
         const sanitizedLastName = lastName?.trim() || '';
         
         const createUserDto = {
-          email: `user_${phone.replace(/[^0-9]/g, '')}@phone.auth`,
+          email: `user_${last10Digits}@phone.auth`,
           password: securePassword,
           firstName: sanitizedFirstName || 'User',
-          lastName: sanitizedLastName || phone.replace('+', ''),
-          phone: phone,
+          lastName: sanitizedLastName || last10Digits,
+          phone: consistentPhone,
           role: UserRole.USER,
         };
         user = await this.usersService.createWithTransaction(
@@ -184,7 +219,7 @@ export class FirebaseAuthService {
         // ✅ FIX: Reload user from database after creation to get auto-generated publicId
         // TypeORM does not return generated UUID columns from insert operations
         this.logger.log(`Reloading newly created user to retrieve generated publicId`);
-        const reloadedUser = await this.usersService.findOneByPhone(phone);
+        const reloadedUser = await this.usersService.findOneByPhone(consistentPhone);
         
         if (!reloadedUser) {
           this.logger.error(`Failed to reload user after creation for phone: ${phone}`);
