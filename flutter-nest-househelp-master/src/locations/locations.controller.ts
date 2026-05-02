@@ -29,15 +29,15 @@ interface LocationAvailabilityDto {
 class WaitlistDto {
   @IsUUID()
   @IsNotEmpty()
-  serviceId: string;
+  serviceId!: string;
 
   @IsNumber()
   @IsNotEmpty()
-  latitude: number;
+  latitude!: number;
 
   @IsNumber()
   @IsNotEmpty()
-  longitude: number;
+  longitude!: number;
 
   @IsUUID()
   @IsOptional()
@@ -146,8 +146,8 @@ export class LocationsController {
       throw new BadRequestException('Service ID is required');
     }
 
-    // Use authenticated user ID from JWT token
-    const userId = req.user.userId || waitlistDto.userId;
+    // Use authenticated user ID from JWT token (required since JwtAuthGuard is used)
+    const userId: string = req.user.userId;
     return this.locationService.addToWaitlist(
       userId,
       waitlistDto.serviceId,
