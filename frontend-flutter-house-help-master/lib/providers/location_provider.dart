@@ -372,7 +372,9 @@ class LocationProvider with ChangeNotifier {
 
       // Auto-add to waitlist if needed
       if (_hasHighDemand && _currentLocationData != null) {
-        await addToWaitlist();
+        // Note: Caller should provide serviceId - this auto-add feature needs to be updated
+        // to accept a serviceId parameter
+        debugPrint('Auto-add to waitlist requires serviceId - skipping');
       }
 
       notifyListeners();
@@ -383,7 +385,7 @@ class LocationProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addToWaitlist() async {
+  Future<void> addToWaitlist(String serviceId) async {
     if (_currentLocationData == null || _availabilityStatus == null) return;
 
     try {
@@ -394,6 +396,7 @@ class LocationProvider with ChangeNotifier {
           _currentLocationData!.latitude!,
           _currentLocationData!.longitude!,
           _availabilityStatus!.estimatedWaitTime,
+          serviceId: serviceId,
         );
         _isOnWaitlist = true;
       } catch (apiError) {

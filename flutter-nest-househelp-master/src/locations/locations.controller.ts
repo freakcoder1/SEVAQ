@@ -10,11 +10,15 @@ import {
   UseGuards,
   BadRequestException,
   Logger,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LocationService } from './locations.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtRequest } from '../common/types/jwt-user.type';
+import { IsUUID, IsNumber, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
 
 interface LocationAvailabilityDto {
   lat: number;
@@ -22,17 +26,37 @@ interface LocationAvailabilityDto {
   radius?: number;
 }
 
-interface WaitlistDto {
-  userId: string;
+class WaitlistDto {
+  @IsUUID()
+  @IsNotEmpty()
   serviceId: string;
+
+  @IsNumber()
+  @IsNotEmpty()
   latitude: number;
+
+  @IsNumber()
+  @IsNotEmpty()
   longitude: number;
+
+  @IsUUID()
+  @IsOptional()
+  userId?: string;
+
+  @IsOptional()
   requestedAt?: Date;
+
+  @IsOptional()
+  @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsNumber()
   estimatedWaitTime?: number;
 }
 
 @Controller('locations')
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class LocationsController {
   private readonly logger = new Logger(LocationsController.name);
 

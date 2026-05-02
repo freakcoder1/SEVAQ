@@ -158,15 +158,32 @@ class _AvailabilityAdjustmentScreenState
         throw Exception('User not logged in');
       }
 
-      // Add user to waitlist for this service and time
-      await _apiService.post('locations/waitlist', {
-        'userId': user.id,
-        'serviceId': widget.service?.id ?? '',
-        'lat': 28.5805083, // Default location for testing
-        'lng': 77.4392111,
-        'requestedTime': widget.requestedStartTime.toIso8601String(),
-        'estimatedWaitTime': 30, // 30 minutes estimated wait
-      });
+      final service = widget.service;
+      if (service == null) {
+        throw Exception('No service specified for waitlist');
+      }
+
+      // Get serviceId - ensure it's a valid UUID string
+      final serviceId = service.id is String
+          ? service.id
+          : service.id?.toString();
+      if (serviceId == null || serviceId.isEmpty) {
+        throw Exception('Invalid service ID');
+      }
+
+      // Get location from location provider
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
+      final location = locationProvider.currentLocationData;
+
+      await _apiService.addToWaitlist(
+        location?.latitude ?? 28.5805083,
+        location?.longitude ?? 77.4392111,
+        30, // 30 minutes estimated wait
+        serviceId: serviceId,
+      );
 
       setState(() => _showWaitlist = true);
     } catch (e) {

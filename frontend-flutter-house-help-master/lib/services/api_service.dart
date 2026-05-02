@@ -505,8 +505,9 @@ extension LocationApi on ApiService {
   Future<dynamic> addToWaitlist(
     double lat,
     double lng,
-    int estimatedWaitTime,
-  ) async {
+    int estimatedWaitTime, {
+    String? serviceId,
+  }) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('User not authenticated');
@@ -518,9 +519,14 @@ extension LocationApi on ApiService {
       throw Exception('User ID not found');
     }
 
+    // Use provided serviceId or throw error if not provided
+    if (serviceId == null) {
+      throw Exception('Service ID is required for waitlist');
+    }
+
     return await post('locations/waitlist', {
       'userId': userId,
-      'serviceId': 'all', // For general waitlist
+      'serviceId': serviceId,
       'lat': lat,
       'lng': lng,
       'estimatedWaitTime': estimatedWaitTime,
