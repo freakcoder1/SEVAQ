@@ -74,10 +74,11 @@ export class FirebaseAuthService {
         }
         this.firebaseInitialized = true;
         this.logger.log('✅ [Firebase Init] Firebase Admin SDK initialized successfully');
-      } catch (error) {
+      } catch (error: unknown) {
+        const err = error as Error;
         this.logger.warn(
           '⚠️  [Firebase Init] Failed to initialize Firebase Admin SDK, OTP login will not work',
-          error.message,
+          err.message,
         );
         this.firebaseInitialized = false;
       }
@@ -148,21 +149,56 @@ export class FirebaseAuthService {
       return this._handleDevLogin(phone, firstName, lastName);
     }
 
-    // Production: Verify the Firebase ID token
+    // Production: Verify the Firebase ID token with timeout
     try {
-      this.logger.log('Verifying Firebase ID token...');
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      this.logger.log(`Verifying Firebase ID token for phone: ${phone}`);
+      
+      // Add timeout wrapper to prevent hanging requests
+      const timeoutMs = 10000; // 10 seconds
+      const timeoutPromise = new Promise<admin.auth.DecodedIdToken>((_, reject) => {
+        setTimeout(() => reject(new Error('Firebase API timeout after 10s')), timeoutMs);
+      });
+
+      const decodedToken = await Promise.race([
+        admin.auth().verifyIdToken(idToken),
+        timeoutPromise,
+      ]) as admin.auth.DecodedIdToken;
       
       // Verify the phone number matches
       if (decodedToken.phone_number !== phone) {
         this.logger.error(`Phone number mismatch: token has ${decodedToken.phone_number}, request has ${phone}`);
-        throw new UnauthorizedException('Phone number mismatch');
+        throw new UnauthorizedException('Phone number mismatch. Please try logging in again.');
       }
 
       this.logger.log(`Firebase token verified for UID: ${decodedToken.uid}, Phone: ${decodedToken.phone_number}`);
-    } catch (error) {
-      this.logger.error(`Firebase token verification failed: ${error.message}`);
-      throw new UnauthorizedException('Invalid authentication token');
+    } catch (error: unknown) {
+      const err = error as Error & { code?: string };
+      this.logger.error(`Firebase token verification failed for ${phone}: ${err.message}`);
+      
+      // Return specific error messages based on error type
+      if (err.message?.includes('timeout')) {
+        this.logger.error(`Firebase API timeout for ${phone}`);
+        throw new UnauthorizedException('Login service temporarily unavailable. Please try again in a few minutes.');
+      }
+      
+      if (err.code === 'auth/id-token-expired') {
+        this.logger.error(`Firebase token expired for ${phone}`);
+        throw new UnauthorizedException('Session expired. Please login again.');
+      }
+      
+      if (err.code === 'auth/invalid-id-token') {
+        this.logger.error(`Invalid Firebase token for ${phone}`);
+        throw new UnauthorizedException('Invalid login session. Please try logging in again.');
+      }
+      
+      // Log the full error for debugging
+      this.logger.error(`Full Firebase error: ${JSON.stringify({
+        code: err.code,
+        message: err.message,
+        stack: err.stack?.split('\n').slice(0, 3).join('\n'),
+      })}`);
+      
+      throw new UnauthorizedException('Login failed. Please try again.');
     }
 
     // Token is valid, proceed with login
@@ -256,8 +292,9 @@ export class FirebaseAuthService {
       
       response.needsProfileCompletion = needsProfileCompletion;
       return response;
-    } catch (error) {
-      this.logger.error(`Dev login failed: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`Dev login failed: ${err.message}`);
       throw new UnauthorizedException('Login failed');
     }
   }
@@ -274,8 +311,9 @@ export class FirebaseAuthService {
         phone: decodedToken.phone_number,
         email: decodedToken.email,
       };
-    } catch (error) {
-      this.logger.error(`ID token verification failed: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`ID token verification failed: ${err.message}`);
       throw new UnauthorizedException('Invalid ID token');
     }
   }
@@ -322,10 +360,11 @@ export class FirebaseAuthService {
           role: user.role,
         },
       };
-    } catch (jwtError) {
-      this.logger.error(`JWT signing failed: ${jwtError.message}`, jwtError.stack);
+    } catch (jwtError: unknown) {
+      const err = jwtError as Error;
+      this.logger.error(`JWT signing failed: ${err.message}`, err.stack);
       this.logger.error(`Failed payload: sub=${user.publicId}, email=${user.email}, role=${user.role}`);
-      throw jwtError;
+      throw err;
     }
   }
 }
