@@ -5,6 +5,7 @@ import {
   UseGuards,
   Request,
   Get,
+  Query,
   HttpException,
   HttpStatus,
   Patch,
@@ -19,6 +20,7 @@ import { WorkersService } from '../workers/workers.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { AdminGuard } from './admin.guard';
 import { JwtRequest } from '../common/types/jwt-user.type';
 import {
   LoginDto,
@@ -174,6 +176,32 @@ export class AuthController {
       this.logger.error(`Worker profile creation failed: ${errorMessage}`, errorStack);
       throw error;
     }
+  }
+
+  // Debug endpoint to check user by phone (protected by AdminGuard)
+  @Get('debug/user-check')
+  @UseGuards(AdminGuard)
+  async debugUserCheck(@Query('phone') phone: string) {
+    this.logger.log(`Debug: Checking user with phone: ${phone}`);
+    
+    // Generate phone variations
+    const phoneVariations = this.firebaseAuthService['generatePhoneVariations'](phone);
+    this.logger.log(`Debug: Phone variations: ${JSON.stringify(phoneVariations)}`);
+    
+    const results: any[] = [];
+    for (const variant of phoneVariations) {
+      const user = await this.firebaseAuthService.getUserByPhone(variant);
+      results.push({
+        variant,
+        found: !!user,
+        userId: user?.id,
+        publicId: user?.publicId,
+        isActive: user?.isActive,
+        phoneInDb: user?.phone,
+      });
+    }
+    
+    return { phone, variations: results };
   }
 
   // OTP Login endpoints
