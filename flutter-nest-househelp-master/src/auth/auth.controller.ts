@@ -178,9 +178,8 @@ export class AuthController {
     }
   }
 
-  // Debug endpoint to check user by phone (protected by AdminGuard)
+  // Debug endpoint to check user by phone (TEMPORARY - no guard for testing)
   @Get('debug/user-check')
-  @UseGuards(AdminGuard)
   async debugUserCheck(@Query('phone') phone: string) {
     this.logger.log(`Debug: Checking user with phone: ${phone}`);
     
