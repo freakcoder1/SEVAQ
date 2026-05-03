@@ -149,20 +149,11 @@ export class FirebaseAuthService {
       return this._handleDevLogin(phone, firstName, lastName);
     }
 
-    // Production: Verify the Firebase ID token with timeout
+    // Production: Verify the Firebase ID token with timeout and retry logic
     try {
       this.logger.log(`Verifying Firebase ID token for phone: ${phone}`);
       
-      // Add timeout wrapper to prevent hanging requests
-      const timeoutMs = 10000; // 10 seconds
-      const timeoutPromise = new Promise<admin.auth.DecodedIdToken>((_, reject) => {
-        setTimeout(() => reject(new Error('Firebase API timeout after 10s')), timeoutMs);
-      });
-
-      const decodedToken = await Promise.race([
-        admin.auth().verifyIdToken(idToken),
-        timeoutPromise,
-      ]) as admin.auth.DecodedIdToken;
+      const decodedToken = await this.verifyFirebaseTokenWithRetry(idToken, phone);
       
       // Verify the phone number matches
       if (decodedToken.phone_number !== phone) {
@@ -203,6 +194,65 @@ export class FirebaseAuthService {
 
     // Token is valid, proceed with login
     return this._handleDevLogin(phone, firstName, lastName);
+  }
+
+  /**
+   * Verify Firebase ID token with retry logic for handling transient failures
+   * Retries up to 3 times with exponential backoff
+   */
+  private async verifyFirebaseTokenWithRetry(idToken: string, phone: string, maxRetries: number = 3): Promise<admin.auth.DecodedIdToken> {
+    const baseDelayMs = 1000; // 1 second base delay
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.log(`Firebase token verification attempt ${attempt}/${maxRetries} for phone: ${phone}`);
+        
+        // Add timeout wrapper to prevent hanging requests
+        const timeoutMs = 10000; // 10 seconds
+        const timeoutPromise = new Promise<admin.auth.DecodedIdToken>((_, reject) => {
+          setTimeout(() => reject(new Error('Firebase API timeout after 10s')), timeoutMs);
+        });
+
+        const decodedToken = await Promise.race([
+          admin.auth().verifyIdToken(idToken),
+          timeoutPromise,
+        ]) as admin.auth.DecodedIdToken;
+
+        this.logger.log(`Firebase token verified successfully on attempt ${attempt}`);
+        return decodedToken;
+        
+      } catch (error: unknown) {
+        const err = error as Error & { code?: string };
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          this.logger.error(`Firebase token verification failed after ${maxRetries} attempts for ${phone}: ${err.message}`);
+          throw error;
+        }
+        
+        // Check if error is retryable
+        const isRetryable = 
+          err.message?.includes('timeout') ||
+          err.message?.includes('ETIMEDOUT') ||
+          err.message?.includes('ECONNREFUSED') ||
+          err.message?.includes('ENOTFOUND') ||
+          err.code === 'auth/id-token-expired' || // Token might be valid now
+          err.code === 'auth/invalid-id-token'; // Might be a temporary Firebase issue
+        
+        if (isRetryable) {
+          const delayMs = baseDelayMs * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
+          this.logger.warn(`Attempt ${attempt} failed for ${phone}: ${err.message}. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          // Non-retryable error (like invalid token), throw immediately
+          this.logger.error(`Non-retryable error for ${phone}: ${err.message}`);
+          throw error;
+        }
+      }
+    }
+    
+    // This should never be reached, but TypeScript needs it
+    throw new Error('Unexpected end of retry logic');
   }
 
   /**
