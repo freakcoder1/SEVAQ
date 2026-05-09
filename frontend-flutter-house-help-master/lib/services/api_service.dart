@@ -101,8 +101,8 @@ class ApiService {
           debugPrint(
             'ApiService: _getHeaders - Token has expired, attempting refresh',
           );
-          // Try to refresh the access token
-          final refreshed = await _refreshAccessToken();
+          // Try to refresh the access token with retry logic
+          final refreshed = await _refreshAccessTokenWithRetry();
           if (refreshed) {
             // Get the new token from storage
             token = await _storage.read(key: 'jwt_token');
@@ -115,9 +115,9 @@ class ApiService {
               'ApiService: _getHeaders - Token refreshed successfully',
             );
           } else {
-            // Refresh failed, clear token
+            // Refresh failed after retries, clear token
             debugPrint(
-              'ApiService: _getHeaders - Token refresh failed, clearing token',
+              'ApiService: _getHeaders - Token refresh failed after retries, clearing token',
             );
             await clearToken();
             await _storage.delete(key: 'user_id');
@@ -390,6 +390,54 @@ class ApiService {
       debugPrint('ApiService: Error refreshing token: $e');
       return false;
     }
+  }
+
+  // Method to refresh access token with retry logic and exponential backoff
+  Future<bool> _refreshAccessTokenWithRetry() async {
+    const int maxRetries = 3;
+    const int baseDelayMs = 1000; // 1 second base delay
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final bool refreshed = await _refreshAccessToken();
+        if (refreshed) {
+          if (attempt > 1) {
+            debugPrint(
+              'ApiService: Token refreshed successfully on attempt $attempt',
+            );
+          }
+          return true;
+        }
+
+        // If not the last attempt, wait before retrying
+        if (attempt < maxRetries) {
+          final int delayMs =
+              baseDelayMs *
+              (1 << (attempt - 1)); // Exponential backoff: 1s, 2s, 4s
+          debugPrint(
+            'ApiService: Token refresh attempt $attempt failed. Retrying in ${delayMs}ms...',
+          );
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+      } catch (e) {
+        debugPrint(
+          'ApiService: Error during token refresh attempt $attempt: $e',
+        );
+        // If not the last attempt, wait before retrying
+        if (attempt < maxRetries) {
+          final int delayMs =
+              baseDelayMs *
+              (1 << (attempt - 1)); // Exponential backoff: 1s, 2s, 4s
+          debugPrint(
+            'ApiService: Token refresh attempt $attempt failed with exception. Retrying in ${delayMs}ms...',
+          );
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+      }
+    }
+
+    debugPrint('ApiService: All $maxRetries token refresh attempts failed');
+    return false;
   }
 
   // Helper to retry a request with new token
