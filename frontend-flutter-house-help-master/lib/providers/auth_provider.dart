@@ -114,6 +114,9 @@ class AuthProvider with ChangeNotifier {
   // PRODUCTION FIX: Mutex lock to prevent race conditions during auth operations
   static bool _isAuthOperationInProgress = false;
 
+  // Track if user refresh is in progress to prevent false negative in isAuthenticated
+  static bool _isUserRefreshInProgress = false;
+
   AuthProvider() {
     debugPrint('AuthProvider: Constructor called');
     // Synchronously read from SharedPreferences to restore auth state
@@ -256,10 +259,20 @@ class AuthProvider with ChangeNotifier {
       debugPrint(
         'AuthProvider: isAuthenticated - have token but no user, refreshing...',
       );
-      _refreshUserFromApi();
-      // Return false during refresh to prevent premature navigation
-      // AuthWrapper will re-check after refresh completes
-      return false;
+      // FIX: Return true if we have a token, even if user is being refreshed
+      // This prevents the login screen from showing during refresh
+      // The refresh will update the user data when complete
+      if (!_isUserRefreshInProgress) {
+        _isUserRefreshInProgress = true;
+        _refreshUserFromApi()
+            .then((_) {
+              _isUserRefreshInProgress = false;
+            })
+            .catchError((_) {
+              _isUserRefreshInProgress = false;
+            });
+      }
+      return true; // Return true to prevent login screen during refresh
     }
 
     // No authentication data found

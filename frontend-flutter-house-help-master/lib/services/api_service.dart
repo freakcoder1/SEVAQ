@@ -37,12 +37,28 @@ Map<String, dynamic>? decodeJwt(String token) {
   }
 }
 
+// Time drift compensation: add 30 seconds leeway to account for device/server time differences
+// This prevents premature token expiry detection due to clock skew
+const int TOKEN_TIME_LEEWAY_SECONDS = 30;
+
 // Helper function to check if token is expired
 bool isTokenExpired(Map<String, dynamic> tokenData) {
   if (!tokenData.containsKey('exp')) return true;
   final exp = tokenData['exp'] as int;
   final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
-  return currentTime > exp;
+  // Add leeway to prevent false positives due to device time drift
+  return currentTime > (exp - TOKEN_TIME_LEEWAY_SECONDS);
+}
+
+// Check if token needs proactive refresh (expires in next 5 minutes)
+// This allows refreshing before the token actually expires
+bool isTokenExpiringSoon(Map<String, dynamic> tokenData) {
+  if (!tokenData.containsKey('exp')) return true;
+  final exp = tokenData['exp'] as int;
+  final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
+  // Refresh if token expires in less than 5 minutes (300 seconds)
+  const int proactiveRefreshThreshold = 300;
+  return (exp - currentTime) < proactiveRefreshThreshold;
 }
 
 class ApiService {
@@ -95,9 +111,35 @@ class ApiService {
       }
 
       // Check token expiry (PRODUCTION-READY: Try to refresh expired tokens)
+      // Also check for proactive refresh if token is expiring soon
       final tokenData = decodeJwt(token);
       if (tokenData != null) {
-        if (isTokenExpired(tokenData)) {
+        // Proactive refresh: refresh if token is expiring soon (within 5 minutes)
+        if (isTokenExpiringSoon(tokenData)) {
+          debugPrint(
+            'ApiService: _getHeaders - Token expiring soon, attempting proactive refresh',
+          );
+          // Try to refresh the access token with retry logic
+          final refreshed = await _refreshAccessTokenWithRetry();
+          if (refreshed) {
+            // Get the new token from storage
+            token = await _storage.read(key: 'jwt_token');
+            if (token == null) {
+              token = (await SharedPreferences.getInstance()).getString(
+                'jwt_token',
+              );
+            }
+            debugPrint(
+              'ApiService: _getHeaders - Token proactively refreshed successfully',
+            );
+          } else {
+            // Proactive refresh failed, but token not yet expired
+            // Continue with current token - will retry on next request
+            debugPrint(
+              'ApiService: _getHeaders - Proactive refresh failed, continuing with current token',
+            );
+          }
+        } else if (isTokenExpired(tokenData)) {
           debugPrint(
             'ApiService: _getHeaders - Token has expired, attempting refresh',
           );
@@ -394,7 +436,7 @@ class ApiService {
 
   // Method to refresh access token with retry logic and exponential backoff
   Future<bool> _refreshAccessTokenWithRetry() async {
-    const int maxRetries = 3;
+    const int maxRetries = 5; // Increased from 3 to 5 for better reliability
     const int baseDelayMs = 1000; // 1 second base delay
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
