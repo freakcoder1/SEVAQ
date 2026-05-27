@@ -13,6 +13,7 @@ import { Booking } from '../../bookings/entities/booking.entity';
 import { User } from '../../users/entities/user.entity';
 import { Service } from '../../services/entities/service.entity';
 import { Worker } from '../../workers/entities/worker.entity';
+import { Subscription } from '../../subscriptions/entities/subscription.entity';
 
 export enum ServiceRequestSource {
   SUBSCRIPTION = 'SUBSCRIPTION',
@@ -99,6 +100,13 @@ export class ServiceRequest {
   @ManyToOne(() => Worker, (worker) => worker.serviceRequests)
   @JoinColumn({ name: 'assignedWorkerId' })
   worker: Worker;
+
+  @Column('int', { nullable: true })
+  subscriptionId?: number | null;
+
+  @ManyToOne(() => Subscription, { nullable: true })
+  @JoinColumn({ name: 'subscriptionId' })
+  subscription?: Subscription | null;
 
   // Business logic methods
   canRetry(): boolean {

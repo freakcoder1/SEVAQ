@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ServiceRequest } from './entities/service-request.entity';
+import { ServiceRequest, ServiceRequestSource } from './entities/service-request.entity';
 import { AssignmentWorker } from './assignment.worker';
 import { Worker } from '../workers/entities/worker.entity';
 import { User } from '../users/entities/user.entity';
@@ -292,12 +292,61 @@ export class ServiceRequestsService {
         };
       }
 
-      // If no active service request, check for active subscription with assigned worker
+      // If no active service request, check for upcoming subscription bookings
+      // Look for subscription bookings that are in the future (within 7 days)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      const upcomingSubscriptionBooking = await this.serviceRequestsRepository
+        .createQueryBuilder('request')
+        .leftJoinAndSelect('request.worker', 'worker')
+        .leftJoinAndSelect('worker.user', 'workerUser')
+        .leftJoinAndSelect('request.service', 'service')
+        .where('request.userId = :userId', { userId: numericUserId })
+        .andWhere('request.source = :source', { source: ServiceRequestSource.SUBSCRIPTION })
+        .andWhere('request.date >= :today', { today: today.toISOString().split('T')[0] })
+        .andWhere('request.date <= :nextWeek', { nextWeek: nextWeek.toISOString().split('T')[0] })
+        .andWhere('request.assignmentStatus IN (:...statuses)', { 
+          statuses: ['ASSIGNED', 'IN_PROGRESS', 'REQUESTED', 'CONFIRMED'] 
+        })
+        .orderBy('request.date', 'ASC')
+        .addOrderBy('request.startTime', 'ASC')
+        .limit(1)
+        .getOne();
+
+      if (upcomingSubscriptionBooking) {
+        // Calculate ETA based on time window
+        const now = new Date();
+        const currentHour = now.getHours();
+        let etaMinutes = 24;
+        
+        // Estimate ETA based on time window (lowercase values in DB)
+        if (upcomingSubscriptionBooking.timeWindow === 'morning' && currentHour < 12) {
+          etaMinutes = 24;
+        } else if (upcomingSubscriptionBooking.timeWindow === 'afternoon' && currentHour >= 12 && currentHour < 17) {
+          etaMinutes = 24;
+        } else if (upcomingSubscriptionBooking.timeWindow === 'evening' && currentHour >= 17) {
+          etaMinutes = 24;
+        }
+
+        return {
+          operationTitle: upcomingSubscriptionBooking.service?.name || 'Service',
+          assignedTo: upcomingSubscriptionBooking.worker?.user 
+            ? `${upcomingSubscriptionBooking.worker.user.firstName || ''} ${upcomingSubscriptionBooking.worker.user.lastName || ''}`.trim() || 'Worker'
+            : 'Worker',
+          eta: `${etaMinutes} mins`,
+          status: upcomingSubscriptionBooking.assignmentStatus,
+        };
+      }
+
+      // If no upcoming subscription booking, check for active subscription with assigned worker
       const activeSubscription = await this.subscriptionsRepository
         .createQueryBuilder('subscription')
         .leftJoinAndSelect('subscription.assignedWorker', 'worker')
         .leftJoinAndSelect('worker.user', 'workerUser')
-        .where('subscription.userId = :userId', { userId: userIdOrPublicId })
+        .where('subscription.userId = :userId', { userId: numericUserId })
         .andWhere('subscription.status = :status', { status: SubscriptionStatus.ACTIVE })
         .andWhere('subscription.assignedWorkerId IS NOT NULL')
         .orderBy('subscription.createdAt', 'DESC')
