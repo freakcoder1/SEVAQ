@@ -62,7 +62,7 @@ export class ServiceRequest {
     type: 'varchar',
     default: 'REQUESTED',
   })
-  assignmentStatus: 'REQUESTED' | 'ASSIGNED' | 'FAILED_TO_ASSIGN';
+  assignmentStatus: 'REQUESTED' | 'ASSIGNED' | 'IN_PROGRESS' | 'FAILED_TO_ASSIGN';
 
   @Column({ nullable: true, type: 'int' })
   assignedWorkerId?: number | null;

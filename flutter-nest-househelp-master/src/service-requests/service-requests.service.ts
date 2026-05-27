@@ -9,6 +9,7 @@ import { AssignmentWorker } from './assignment.worker';
 import { Worker } from '../workers/entities/worker.entity';
 import { User } from '../users/entities/user.entity';
 import { Service } from '../services/entities/service.entity';
+import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 
 @Injectable()
 export class ServiceRequestsService {
@@ -25,6 +26,8 @@ export class ServiceRequestsService {
     private usersRepository: Repository<User>,
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
+    @InjectRepository(Subscription)
+    private subscriptionsRepository: Repository<Subscription>,
   ) {}
 
   async create(
@@ -229,5 +232,119 @@ export class ServiceRequestsService {
     // This method can be used to manually trigger assignment processing
     // For now, it's a placeholder that can be expanded with actual logic
     this.logger.log('Assignment processing triggered manually');
+  }
+
+  /**
+    * Get user's active booking for home screen display
+    * Returns the most recent in-progress or confirmed booking
+    * Also checks for active subscriptions with assigned workers
+    */
+  async getUserActiveBooking(userIdOrPublicId: string): Promise<{
+    operationTitle: string;
+    assignedTo: string;
+    eta: string;
+    status: string;
+  } | null> {
+    // Convert userId (which might be UUID/publicId) to numeric ID
+    let numericUserId: number;
+    
+    if (userIdOrPublicId.includes('-') && userIdOrPublicId.length === 36) {
+      const user = await this.usersRepository.findOne({
+        where: { publicId: userIdOrPublicId },
+      });
+      if (!user) {
+        return null;
+      }
+      numericUserId = user.id;
+    } else {
+      numericUserId = parseInt(userIdOrPublicId, 10);
+      if (isNaN(numericUserId)) {
+        return null;
+      }
+    }
+
+    try {
+      // First, find the most recent active service request (ASSIGNED or IN_PROGRESS)
+      const activeBooking = await this.serviceRequestsRepository
+        .createQueryBuilder('request')
+        .leftJoinAndSelect('request.worker', 'worker')
+        .leftJoinAndSelect('worker.user', 'workerUser')
+        .leftJoinAndSelect('request.service', 'service')
+        .where('request.userId = :userId', { userId: numericUserId })
+        .andWhere('request.assignmentStatus IN (:...statuses)', { 
+          statuses: ['ASSIGNED', 'IN_PROGRESS'] 
+        })
+        .orderBy('request.createdAt', 'DESC')
+        .limit(1)
+        .getOne();
+
+      if (activeBooking) {
+        // Calculate ETA (simplified - in production would use actual time calculations)
+        const etaMinutes = 24; // Default ETA
+        
+        return {
+          operationTitle: activeBooking.service?.name || 'Service',
+          assignedTo: activeBooking.worker?.user 
+            ? `${activeBooking.worker.user.firstName || ''} ${activeBooking.worker.user.lastName || ''}`.trim() || 'Worker'
+            : 'Worker',
+          eta: `${etaMinutes} mins`,
+          status: activeBooking.assignmentStatus,
+        };
+      }
+
+      // If no active service request, check for active subscription with assigned worker
+      const activeSubscription = await this.subscriptionsRepository
+        .createQueryBuilder('subscription')
+        .leftJoinAndSelect('subscription.assignedWorker', 'worker')
+        .leftJoinAndSelect('worker.user', 'workerUser')
+        .where('subscription.userId = :userId', { userId: userIdOrPublicId })
+        .andWhere('subscription.status = :status', { status: SubscriptionStatus.ACTIVE })
+        .andWhere('subscription.assignedWorkerId IS NOT NULL')
+        .orderBy('subscription.createdAt', 'DESC')
+        .limit(1)
+        .getOne();
+
+      if (activeSubscription && activeSubscription.assignedWorker) {
+        // Calculate ETA based on preferred time window
+        const now = new Date();
+        const currentHour = now.getHours();
+        let etaMinutes = 24;
+        
+        // Estimate ETA based on time window
+        if (activeSubscription.preferredTimeWindow === 'MORNING' && currentHour < 12) {
+          etaMinutes = 24;
+        } else if (activeSubscription.preferredTimeWindow === 'AFTERNOON' && currentHour >= 12 && currentHour < 17) {
+          etaMinutes = 24;
+        } else if (activeSubscription.preferredTimeWindow === 'EVENING' && currentHour >= 17) {
+          etaMinutes = 24;
+        }
+
+        // Get service type from customPlanData
+        const serviceType = activeSubscription.customPlanData?.serviceType || 'Cleaning';
+        const operationTitle = serviceType === 'CLEANING' ? 'House Cleaning' : 
+                              serviceType === 'COOKING' ? 'Cooking Support' : 
+                              serviceType.charAt(0).toUpperCase() + serviceType.slice(1).toLowerCase();
+
+        return {
+          operationTitle: operationTitle,
+          assignedTo: activeSubscription.assignedWorker.user
+            ? `${activeSubscription.assignedWorker.user.firstName || ''} ${activeSubscription.assignedWorker.user.lastName || ''}`.trim() || 'Worker'
+            : 'Worker',
+          eta: `${etaMinutes} mins`,
+          status: 'IN_PROGRESS',
+        };
+      }
+
+      return null;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Error in getUserActiveBooking: ${errorMessage}`,
+        errorStack,
+      );
+      // Return null instead of throwing to avoid 500 error
+      return null;
+    }
   }
 }

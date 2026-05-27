@@ -29,22 +29,22 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center p-4">
+      <div className="bg-surface rounded-md shadow-surface w-full max-w-md p-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">SEVAQ Admin</h1>
-          <p className="text-gray-500 mt-2">Sign in to your admin account</p>
+          <h1 className="text-3xl font-bold text-on-surface">SEVAQ Admin</h1>
+          <p className="text-secondary-text mt-2">Sign in to your admin account</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
+          <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg mb-6">
+              {error}
+            </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-on-surface-variant mb-2">
               Email Address
             </label>
             <input
@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-on-surface-variant mb-2">
               Password
             </label>
             <input

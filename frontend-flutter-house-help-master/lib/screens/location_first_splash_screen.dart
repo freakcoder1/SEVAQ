@@ -57,7 +57,12 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
       if (mounted) {}
     });
 
-    _checkExistingLocation();
+    // Check location after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkExistingLocation();
+      }
+    });
   }
 
   void _checkExistingLocation() async {
@@ -91,7 +96,6 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
         'LocationFirstSplashScreen: Location exists, marking setup complete immediately',
       );
       // Mark location setup complete IMMEDIATELY - AuthWrapper will automatically transition
-      // DO NOT use Future.delayed - it causes race conditions and blank screens
       locationProvider.markLocationSetupComplete();
 
       // Check service availability in background (doesn't block UI)
@@ -105,17 +109,20 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
       );
       // Navigate to location setup - this pushes on top of the current screen
       // When LocationSetupScreen completes, we return here and rebuild will check location again
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          debugPrint('LocationFirstSplashScreen: Pushing LocationSetupScreen');
-          // Reset the check flag so we check location again when we return
-          _hasCheckedLocation = false;
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => LocationSetupScreen()),
-          );
-        }
-      });
+      if (mounted) {
+        debugPrint('LocationFirstSplashScreen: Pushing LocationSetupScreen');
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => LocationSetupScreen()),
+        ).then((_) {
+          // Reset the check flag when returning from LocationSetupScreen
+          if (mounted) {
+            _hasCheckedLocation = false;
+            // Trigger a rebuild to check location again
+            setState(() {});
+          }
+        });
+      }
     }
   }
 
@@ -139,16 +146,15 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
       'LocationFirstSplashScreen.build: START, location=$currentLocation, completed=$hasCompletedSetup',
     );
 
-    // Check location on every build (not just first time)
-    // This handles the case when returning from LocationSetupScreen
-    _checkExistingLocation();
-
     // Initialize theme-dependent animations if not already done
     if (!_themeInitialized) {
       _initializeThemeDependentAnimations(theme);
       _themeInitialized = true;
       debugPrint('LocationFirstSplashScreen.build: Theme initialized');
     }
+
+    // Note: Location check is now handled in initState and via Navigator.pop callback
+    // No need to check in build to avoid infinite loops
 
     // Safety check - ensure animation is not null
     final bgColor = _bgColorAnimation?.value ?? theme.scaffoldBackgroundColor;
@@ -203,7 +209,7 @@ class _LocationFirstSplashScreenState extends State<LocationFirstSplashScreen>
                           gradient: LinearGradient(
                             colors: [
                               theme.primaryColor,
-                              theme.primaryColor.withValues(alpha:0.8),
+                              theme.primaryColor.withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,

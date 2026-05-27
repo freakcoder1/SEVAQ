@@ -64,17 +64,55 @@ class ProfileScreen extends StatelessWidget {
             ),
             Consumer<ThemeProvider>(
               builder: (context, themeProvider, _) {
-                return SwitchListTile(
-                  secondary: Icon(
-                    themeProvider.isDarkMode
-                        ? Icons.dark_mode
-                        : Icons.light_mode,
-                  ),
-                  title: Text('Dark Mode'),
-                  value: themeProvider.isDarkMode,
-                  onChanged: (value) {
-                    themeProvider.toggleTheme();
-                  },
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      secondary: Icon(
+                        themeProvider.isDarkMode
+                            ? Icons.dark_mode
+                            : Icons.light_mode,
+                      ),
+                      title: Text('Dark Mode'),
+                      value: themeProvider.isDarkMode,
+                      onChanged: (value) {
+                        themeProvider.toggleTheme();
+                      },
+                    ),
+                    // Dark mode preview
+                    if (themeProvider.isDarkMode)
+                      Container(
+                        height: 80,
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0A1A15), Color(0xFF153028)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.dark_mode,
+                              color: const Color(0xFF2A7A6A),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Premium dark theme active',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 );
               },
             ),

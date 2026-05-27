@@ -31,6 +31,35 @@ export class WorkersController {
     return this.workersService.findAll();
   }
 
+  /**
+   * Get count of workers near a location
+   * GET /workers/nearby/count?lat={lat}&lng={lng}&radius={radius}
+   * Used by home screen for "X verified professionals nearby" display
+   */
+  @Get('nearby/count')
+  async getNearbyWorkersCount(
+    @Query('lat') lat?: number,
+    @Query('long') long?: number,
+    @Query('radius') radius?: number,
+  ) {
+    if (lat && long) {
+      const count = await this.workersService.getNearbyWorkersCount(lat, long, radius || 5);
+      return { count, radius: radius || 5 };
+    }
+    return { count: 0, radius: 0 };
+  }
+
+  /**
+   * Get worker statistics (average response time, etc.)
+   * GET /workers/stats
+   * Used by home screen for "X min average arrival" display
+   */
+  @Get('stats')
+  async getWorkerStats() {
+    const stats = await this.workersService.getWorkerStats();
+    return stats;
+  }
+
   @Post()
   create(@Body() createWorkerDto: CreateWorkerDto) {
     return this.workersService.create(

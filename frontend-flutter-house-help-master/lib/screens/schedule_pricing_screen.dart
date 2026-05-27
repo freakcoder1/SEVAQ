@@ -43,7 +43,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
   // Constants
   static const int MAX_DATE_PILLS = 7;
   static const double BASE_SERVICE_PRICE =
-      49.0; // Base price for maid service (matches new ₹49/hour rate)
+      49.0; // Base price for home cleaning service (matches new ₹49/hour rate)
 
   @override
   void initState() {
@@ -208,7 +208,7 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
       final serviceRequestData = {
         'serviceId':
             (service?.id != null && service!.id > 0 ? service!.id : null) ??
-            ServiceMapper.getRepresentativeBackendId('maid'),
+            ServiceMapper.getRepresentativeBackendId('cleaning'),
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate!),
         'timeWindow': _selectedTimeWindow!.id,
         'location': {
@@ -424,53 +424,56 @@ class _SchedulePricingScreenState extends State<SchedulePricingScreen> {
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat('EEE').format(date),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? const Color(0xFF2E7D32)
-                              : Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        DateFormat('dd').format(date),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? const Color(0xFF2E7D32)
-                              : Colors.black87,
-                        ),
-                      ),
-                      if (isSelected && index == 0) const SizedBox(height: 1),
-                      if (isSelected && index == 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1,
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('EEE').format(date),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? const Color(0xFF2E7D32)
+                                : Colors.black54,
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF2E7D32,
-                            ).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          DateFormat('dd').format(date),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? const Color(0xFF2E7D32)
+                                : Colors.black87,
                           ),
-                          child: const Text(
-                            'Recommended',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Color(0xFF2E7D32),
-                              fontWeight: FontWeight.w600,
+                        ),
+                        if (isSelected && index == 0) const SizedBox(height: 1),
+                        if (isSelected && index == 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF2E7D32,
+                              ).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Recommended',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Color(0xFF2E7D32),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

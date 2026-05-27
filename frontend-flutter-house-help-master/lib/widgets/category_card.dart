@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import '../core/theme/design_tokens.dart';
 
 class CategoryCard extends StatelessWidget {
   final String category;
   final VoidCallback onTap;
 
-  const CategoryCard({
-    Key? key,
-    required this.category,
-    required this.onTap,
-  }) : super(key: key);
+  const CategoryCard({Key? key, required this.category, required this.onTap})
+    : super(key: key);
 
   // Map categories to icons
   IconData _getCategoryIcon(String category) {
@@ -29,50 +27,68 @@ class CategoryCard extends StatelessWidget {
   }
 
   // Map categories to colors
-  Color _getCategoryColor(String category) {
+  Color _getCategoryColor(String category, bool isDark) {
     switch (category.toLowerCase()) {
       case 'cleaning':
-        return Colors.blue[600]!;
+        return isDark ? const Color(0xFF4A90E6) : Colors.blue[600]!;
       case 'cooking':
-        return Colors.orange[600]!;
+        return isDark ? const Color(0xFFE68A4A) : Colors.orange[600]!;
       case 'electrician':
-        return Colors.yellow[700]!;
+        return isDark ? const Color(0xFFE6C34A) : Colors.yellow[700]!;
       case 'plumber':
-        return Colors.green[600]!;
+        return isDark ? const Color(0xFF4AE68A) : Colors.green[600]!;
       case 'caretaker':
-        return Colors.purple[600]!;
+        return isDark ? const Color(0xFFA64AE6) : Colors.purple[600]!;
       default:
-        return Colors.grey[600]!;
+        return isDark ? Colors.grey[500]! : Colors.grey[600]!;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      elevation: 0,
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark
+                ? DesignTokens.cardDark.withValues(alpha: 0.8)
+                : DesignTokens.cardLight,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
+                spreadRadius: -4,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 _getCategoryIcon(category),
                 size: 32,
-                color: _getCategoryColor(category),
+                color: _getCategoryColor(category, isDark),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 category,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),

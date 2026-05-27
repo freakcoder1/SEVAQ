@@ -12,6 +12,7 @@ import {
   BeforeInsert,
   VersionColumn,
 } from 'typeorm';
+import { Expose } from 'class-transformer';
 import { User } from '../../users/entities/user.entity';
 import { Slot } from '../../slots/entities/slot.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
@@ -39,6 +40,7 @@ export class Worker {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
+  @Expose()
   user: User;
 
   @Column({ type: 'text', nullable: true })

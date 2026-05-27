@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_house_help/providers/booking_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../firebase_options.dart';
 import 'api_service.dart';
@@ -16,6 +18,34 @@ class FirebaseMessagingService {
   static final FirebaseMessaging _firebaseMessaging =
       FirebaseMessaging.instance;
   static final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  /// Get user role from storage (uses shared_preferences on web, secure storage on mobile)
+  static Future<String?> _getUserRole() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('user_role');
+    }
+    return await _secureStorage.read(key: 'user_role');
+  }
+
+  /// Store user role (uses shared_preferences on web, secure storage on mobile)
+  static Future<void> _storeUserRole(String role) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', role);
+    } else {
+      await _secureStorage.write(key: 'user_role', value: role);
+    }
+  }
+
+  /// Get pending FCM token from storage (uses shared_preferences on web, secure storage on mobile)
+  static Future<String?> _getPendingFcmToken() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('pending_fcm_token');
+    }
+    return await _secureStorage.read(key: 'pending_fcm_token');
+  }
 
   static Future<void> initialize() async {
     try {
@@ -107,8 +137,8 @@ class FirebaseMessagingService {
       // Create ApiService instance - this handles auth token automatically
       final apiService = ApiService();
 
-      // Get user role from secure storage - stored during login
-      String? userRole = await _secureStorage.read(key: 'user_role');
+      // Get user role from storage (uses shared_preferences on web, secure storage on mobile)
+      String? userRole = await _getUserRole();
 
       // Only try worker endpoint if user is explicitly a worker
       // Default to user endpoint for customers and unknown roles
@@ -151,10 +181,8 @@ class FirebaseMessagingService {
         );
         await _sendFcmTokenToBackend(token);
       } else {
-        // Try to use pending token from secure storage (stored during pre-login initialization)
-        String? pendingToken = await _secureStorage.read(
-          key: 'pending_fcm_token',
-        );
+        // Try to use pending token from storage (stored during pre-login initialization)
+        String? pendingToken = await _getPendingFcmToken();
         if (pendingToken != null) {
           print(
             'Using pending FCM token from storage: ${pendingToken.substring(0, 20)}...',

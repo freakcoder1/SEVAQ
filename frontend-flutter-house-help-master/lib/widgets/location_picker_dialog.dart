@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../providers/location_provider.dart';
 import 'package:flutter_house_help/models/location.dart' as models;
 
@@ -14,12 +15,14 @@ class LocationPickerDialog extends StatefulWidget {
 
 class _LocationPickerDialogState extends State<LocationPickerDialog> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
   List<models.Location> _searchResults = [];
   bool _isSearching = false;
   String? _errorMessage;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -33,24 +36,30 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       return;
     }
 
-    setState(() {
-      _isSearching = true;
-      _errorMessage = null;
-    });
+    // Cancel previous timer
+    _debounceTimer?.cancel();
 
-    try {
-      final results = await widget.locationProvider.searchLocations(query);
+    // Start new timer
+    _debounceTimer = Timer(Duration(milliseconds: 300), () async {
       setState(() {
-        _searchResults = results.cast<models.Location>();
-        _isSearching = false;
+        _isSearching = true;
+        _errorMessage = null;
       });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to search locations. Please try again.';
-        _isSearching = false;
-        _searchResults = [];
-      });
-    }
+
+      try {
+        final results = await widget.locationProvider.searchLocations(query);
+        setState(() {
+          _searchResults = results.cast<models.Location>();
+          _isSearching = false;
+        });
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Failed to search locations. Please try again.';
+          _isSearching = false;
+          _searchResults = [];
+        });
+      }
+    });
   }
 
   void _selectLocation(models.Location location) {

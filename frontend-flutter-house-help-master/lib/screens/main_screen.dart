@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
+import 'location_screen.dart';
+import 'operation_details_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
 import '../widgets/location_selection_popup.dart';
+import '../widgets/floating_navigation.dart';
 
 /// MainScreen - A simple navigation wrapper that provides tab navigation.
 ///
@@ -26,7 +29,15 @@ class _MainScreenState extends State<MainScreen> {
   bool _hasCheckedLocation = false;
   bool _showingLocationPopup = false;
 
-  List<Widget> get _screens => [HomeScreen(), HistoryScreen(), ProfileScreen()];
+  List<Widget> get _screens => [
+    HomeScreen(),
+    OperationDetailsScreen(
+      operationId: 'op-001',
+      operationType: 'Household Support',
+      etaMinutes: 15,
+    ),
+    ProfileScreen(),
+  ];
 
   List<NavigationDestination> get _destinations => [
     NavigationDestination(
@@ -35,9 +46,9 @@ class _MainScreenState extends State<MainScreen> {
       label: 'Home',
     ),
     NavigationDestination(
-      icon: Icon(Icons.calendar_today_outlined),
-      selectedIcon: Icon(Icons.calendar_today),
-      label: 'Bookings',
+      icon: Icon(Icons.track_changes_outlined),
+      selectedIcon: Icon(Icons.track_changes),
+      label: 'Operations',
     ),
     NavigationDestination(
       icon: Icon(Icons.person_outline),
@@ -104,15 +115,38 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: _destinations,
+      body: Stack(
+        children: [
+          // Cinematic page transitions
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.95 + (value * 0.05),
+                child: Opacity(
+                  opacity: 0.0 + (value * 1.0),
+                  child: IndexedStack(index: _currentIndex, children: _screens),
+                ),
+              );
+            },
+          ),
+          // Floating navigation
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 32,
+            child: FloatingNavigation(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

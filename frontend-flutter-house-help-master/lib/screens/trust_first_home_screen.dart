@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
 import '../models/service.dart';
 import '../models/booking.dart';
 import '../models/category_availability.dart';
-import '../models/worker.dart';
 import '../models/user.dart';
 import 'package:flutter_house_help/models/location.dart';
 import '../providers/provider_manager.dart';
@@ -14,21 +12,22 @@ import '../providers/service_provider.dart';
 import '../providers/worker_provider.dart';
 import '../providers/recommendation_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
 import '../models/recommendation.dart';
 import '../services/api_service.dart';
-import '../widgets/trust_first_header.dart';
-import '../widgets/trust_first_recommendation.dart';
-import '../widgets/trust_first_suggestions.dart';
-import '../widgets/support_signal.dart';
+import '../widgets/sevaq_header.dart';
+import '../widgets/operational_hero.dart';
+import '../widgets/active_operations.dart';
+import '../widgets/trust_layer.dart';
+import '../widgets/society_intelligence.dart';
+import '../widgets/household_support.dart';
+import '../widgets/proactive_message.dart';
 import '../widgets/location_picker_dialog.dart';
-import '../widgets/pre_service_reminder_banner.dart';
-import '../widgets/booking_status_timeline.dart';
-import '../widgets/compact_booking_status_indicator.dart';
-import '../widgets/subscription_reminder_banner.dart';
-import '../providers/booking_provider.dart';
+import '../core/animation/transition_manager.dart';
+import '../core/animation/haptic_service.dart';
+import '../theme.dart';
 import 'service_details_screen.dart';
 import 'service_clarification_screen.dart';
-import 'monitoring_dashboard_screen.dart';
 import 'package:provider/provider.dart';
 
 class TrustFirstHomeScreen extends StatefulWidget {
@@ -71,7 +70,7 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
           // Extract coordinates and format nicely
           return _formatCoordinatesFromAddress(address);
         }
-        return address;
+        return _truncateLocation(address);
       } else if (latitude != null && longitude != null) {
         return 'Near coordinates (${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)})';
       }
@@ -87,13 +86,23 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
           // Extract coordinates and format nicely
           return _formatCoordinatesFromAddress(address);
         }
-        return address;
+        return _truncateLocation(address);
       } else if (latitude != null && longitude != null) {
         return 'Near coordinates (${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)})';
       }
     }
 
     return 'Your Area';
+  }
+
+  String _truncateLocation(String address) {
+    // Truncate to first two parts for cleaner header display
+    // e.g., "Tower A3, Greater Noida, Uttar Pradesh, India" -> "Tower A3, Greater Noida"
+    final parts = address.split(', ');
+    if (parts.length <= 2) {
+      return address;
+    }
+    return '${parts[0]}, ${parts[1]}';
   }
 
   String _formatCoordinatesFromAddress(String address) {
@@ -148,6 +157,16 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     return 'Near coordinates (${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)})';
   }
 
+  String _getOperationalStatus() {
+    // Dynamic status based on recommendation and worker availability
+    if (_currentRecommendation?.worker != null) {
+      return 'Support available';
+    } else if (services.isNotEmpty) {
+      return 'Monitoring availability';
+    }
+    return 'System ready';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -155,14 +174,16 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     _loadHomeData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRecommendations();
-      // Fetch bookings to check for pre-service reminders
+      // Fetch bookings and subscriptions to check for pre-service reminders
       final bookingProvider = ProviderManager.safeGetProvider<BookingProvider>(
         context,
         listen: false,
       );
       if (bookingProvider != null) {
-        debugPrint('TrustFirstHomeScreen: Calling fetchBookings()');
-        bookingProvider.fetchBookings();
+        debugPrint(
+          'TrustFirstHomeScreen: Calling fetchBookingsAndSubscriptions()',
+        );
+        bookingProvider.fetchBookingsAndSubscriptions(context: context);
       } else {
         debugPrint('TrustFirstHomeScreen: BookingProvider not available');
       }
@@ -241,9 +262,7 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
       final hasWorkers =
           recommendationProvider.currentRecommendation?.worker != null;
       setState(() {
-        _systemMessage = hasWorkers
-            ? 'All services on track'
-            : 'We’re monitoring availability in your area';
+        _systemMessage = 'All services operating normally';
 
         _currentRecommendation = recommendationProvider.currentRecommendation;
 
@@ -257,6 +276,16 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
         errorMessage = 'Failed to load recommendations: $e';
       });
     }
+  }
+
+  /// Get active booking for home screen display
+  Future<Map<String, dynamic>?> _getActiveBooking() async {
+    final bookingProvider = ProviderManager.safeGetProvider<BookingProvider>(
+      context,
+      listen: false,
+    );
+    if (bookingProvider == null) return null;
+    return bookingProvider.getActiveBooking(context: context);
   }
 
   void _handlePrimaryRecommendation() {
@@ -277,11 +306,11 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
 
       print('🔍 DEBUG: userId from AuthProvider: $userId');
 
-      // Navigate to Service Clarification Page with userId and location
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MultiProvider(
+      // Navigate to Service Clarification Page with cinematic transition
+      HapticService.lightTap();
+      Navigator.of(context).push(
+        TransitionManager.createFadeScaleRoute(
+          MultiProvider(
             providers: [
               ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
               ChangeNotifierProvider<LocationProvider>.value(
@@ -317,34 +346,21 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
       return;
     }
 
+    HapticService.lightTap();
+    final route = TransitionManager.createFadeScaleRoute(
+      ServiceDetailsScreen(service: service, userId: userId),
+    );
+
     if (workerProvider != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ServiceDetailsScreen(service: service, userId: userId),
-        ),
-      );
+      Navigator.push(context, route);
     } else {
       final fallbackProvider = ProviderManager.safeGetProvider<WorkerProvider>(
         context,
       );
       if (fallbackProvider != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ServiceDetailsScreen(service: service, userId: userId),
-          ),
-        );
+        Navigator.push(context, route);
       } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ServiceDetailsScreen(service: service, userId: userId),
-          ),
-        );
+        Navigator.push(context, route);
       }
     }
   }
@@ -370,33 +386,7 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     final isDarkMode = themeProvider?.isDarkMode ?? false;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Sevaq',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.location_on,
-              color: locationProvider?.currentLocationData != null
-                  ? AppTheme.successColor
-                  : AppTheme.errorColor,
-              size: 24,
-            ),
-            onPressed: () {
-              _showLocationDialog(context, locationProvider);
-            },
-            tooltip: 'Change Location',
-          ),
-        ],
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: isLoading
           ? _buildLoadingIndicator()
           : errorMessage.isNotEmpty
@@ -460,235 +450,142 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     required dynamic userId,
     Location? initialLocation,
   }) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await _loadHomeData();
-        await _loadRecommendations();
-      },
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1️⃣ TRUST HEADER (TOP)
-            TrustFirstHeader(
-              location: _locationText,
-              systemMessage: _systemMessage,
+    final authProvider = ProviderManager.safeGetProvider<AuthProvider>(context);
+    final user = authProvider?.user;
+
+    return Stack(
+      children: [
+        // Atmospheric background gradient with subtle radial glow - Phase 4 Refinement
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F7F5), // Warm grey background
+              gradient: RadialGradient(
+                center: Alignment.topCenter,
+                radius: 1.5,
+                colors: [
+                  const Color(0xFFF6F7F5).withValues(alpha: 0.98),
+                  const Color(0xFFF6F7F5).withValues(alpha: 0.95),
+                ],
+                stops: [0.0, 1.0],
+              ),
             ),
-
-            SizedBox(height: 16),
-
-            // Compact booking status indicator - shows active booking progress
-            Consumer<BookingProvider>(
-              builder: (context, bookingProvider, child) {
-                final activeBooking = bookingProvider.upcomingBooking;
-
-                if (activeBooking == null) {
-                  return const SizedBox.shrink();
-                }
-
-                return CompactBookingStatusIndicator(
-                  bookingStatus: activeBooking.status,
-                  onTap: () {
-                    // Navigation will be implemented later, for now just log tap
-                    debugPrint(
-                      'Booking status indicator tapped for booking: ${activeBooking.publicId}',
+          ),
+        ),
+        // Soft noise texture overlay - Phase 4 Refinement
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.02,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.05),
+                    Colors.transparent,
+                    Colors.white.withValues(alpha: 0.02),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+        ),
+        RefreshIndicator(
+          onRefresh: () async {
+            await _loadHomeData();
+            await _loadRecommendations();
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              0,
+              24,
+              16, // Reduced - bottom nav is now in Scaffold
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1️⃣ COMPACT HEADER
+                SevaqHeader(
+                  householdName: user?.firstName ?? 'Your',
+                  locationText: _locationText,
+                  operationalStatus: _getOperationalStatus(),
+                  onNotificationTap: () {},
+                  onProfileTap: () {},
+                  onLocationTap: () {
+                    // Open location picker
+                    showDialog(
+                      context: context,
+                      builder: (context) => LocationPickerDialog(
+                        locationProvider: context.read<LocationProvider>(),
+                      ),
                     );
                   },
-                );
-              },
-            ),
-
-            SizedBox(height: 16),
-
-            // Pre-Service Reminder Banner
-            PreServiceReminderBanner(
-              authProvider: ProviderManager.safeGetProvider<AuthProvider>(
-                context,
-                listen: false,
-              ),
-              bookingProvider: ProviderManager.safeGetProvider<BookingProvider>(
-                context,
-                listen: false,
-              ),
-            ),
-
-            SizedBox(height: 16),
-
-            // Subscription Reminder Banner
-            SubscriptionReminderBanner(
-              authProvider: ProviderManager.safeGetProvider<AuthProvider>(
-                context,
-                listen: false,
-              ),
-              bookingProvider: ProviderManager.safeGetProvider<BookingProvider>(
-                context,
-                listen: false,
-              ),
-            ),
-
-            SizedBox(height: 16),
-
-            // 2️⃣ PRIMARY RECOMMENDATION (HERO CARD)
-            _currentRecommendation != null
-                ? TrustFirstRecommendation(
-                    recommendation: _currentRecommendation!,
-                    onAccept: _handlePrimaryRecommendation,
-                  )
-                : services.isNotEmpty
-                ? TrustFirstRecommendation(
-                    recommendation: Recommendation(
-                      service: services.first,
-                      worker: Worker(
-                        id: 1,
-                        publicId: 'fallback-worker-001',
-                        user: User(
-                          id: 1,
-                          publicId: 'fallback-user-001',
-                          email: 'fallback@example.com',
-                          firstName: 'Available',
-                          lastName: 'Professional',
-                          role: 'worker',
-                        ),
-                        bio: 'Available professional',
-                        rating: 4.5,
-                        reviewCount: 10,
-                        services: [],
-                      ),
-                      estimatedArrivalTime: 30,
-                      reliabilityScore: 0.8,
-                      reasoning: 'Popular service in your area',
-                      title: 'Recommended service',
-                    ),
-                    onAccept: () {
-                      print('🔍 DEBUG: Fallback recommendation CTA clicked');
-                      // Get providers BEFORE navigation
-                      final authProvider = Provider.of<AuthProvider>(
-                        context,
-                        listen: false,
-                      );
-                      final locationProvider = Provider.of<LocationProvider>(
-                        context,
-                        listen: false,
-                      );
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MultiProvider(
-                            providers: [
-                              ChangeNotifierProvider<AuthProvider>.value(
-                                value: authProvider,
-                              ),
-                              ChangeNotifierProvider<LocationProvider>.value(
-                                value: locationProvider,
-                              ),
-                            ],
-                            child: ServiceClarificationScreen(
-                              userId: userId,
-                              initialLocation: initialLocation,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : SizedBox.shrink(),
-
-            SizedBox(height: 16),
-
-            // 3️⃣ BRAND EXPLANATION (NEW)
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                'One request. We handle assignment, tracking, and support.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.2,
-                  height: 1.4,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
 
-            // 4️⃣ SECONDARY CLARIFICATION CTA (EXISTING)
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  print('🔍 DEBUG: Secondary CTA clicked - See all services');
-                  // Get providers BEFORE navigation
-                  final authProvider = Provider.of<AuthProvider>(
-                    context,
-                    listen: false,
-                  );
-                  final locationProvider = Provider.of<LocationProvider>(
-                    context,
-                    listen: false,
-                  );
-
-                  // Navigate to Service Clarification Page for exploration
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MultiProvider(
-                        providers: [
-                          ChangeNotifierProvider<AuthProvider>.value(
-                            value: authProvider,
-                          ),
-                          ChangeNotifierProvider<LocationProvider>.value(
-                            value: locationProvider,
-                          ),
-                        ],
-                        child: ServiceClarificationScreen(
-                          userId: userId,
-                          initialLocation: initialLocation,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                const SizedBox(
+                  height: 8,
+                ), // Added breathing room for location + title
+                // 2️⃣ PROACTIVE SYSTEM MESSAGE
+                ProactiveMessage(
+                  message: _systemMessage,
+                  icon: Icons.check_circle_outline,
                 ),
-                child: Text(
-                  'Not sure what you need? See all services →',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.2,
-                  ),
+
+                const SizedBox(
+                  height: 16,
+                ), // Added breathing room for better vertical rhythm
+                // 3️⃣ OPERATIONAL HERO SURFACE
+                OperationalHero(onRequestSupport: _handlePrimaryRecommendation),
+
+                const SizedBox(height: 12), // Reduced for continuous flow
+                // 4️⃣ ACTIVE HOUSEHOLD OPERATIONS
+                FutureBuilder<Map<String, dynamic>?>(
+                  future: _getActiveBooking(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      final activeBooking = snapshot.data!;
+                      return ActiveOperations(
+                        operationTitle:
+                            activeBooking['operationTitle'] ?? 'Service',
+                        assignedTo: activeBooking['assignedTo'] ?? 'Worker',
+                        eta: activeBooking['eta'] ?? '24 mins',
+                        status: activeBooking['status'] ?? 'ASSIGNED',
+                        onViewAll: () {
+                          // Navigate to all operations
+                        },
+                      );
+                    }
+                    // Return empty container if no active booking
+                    return const SizedBox.shrink();
+                  },
                 ),
-              ),
+
+                const SizedBox(height: 4), // Reduced for continuous flow
+                // 5️⃣ TRUST/RELIABILITY LAYER
+                const TrustLayer(),
+
+                const SizedBox(
+                  height: 10,
+                ), // Increased for better breathing room
+                // 6️⃣ SUPPORT AVAILABILITY
+                const SocietyIntelligence(),
+                const SizedBox(
+                  height: 10,
+                ), // Breathing room before household support
+                // 7️⃣ HOUSEHOLD SUPPORT OPTIONS
+                HouseholdSupport(
+                  services: const ['Kitchen Operations', 'Home Maintenance'],
+                  onServiceTap: (service) {
+                    // Handle service tap
+                  },
+                ),
+              ],
             ),
-
-            SizedBox(height: 8),
-
-            // Support signal is now integrated into the header
-          ],
+          ),
         ),
-      ),
+      ],
     );
-  }
-
-  void _showLocationDialog(
-    BuildContext context,
-    LocationProvider? locationProvider,
-  ) {
-    final provider = locationProvider ?? LocationProvider();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return LocationPickerDialog(locationProvider: provider);
-      },
-    ).then((_) {
-      if (provider.currentLocationData != null) {
-        _loadRecommendations();
-      }
-    });
   }
 }

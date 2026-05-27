@@ -9,13 +9,14 @@ import { AssignmentProcessor } from './assignment.processor';
 import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
 import { User } from '../users/entities/user.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { SlotsModule } from '../slots/slots.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ServiceRequest, Worker, Service, User]),
+    TypeOrmModule.forFeature([ServiceRequest, Worker, Service, User, Subscription]),
     BullModule.registerQueue({
       name: 'assignment',
     }),

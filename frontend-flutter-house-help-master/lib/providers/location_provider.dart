@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_house_help/models/location.dart';
 import '../services/api_service.dart';
 
@@ -74,8 +75,26 @@ class LocationProvider with ChangeNotifier {
   Position? _currentPosition;
   bool _isLoading = true;
   List<Location> _recentLocations = [];
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   bool _hasShownLocationPopup = false;
+
+  // Platform-aware storage methods
+  Future<String?> _readFromStorage(String key) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    }
+    return await _secureStorage.read(key: key);
+  }
+
+  Future<void> _writeToStorage(String key, String value) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    } else {
+      await _secureStorage.write(key: key, value: value);
+    }
+  }
 
   // New location-based service availability
   LocationAvailability? _availabilityStatus;
@@ -137,6 +156,16 @@ class LocationProvider with ChangeNotifier {
 
   Future<void> _checkLocationPermission() async {
     try {
+      // On web, Geolocator may not work properly - check for web platform
+      if (kIsWeb) {
+        debugPrint(
+          'LocationProvider: Web platform detected, skipping Geolocator permission check',
+        );
+        _hasLocationPermission = true; // Allow manual location entry on web
+        notifyListeners();
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       _hasLocationPermission = permission != LocationPermission.deniedForever;
       notifyListeners();
@@ -149,6 +178,18 @@ class LocationProvider with ChangeNotifier {
 
   Future<void> _getCurrentLocation() async {
     try {
+      // On web, Geolocator may not work properly - skip GPS location
+      if (kIsWeb) {
+        debugPrint(
+          'LocationProvider: Web platform detected, skipping GPS location',
+        );
+        _currentLocation = 'Please set your location manually';
+        _isLoading = false;
+        _isInitialized = true;
+        notifyListeners();
+        return;
+      }
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         _currentLocation =
@@ -223,6 +264,9 @@ class LocationProvider with ChangeNotifier {
       // Check service availability after getting location
       await checkServiceAvailability();
 
+      // Mark location setup as complete
+      await markLocationSetupComplete();
+
       notifyListeners();
     } catch (e) {
       _currentLocation = 'Unable to get address.';
@@ -240,12 +284,15 @@ class LocationProvider with ChangeNotifier {
     // Check service availability for new location
     await checkServiceAvailability();
 
+    // Mark location setup as complete
+    await markLocationSetupComplete();
+
     notifyListeners();
   }
 
   Future<void> _loadRecentLocations() async {
     try {
-      final stored = await _storage.read(key: 'recent_locations');
+      final stored = await _readFromStorage('recent_locations');
       if (stored != null) {
         final List<dynamic> locationsJson = jsonDecode(stored);
         _recentLocations = locationsJson
@@ -262,10 +309,7 @@ class LocationProvider with ChangeNotifier {
       final locationsJson = _recentLocations
           .map((loc) => loc.toJson())
           .toList();
-      await _storage.write(
-        key: 'recent_locations',
-        value: jsonEncode(locationsJson),
-      );
+      await _writeToStorage('recent_locations', jsonEncode(locationsJson));
     } catch (e) {
       // Handle error silently
     }
@@ -318,10 +362,25 @@ class LocationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // On web, Geolocator doesn't work - show message and return
+      if (kIsWeb) {
+        debugPrint(
+          'LocationProvider: Web platform detected, GPS not available',
+        );
+        _currentLocation =
+            'GPS location is not available on web. Please use the search option to find your location.';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       await _getCurrentLocation();
 
       // Check if location was successfully obtained
-      if (_currentLocationData == null) {
+      if (_currentLocationData != null) {
+        // Mark location setup as complete
+        await markLocationSetupComplete();
+      } else {
         _currentLocation = 'Unable to get current location. Please try again.';
         _isLoading = false;
         notifyListeners();
@@ -436,9 +495,9 @@ class LocationProvider with ChangeNotifier {
       final hasLocation = _currentLocationData != null;
       final hasRecentLocations = _recentLocations.isNotEmpty;
       final hasShownPopup =
-          await _storage.read(key: 'has_shown_location_popup') == 'true';
+          await _readFromStorage('has_shown_location_popup') == 'true';
       final hasCompletedSetup =
-          await _storage.read(key: 'has_completed_location_setup') == 'true';
+          await _readFromStorage('has_completed_location_setup') == 'true';
 
       return !hasLocation &&
           !hasRecentLocations &&
@@ -451,7 +510,7 @@ class LocationProvider with ChangeNotifier {
 
   Future<void> markPopupShown() async {
     try {
-      await _storage.write(key: 'has_shown_location_popup', value: 'true');
+      await _writeToStorage('has_shown_location_popup', 'true');
       _hasShownLocationPopup = true;
     } catch (e) {
       // Handle error silently
@@ -460,9 +519,10 @@ class LocationProvider with ChangeNotifier {
 
   Future<void> markLocationSetupComplete() async {
     try {
-      await _storage.write(key: 'has_completed_location_setup', value: 'true');
-      await _storage.write(key: 'has_shown_location_popup', value: 'true');
+      await _writeToStorage('has_completed_location_setup', 'true');
+      await _writeToStorage('has_shown_location_popup', 'true');
       _hasShownLocationPopup = true;
+      notifyListeners();
     } catch (e) {
       // Handle error silently
     }
@@ -470,9 +530,9 @@ class LocationProvider with ChangeNotifier {
 
   Future<void> _loadPopupState() async {
     try {
-      final hasShown = await _storage.read(key: 'has_shown_location_popup');
-      final hasCompleted = await _storage.read(
-        key: 'has_completed_location_setup',
+      final hasShown = await _readFromStorage('has_shown_location_popup');
+      final hasCompleted = await _readFromStorage(
+        'has_completed_location_setup',
       );
       _hasShownLocationPopup = hasShown == 'true' || hasCompleted == 'true';
     } catch (e) {
@@ -487,10 +547,32 @@ class LocationProvider with ChangeNotifier {
       'currentLocationData: ${_currentLocationData != null ? 'EXISTS' : 'NULL'}',
     );
     debugPrint('recentLocations count: ${_recentLocations.length}');
-    debugPrint(
-      'needsLocationSetup result: ${_currentLocationData == null && _recentLocations.isEmpty}',
-    );
-    return _currentLocationData == null && _recentLocations.isEmpty;
+    debugPrint('hasShownLocationPopup: $_hasShownLocationPopup');
+    // Check if location setup has been completed
+    // Returns true if no location data AND no recent locations AND no completed setup flag
+    // Also check the in-memory flag which is set by markLocationSetupComplete()
+    final hasCompletedSetup =
+        _hasShownLocationPopup ||
+        _currentLocationData != null ||
+        _recentLocations.isNotEmpty;
+    debugPrint('needsLocationSetup result: ${!hasCompletedSetup}');
+    return !hasCompletedSetup;
+  }
+
+  // Async version that checks persistent storage
+  Future<bool> needsLocationSetupAsync() async {
+    debugPrint('=== LocationProvider.needsLocationSetupAsync() called ===');
+    try {
+      final hasCompletedSetup =
+          await _readFromStorage('has_completed_location_setup') == 'true' ||
+          _currentLocationData != null ||
+          _recentLocations.isNotEmpty;
+      debugPrint('needsLocationSetupAsync result: ${!hasCompletedSetup}');
+      return !hasCompletedSetup;
+    } catch (e) {
+      debugPrint('needsLocationSetupAsync error: $e');
+      return true;
+    }
   }
 
   // Method to get available services in current location

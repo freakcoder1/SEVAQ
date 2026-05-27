@@ -22,14 +22,6 @@ class ServiceOption {
   /// Predefined service options for the clarification page
   static const List<ServiceOption> options = [
     ServiceOption(
-      id: 'maid',
-      name: 'Maid / House Help',
-      description: 'Ongoing household assistance',
-      icon: Icons.person,
-      type: ServiceType.maid,
-      basePrice: 1500.0,
-    ),
-    ServiceOption(
       id: 'cleaning',
       name: 'Home Cleaning',
       description: 'Structured home cleanliness & maintenance',
@@ -48,11 +40,8 @@ class ServiceOption {
   ];
 
   /// Get reassurance badge for this service option
-  /// Only Maid/House Help gets the green recommendation badge
   String getReassuranceBadge() {
     switch (type) {
-      case ServiceType.maid:
-        return '🟢 Optimized for ongoing household needs';
       case ServiceType.cleaning:
         return 'Structured home cleanliness & maintenance';
       case ServiceType.cooking:
@@ -69,8 +58,6 @@ class ServiceOption {
         return 'Anything specific we should know? (Optional)';
       case ServiceType.cooking:
         return 'Any dietary preferences? (Optional)';
-      case ServiceType.maid:
-        return 'How often do you need help? (Optional)';
       default:
         return 'Anything else we should know? (Optional)';
     }
@@ -93,8 +80,6 @@ class ServiceOption {
           'Indian cuisine',
           'Continental',
         ];
-      case ServiceType.maid:
-        return ['Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
       default:
         return ['Other'];
     }
@@ -105,7 +90,6 @@ class ServiceOption {
 enum ServiceType {
   cleaning,
   cooking,
-  maid,
   errands,
   driving,
   laundry,

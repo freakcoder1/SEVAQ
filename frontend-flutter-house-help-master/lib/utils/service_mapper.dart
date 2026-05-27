@@ -6,10 +6,9 @@ import '../models/worker.dart';
 
 class ServiceMapper {
   // Backend numeric service IDs from the database
-  // Current database IDs: 1 (Home Cleaning), 3 (Cooking), 13 (Maid Service)
+  // Current database IDs: 1 (Home Cleaning), 3 (Cooking)
   static const int homeCleaningId = 1; // ID 1 = Home Cleaning
   static const int cookingId = 3; // ID 3 = Cooking
-  static const int maidServiceId = 13; // ID 13 = Maid Service
 
   /// Map frontend service option ID to backend service ID
   static String mapToFrontendId(int backendId) {
@@ -18,8 +17,6 @@ class ServiceMapper {
         return 'cleaning';
       case cookingId:
         return 'cooking';
-      case maidServiceId:
-        return 'maid';
       default:
         return 'cleaning'; // Default fallback
     }
@@ -28,9 +25,6 @@ class ServiceMapper {
   /// Map frontend service option ID to backend service IDs
   static List<int> mapToBackendIds(String frontendId) {
     switch (frontendId) {
-      case 'maid':
-        // Use ID 13 (Maid Service) which exists in database
-        return [maidServiceId];
       case 'cleaning':
         // Use ID 1 (Home Cleaning) which exists in database
         return [homeCleaningId];

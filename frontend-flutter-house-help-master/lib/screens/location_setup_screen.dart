@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
 import '../widgets/location_picker_dialog.dart';
@@ -65,6 +66,18 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
       switch (option) {
         case 'current':
           // Use current GPS location
+          if (kIsWeb) {
+            // On web, GPS is not available - show message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'GPS location is not available on web. Please use the search option to find your location.',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
           await locationProvider.refreshLocation();
           break;
 
@@ -89,9 +102,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen>
 
       // Check if location was successfully set
       if (locationProvider.currentLocationData != null) {
-        debugPrint('LocationSetupScreen: Location set, marking as complete');
-        // Mark location setup as complete - AuthWrapper will automatically transition
-        locationProvider.markLocationSetupComplete();
+        debugPrint('LocationSetupScreen: Location set successfully');
 
         // Check service availability
         if (locationProvider.currentLocationData != null) {

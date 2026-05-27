@@ -21,6 +21,11 @@ export class AuditInterceptor implements NestInterceptor {
     const url = request.url;
     const body = request.body;
 
+    // Only audit admin routes
+    if (!url.includes('/api/admin')) {
+      return next.handle();
+    }
+
     const now = Date.now();
 
     return next.handle().pipe(
@@ -34,13 +39,18 @@ export class AuditInterceptor implements NestInterceptor {
         else if (method === 'DELETE') action = 'DELETE';
         else if (method === 'GET') action = 'READ';
 
-        // Extract entity type from URL
+        // Extract entity type from URL (e.g., /api/admin/workers/123 -> workers)
         const urlParts = url.split('/').filter(Boolean);
-        const entityType = urlParts.length > 0 ? urlParts[urlParts.length - 2] : 'unknown';
-        const entityId = urlParts.length > 0 ? urlParts[urlParts.length - 1] : undefined;
+        const entityType = urlParts.length > 2 ? urlParts[2] : 'unknown'; // Get the part after /api/admin/
+        const entityId = urlParts.length > 3 ? urlParts[3] : undefined;
 
-        // Skip logging for GET requests and health checks
-        if (method === 'GET' || url.includes('health') || url.includes('dashboard')) {
+        // Skip logging for GET requests, health checks, and dashboard
+        if (method === 'GET' || url.includes('health') || url.includes('dashboard') || url.includes('audit-logs')) {
+          return;
+        }
+
+        // Skip if no user (not authenticated)
+        if (!user) {
           return;
         }
 
@@ -50,7 +60,7 @@ export class AuditInterceptor implements NestInterceptor {
             adminEmail: user?.email,
             action,
             entityType,
-            entityId: entityId !== ':id' ? entityId : undefined,
+            entityId: entityId && entityId !== ':id' ? entityId : undefined,
             newValue: body,
             ipAddress: request.ip,
             userAgent: request.headers['user-agent'],

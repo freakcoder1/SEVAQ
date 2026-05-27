@@ -206,368 +206,417 @@ class _AddressInputPopupState extends State<AddressInputPopup> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(
+          maxWidth: 400,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.location_on,
-                      color: Colors.blue[700],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Save Your Address',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'We\'ll use this for your bookings',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // GPS Location Button
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _latitude != null ? Colors.green[50] : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _latitude != null
-                        ? Colors.green[200]!
-                        : Colors.grey[300]!,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _latitude != null
-                              ? Icons.check_circle
-                              : Icons.my_location,
-                          color: _latitude != null
-                              ? Colors.green[700]
-                              : Colors.blue[700],
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _latitude != null
-                                ? 'GPS Location Captured'
-                                : 'Use Current GPS Location',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: _latitude != null
-                                  ? Colors.green[700]
-                                  : Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: _isFetchingLocation
-                              ? null
-                              : _fetchCurrentLocation,
-                          icon: _isFetchingLocation
-                              ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Icon(Icons.gps_fixed, size: 18),
-                          label: Text(
-                            _isFetchingLocation
-                                ? 'Fetching...'
-                                : 'Get Location',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            backgroundColor: Colors.blue[700],
-                            foregroundColor: Colors.white,
-                            textStyle: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_latitude != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.green[700],
-                          fontFamily: 'monospace',
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      if (_gpsAddress != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Address: $_gpsAddress',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
+                      child: Icon(
+                        Icons.location_on,
+                        color: theme.colorScheme.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Save Your Address',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ],
+                          Text(
+                            'We\'ll use this for your bookings',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Society Name
-              Text(
-                'Society / Building Name',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _societyController,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Green Valley Apartments',
-                  prefixIcon: Icon(Icons.apartment, color: Colors.blue[300]),
-                  border: OutlineInputBorder(
+                // GPS Location Button
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _latitude != null
+                        ? theme.colorScheme.tertiaryContainer
+                        : theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _latitude != null
+                          ? theme.colorScheme.tertiary.withAlpha(
+                              (0.3 * 255).round(),
+                            )
+                          : theme.colorScheme.outline,
+                      width: 1,
+                    ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue[700]!, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter society name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Tower & Flat Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tower / Wing',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _latitude != null
+                                ? Icons.check_circle
+                                : Icons.my_location,
+                            color: _latitude != null
+                                ? theme.colorScheme.tertiary
+                                : theme.colorScheme.primary,
+                            size: 20,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _towerController,
-                          decoration: InputDecoration(
-                            hintText: 'e.g., A',
-                            prefixIcon: Icon(
-                              Icons.business,
-                              color: Colors.blue[300],
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.blue[700]!,
-                                width: 2,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _latitude != null
+                                  ? 'GPS Location Captured'
+                                  : 'Use Current GPS Location',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: _latitude != null
+                                    ? theme.colorScheme.tertiary
+                                    : theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Flat / Unit No.',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _flatController,
-                          decoration: InputDecoration(
-                            hintText: 'e.g., 402',
-                            prefixIcon: Icon(
-                              Icons.door_front_door,
-                              color: Colors.blue[300],
+                          ElevatedButton.icon(
+                            onPressed: _isFetchingLocation
+                                ? null
+                                : _fetchCurrentLocation,
+                            icon: _isFetchingLocation
+                                ? const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(Icons.gps_fixed, size: 18),
+                            label: Text(
+                              _isFetchingLocation
+                                  ? 'Fetching...'
+                                  : 'Get Location',
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.blue[700]!,
-                                width: 2,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              backgroundColor: Colors.blue[700],
+                              foregroundColor: Colors.white,
+                              textStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
+                        ],
+                      ),
+                      if (_latitude != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.tertiary,
+                            fontFamily: 'monospace',
+                          ),
                         ),
+                        if (_gpsAddress != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Address: $_gpsAddress',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 24),
 
-              // Area (Optional)
-              Text(
-                'Area / Locality (Optional)',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _areaController,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Sector 62',
-                  prefixIcon: Icon(Icons.map, color: Colors.blue[300]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue[700]!, width: 2),
+                // Society Name
+                Text(
+                  'Society / Building Name',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Landmark (Optional)
-              Text(
-                'Landmark (Optional)',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _landmarkController,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Near Metro Station',
-                  prefixIcon: Icon(Icons.flag, color: Colors.blue[300]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue[700]!, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveAddress,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _societyController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Green Valley Apartments',
+                    prefixIcon: Icon(Icons.apartment, color: Colors.blue[300]),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    backgroundColor: Colors.blue[700],
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.blue[700]!,
+                        width: 2,
+                      ),
+                    ),
                   ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter society name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Tower & Flat Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tower / Wing',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
                             ),
                           ),
-                        )
-                      : const Text(
-                          'SAVE & CONTINUE',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _towerController,
+                            decoration: InputDecoration(
+                              hintText: 'e.g., A',
+                              prefixIcon: Icon(
+                                Icons.business,
+                                color: Colors.blue[300],
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue[700]!,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Flat / Unit No.',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _flatController,
+                            decoration: InputDecoration(
+                              hintText: 'e.g., 402',
+                              prefixIcon: Icon(
+                                Icons.door_front_door,
+                                color: Colors.blue[300],
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue[700]!,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+                const SizedBox(height: 16),
+
+                // Area (Optional)
+                Text(
+                  'Area / Locality (Optional)',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _areaController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Sector 62',
+                    prefixIcon: Icon(Icons.map, color: Colors.blue[300]),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.blue[700]!,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Pincode (Optional)
+                Text(
+                  'Pincode (Optional)',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _pincodeController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., 110001',
+                    prefixIcon: Icon(Icons.pin_drop, color: Colors.blue[300]),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.blue[700]!,
+                        width: 2,
+                      ),
+                    ),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Landmark (Optional)
+                Text(
+                  'Landmark (Optional)',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _landmarkController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Near Metro Station',
+                    prefixIcon: Icon(Icons.flag, color: Colors.blue[300]),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.blue[700]!,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _saveAddress,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      backgroundColor: Colors.blue[700],
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'SAVE & CONTINUE',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ), // Column
+          ), // SingleChildScrollView
+        ), // Form
+      ), // Container
+    ); // Dialog
   }
 }

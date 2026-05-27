@@ -202,4 +202,98 @@ class BookingProvider with ChangeNotifier {
     }
     return false;
   }
+
+  /// Get user's active booking for home screen display
+  /// Returns the most recent in-progress or assigned booking (subscription or one-time)
+  Future<Map<String, dynamic>?> getActiveBooking({
+    BuildContext? context,
+  }) async {
+    try {
+      // First, try to use existing bookings data (already loaded)
+      // Find active subscription bookings (confirmed, scheduled, inProgress)
+      final activeBookings = _bookings.where((b) {
+        final now = DateTime.now();
+        return (b.status == BookingStatus.confirmed ||
+                b.status == BookingStatus.scheduled ||
+                b.status == BookingStatus.inProgress ||
+                b.assignmentState == BookingAssignmentState.assigned ||
+                b.assignmentState == BookingAssignmentState.confirmed ||
+                b.assignmentState == BookingAssignmentState.enRoute ||
+                b.assignmentState == BookingAssignmentState.arrived ||
+                b.assignmentState == BookingAssignmentState.inProgress) &&
+            b.startTime.isAfter(now.subtract(const Duration(hours: 2)));
+      }).toList();
+
+      if (activeBookings.isNotEmpty) {
+        // Sort by start time to get the most recent
+        activeBookings.sort((a, b) => a.startTime.compareTo(b.startTime));
+        final booking = activeBookings.first;
+
+        // Calculate ETA based on assignment state
+        String eta = '24 mins';
+        if (booking.assignmentState == BookingAssignmentState.enRoute) {
+          eta = '15 mins';
+        } else if (booking.assignmentState == BookingAssignmentState.arrived) {
+          eta = 'Arrived';
+        } else if (booking.assignmentState ==
+            BookingAssignmentState.inProgress) {
+          eta = 'In progress';
+        }
+
+        return {
+          'operationTitle': booking.serviceName,
+          'assignedTo': booking.worker.user.firstName.isNotEmpty
+              ? '${booking.worker.user.firstName} ${booking.worker.user.lastName}'
+                    .trim()
+              : 'Worker',
+          'eta': eta,
+          'status':
+              booking.assignmentState?.toString().split('.').last ?? 'ASSIGNED',
+        };
+      }
+
+      // Check for active subscriptions (for recurring services)
+      final activeSubscriptions = _subscriptions
+          .where((s) => s.isActive)
+          .toList();
+      if (activeSubscriptions.isNotEmpty) {
+        // Get the most recent active subscription
+        activeSubscriptions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final subscription = activeSubscriptions.first;
+
+        // Determine worker name from subscription
+        String workerName = 'Worker';
+        if (subscription.workerName != null &&
+            subscription.workerName!.isNotEmpty) {
+          workerName = subscription.workerName!;
+        }
+
+        return {
+          'operationTitle': subscription.serviceName,
+          'assignedTo': workerName,
+          'eta': 'Next visit scheduled',
+          'status': 'ACTIVE',
+        };
+      }
+
+      // Fallback: try service-requests endpoint if no bookings found
+      final response = await _apiService.get('service-requests/active');
+      if (response != null) {
+        return {
+          'operationTitle': response['operationTitle'] ?? 'Service',
+          'assignedTo': response['assignedTo'] ?? 'Worker',
+          'eta': response['eta'] ?? '24 mins',
+          'status': response['status'] ?? 'ASSIGNED',
+        };
+      }
+    } on TokenExpiredException {
+      debugPrint('BookingProvider: Token expired during getActiveBooking');
+      if (context != null) {
+        await _handleTokenExpired(context);
+      }
+    } catch (e) {
+      debugPrint('Error getting active booking: $e');
+    }
+    return null;
+  }
 }

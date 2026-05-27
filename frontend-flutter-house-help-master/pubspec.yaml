@@ -54,6 +54,7 @@ dependencies:
   firebase_messaging: ^15.2.10
   firebase_auth: ^5.3.1
   flutter_markdown: ^0.7.1
+  lucide_icons: ^0.257.0  # V1 Spec: Custom rounded stroke icons
 
 dev_dependencies:
   flutter_test:

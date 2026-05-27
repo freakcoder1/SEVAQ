@@ -2,40 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // SEVAQ BRAND COLORS - FINAL & CLOSED
+  // SEVAQ BRAND COLORS - V1 SPECIFICATION
 
   // Core Neutrals (≥85% of any screen)
   static const Color charcoalBlack = Color(
-    0xFF111315,
+    0xFF111111,
   ); // Primary text, headers, logo
-  static const Color fogWhite = Color(0xFFF6F7F5); // Backgrounds, main surfaces
+  static const Color fogWhite = Color(0xFFF7F8F7); // Backgrounds, main surfaces
   static const Color stoneGray = Color(
-    0xFFE4E6E3,
+    0xFFE6E8E7,
   ); // Secondary surfaces, borders, disabled states
 
-  // Primary Accent (≈10% max)
-  static const Color deepTeal = Color(
-    0xFF2A5C5C,
-  ); // Primary CTA, active selection, system confidence signals
+  // Primary Accent (≈10% max) - Emerald Infrastructure Green
+  // Reduced saturation by 4% for managed luxury feel
+  static const Color emeraldGreen = Color(
+    0xFF2A655A,
+  ); // Primary CTA, active selection, system confidence signals (desaturated)
+  static const Color emeraldGreenPressed = Color(
+    0xFF18554B,
+  ); // Hover/pressed state
+  static const Color softGreen = Color(
+    0xFFEAF4F1,
+  ); // Soft green for backgrounds
 
   // Functional Colors (≤5% combined, state-only)
-  static const Color controlledAmber = Color(0xFFB58B2E); // Pending / warning
-  static const Color deepRust = Color(
-    0xFF8C3B2E,
+  static const Color warningColor = Color(0xFFD98C00); // Warning
+  static const Color errorColor = Color(
+    0xFFD64545,
   ); // Error / destructive actions
-  static const Color successGreen = Color(
-    0xFF3A6B5F,
-  ); // Final confirmation only
+  static const Color successColor = Color(0xFF2E8B57); // Success
 
   // Theme Color Properties
-  static const Color primaryColor = deepTeal;
+  static const Color primaryColor = emeraldGreen;
   static const Color onPrimary = Colors.white;
-  static const Color primaryContainer = Color(
-    0xFFD6E4E0,
-  ); // Light teal container
+  static const Color primaryContainer = softGreen;
   static const Color onPrimaryContainer = Color(
-    0xFF1A3C3C,
-  ); // Dark teal text on container
+    0xFF111111,
+  ); // Dark text on container
 
   // Secondary Colors (using core neutrals)
   static const Color secondaryColor = stoneGray;
@@ -45,22 +48,73 @@ class AppTheme {
 
   // BACKGROUND & SURFACE
   static const Color backgroundColor = fogWhite;
-  static const Color surfaceColor = fogWhite;
+  static const Color surfaceColor = Colors.white;
   static const Color surfaceVariant = stoneGray;
   static const Color onSurface = charcoalBlack;
-  static const Color onSurfaceVariant = Color(0xFF4A4C4E); // Medium gray
-  static const Color secondaryText = Color(0xFF6C6E70); // Soft gray text
+  static const Color onSurfaceVariant = Color(0xFF5F6361); // Medium gray
+  static const Color secondaryText = Color(0xFF8A8F8D); // Muted gray text
 
-  // SEMANTIC COLORS
-  static const Color successColor = successGreen;
-  static const Color errorColor = deepRust;
-  static const Color warningColor = controlledAmber;
-  static const Color infoTextColor = deepTeal; // Using primary for info
+  // BACKWARD COMPATIBILITY ALIASES
+  static const Color deepTeal = emeraldGreen; // Legacy alias
+  static const Color textPrimary = charcoalBlack; // Legacy alias
+  static const Color textSecondary = secondaryText; // Legacy alias
+  static const Color muted = secondaryText; // Legacy alias
+  static const Color background = backgroundColor; // Legacy alias
+  static const Color surface = surfaceColor; // Legacy alias
+  static const Color border = stoneGray; // Legacy alias
 
-  // NO ACCENT COLORS - Only use deepTeal as primary accent
+  // TONAL HIERARCHY - Phase 4 Refinement
+  static const Color secondarySurface = Color(0xFFFAFAF8); // Secondary surfaces
+  static const Color warmWhite = Color(0xFFF7F8F7); // Warmer background
+
+  // ATMOSPHERIC GRADIENTS - Phase 4 Refinement
+  static const RadialGradient heroDepthGradient = RadialGradient(
+    center: Alignment.topRight,
+    radius: 1.2,
+    colors: [
+      Color(0x33FFFFFF), // 20% white for depth
+      Colors.transparent,
+    ],
+    stops: [0.0, 1.0],
+  );
+
+  static const RadialGradient operationalGlow = RadialGradient(
+    center: Alignment.center,
+    radius: 0.8,
+    colors: [
+      Color(0x1A1F6B5F), // 10% emerald glow
+      Colors.transparent,
+    ],
+    stops: [0.0, 1.0],
+  );
 
   // SHADOWS & DEPTH
   static const Color shadowColor = Colors.black;
+
+  // ENHANCED SHADOWS - Phase 4 Refinement
+  static List<BoxShadow> get cardShadowEnhanced => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 24,
+      offset: const Offset(0, 8),
+    ),
+  ];
+
+  static List<BoxShadow> get heroShadowEnhanced => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.06),
+      blurRadius: 32,
+      offset: const Offset(0, 12),
+    ),
+  ];
+
+  static List<BoxShadow> get floatingNavShadowEnhanced => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.08),
+      blurRadius: 28,
+      offset: const Offset(0, 6),
+    ),
+  ];
 
   // GRADIENTS (Background Oxygen - <8% opacity)
   static const LinearGradient subtleBackgroundGradient = LinearGradient(
@@ -71,6 +125,44 @@ class AppTheme {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  // HERO GRADIENT - Subtle premium emerald (for operational status surface)
+  // Very subtle tonal shift - elegant, calm, premium
+  static const LinearGradient heroGradient = LinearGradient(
+    colors: [
+      Color(0xFF1D5247), // Deep muted emerald (top-left)
+      Color(0xFF1F6B5F), // Primary emerald (bottom-right)
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 1.0],
+  );
+
+  // SHADOWS - Premium soft shadows (blur: 24, opacity: 0.04, y: 8)
+  static const List<BoxShadow> cardShadow = [
+    BoxShadow(color: Colors.black12, blurRadius: 24, offset: Offset(0, 8)),
+  ];
+
+  static const List<BoxShadow> heroShadow = [
+    BoxShadow(color: Colors.black12, blurRadius: 24, offset: Offset(0, 8)),
+  ];
+
+  static const List<BoxShadow> floatingNavShadow = [
+    BoxShadow(color: Colors.black12, blurRadius: 24, offset: Offset(0, 8)),
+  ];
+
+  // SPACING SYSTEM - V1 SPECIFICATION (4px base unit)
+  // All spacing MUST derive from: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64
+  static const double spacing4 = 4.0;
+  static const double spacing8 = 8.0;
+  static const double spacing12 = 12.0;
+  static const double spacing16 = 16.0;
+  static const double spacing20 = 20.0;
+  static const double spacing24 = 24.0;
+  static const double spacing32 = 32.0;
+  static const double spacing40 = 40.0;
+  static const double spacing48 = 48.0;
+  static const double spacing64 = 64.0;
 
   // Helper method to create Google Fonts text styles
   static TextStyle _googleFontTextStyle({
@@ -136,9 +228,10 @@ class AppTheme {
         surfaceTint: primaryColor,
       ),
       textTheme: TextTheme(
+        // V1 Spec: Display Large - 48px, w700, -2% letter spacing
         displayLarge: _googleFontTextStyle(
-          fontSize: 57,
-          fontWeight: FontWeight.w400,
+          fontSize: 48,
+          fontWeight: FontWeight.w700,
           color: onSurface,
         ),
         displayMedium: _googleFontTextStyle(
@@ -146,24 +239,28 @@ class AppTheme {
           fontWeight: FontWeight.w400,
           color: onSurface,
         ),
+        // V1 Spec: Display Small - 36px, w700, -1% letter spacing
         displaySmall: _googleFontTextStyle(
           fontSize: 36,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w700,
           color: onSurface,
         ),
+        // V1 Spec: H1 - 36px, w700, -1% letter spacing
         headlineLarge: _googleFontTextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w400,
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
           color: onSurface,
         ),
+        // V1 Spec: H2 - 28px, w700
         headlineMedium: _googleFontTextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w700,
           color: onSurface,
         ),
+        // V1 Spec: H3 - 22px, w600 (closest to w650)
         headlineSmall: _googleFontTextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w400,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
           color: onSurface,
         ),
         titleLarge: _googleFontTextStyle(
@@ -196,13 +293,15 @@ class AppTheme {
           fontWeight: FontWeight.w500,
           color: onSurfaceVariant,
         ),
+        // V1 Spec: Body Large - 18px, w500
         bodyLarge: _googleFontInterTextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
           color: onSurface,
         ),
+        // V1 Spec: Body - 16px, w400 (closest to w450)
         bodyMedium: _googleFontInterTextStyle(
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: FontWeight.w400,
           color: onSurface,
         ),
@@ -235,8 +334,8 @@ class AppTheme {
             fontWeight: FontWeight.w500,
             color: onPrimary,
           ),
-          // Slow, confident animations
-          animationDuration: Duration(milliseconds: 350),
+          // V1 Motion - Fast 120ms
+          animationDuration: Duration(milliseconds: 120),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -252,8 +351,8 @@ class AppTheme {
             fontWeight: FontWeight.w500,
             color: secondaryColor,
           ),
-          // Slow, confident animations
-          animationDuration: Duration(milliseconds: 350),
+          // V1 Motion - Fast 120ms
+          animationDuration: Duration(milliseconds: 120),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -264,23 +363,23 @@ class AppTheme {
             fontWeight: FontWeight.w500,
             color: deepTeal,
           ),
-          // Slow, confident animations
-          animationDuration: Duration(milliseconds: 350),
+          // V1 Motion - Fast 120ms
+          animationDuration: Duration(milliseconds: 120),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceVariant,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: Color(0xFF71787E)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: Color(0xFF71787E)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: primaryColor, width: 2),
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -290,7 +389,9 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ), // V1 Spec: Cards 24px
         margin: EdgeInsets.all(8),
         clipBehavior: Clip.antiAlias,
       ),
@@ -359,9 +460,10 @@ class AppTheme {
         surfaceTint: Color(0xFF9ECAFF),
       ),
       textTheme: TextTheme(
+        // V1 Spec: Display Large - 48px, w700
         displayLarge: _googleFontTextStyle(
-          fontSize: 57,
-          fontWeight: FontWeight.w400,
+          fontSize: 48,
+          fontWeight: FontWeight.w700,
           color: Color(0xFFE0E2E8),
         ),
         displayMedium: _googleFontTextStyle(
@@ -369,24 +471,28 @@ class AppTheme {
           fontWeight: FontWeight.w400,
           color: Color(0xFFE0E2E8),
         ),
+        // V1 Spec: Display Small - 36px, w700
         displaySmall: _googleFontTextStyle(
           fontSize: 36,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w700,
           color: Color(0xFFE0E2E8),
         ),
+        // V1 Spec: H1 - 36px, w700
         headlineLarge: _googleFontTextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w400,
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
           color: Color(0xFFE0E2E8),
         ),
+        // V1 Spec: H2 - 28px, w700
         headlineMedium: _googleFontTextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w700,
           color: Color(0xFFE0E2E8),
         ),
+        // V1 Spec: H3 - 22px, w600
         headlineSmall: _googleFontTextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w400,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
           color: Color(0xFFE0E2E8),
         ),
         titleLarge: _googleFontTextStyle(
@@ -419,13 +525,15 @@ class AppTheme {
           fontWeight: FontWeight.w500,
           color: Color(0xFFC1C7CE),
         ),
+        // V1 Spec: Body Large - 18px, w500
         bodyLarge: _googleFontInterTextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
           color: Color(0xFFE0E2E8),
         ),
+        // V1 Spec: Body - 16px, w400
         bodyMedium: _googleFontInterTextStyle(
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: FontWeight.w400,
           color: Color(0xFFE0E2E8),
         ),
@@ -458,23 +566,23 @@ class AppTheme {
             fontWeight: FontWeight.w500,
             color: Colors.white,
           ),
-          // Slow, confident animations
-          animationDuration: Duration(milliseconds: 350),
+          // V1 Motion - Fast 120ms
+          animationDuration: Duration(milliseconds: 120),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Color(0xFF41484D),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: Color(0xFF8B9198)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: Color(0xFF8B9198)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // V1 Spec: Inputs 16px
           borderSide: BorderSide(color: Color(0xFF9ECAFF), width: 2),
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),

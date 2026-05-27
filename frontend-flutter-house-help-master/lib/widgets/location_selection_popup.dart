@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/location_provider.dart';
 import '../models/location.dart' as models;
@@ -24,6 +25,7 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isRefreshingLocation = false;
 
   @override
   void initState() {
@@ -58,9 +60,24 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup>
     LocationProvider locationProvider,
   ) async {
     try {
+      setState(() => _isRefreshingLocation = true);
       switch (option) {
         case 'current':
           // Use current GPS location
+          if (kIsWeb) {
+            // On web, GPS is not available - show message
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'GPS location is not available on web. Please use the search option to find your location.',
+                  ),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            return;
+          }
           await locationProvider.refreshLocation();
           break;
 
@@ -94,6 +111,10 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup>
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingLocation = false);
       }
     }
   }
@@ -270,6 +291,7 @@ class _LocationSelectionPopupState extends State<LocationSelectionPopup>
               child: Opacity(
                 opacity: _fadeAnimation.value,
                 child: Container(
+                  constraints: const BoxConstraints(maxWidth: 600),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface.withAlpha(

@@ -597,7 +597,9 @@ class _ProfessionalAssignedScreenState
                         Expanded(
                           child: Text(
                             service?.name ?? 'Service',
-                            style: theme.textTheme.bodyMedium,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
                       ],
@@ -606,7 +608,7 @@ class _ProfessionalAssignedScreenState
                     Row(
                       children: [
                         const Icon(
-                          Icons.attach_money,
+                          Icons.currency_rupee,
                           color: Colors.black54,
                           size: 20,
                         ),

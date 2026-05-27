@@ -12,16 +12,16 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <header className="bg-surface border-b border-surface-variant px-6 py-4 flex items-center justify-between">
       <div>
-        <h2 className="text-xl font-semibold text-gray-800">
+        <h2 className="text-xl font-semibold text-on-surface">
           Welcome back, {user?.firstName || 'Admin'}
         </h2>
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <p className="text-sm font-medium text-gray-700">{user?.email}</p>
-          <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+          <p className="text-sm font-medium text-on-surface-variant">{user?.email}</p>
+          <p className="text-xs text-secondary-text capitalize">{user?.role}</p>
         </div>
         <button
           onClick={handleLogout}

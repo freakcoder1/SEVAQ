@@ -2,78 +2,216 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Sevaq Design System - CSS Variables */
+:root {
+  /* Primary Colors */
+  --color-primary: #0061A4;
+  --color-primary-hover: #00538C;
+  --color-primary-container: #E6F0FF;
+  
+  /* Secondary Colors */
+  --color-secondary: #535F70;
+  --color-secondary-hover: #424D5C;
+  
+  /* Tertiary Colors */
+  --color-tertiary: #6B5778;
+  
+  /* Background & Surface Colors */
+  --color-background: #FEFBFF;
+  --color-surface: #FEFBFF;
+  --color-surface-variant: #F5F7FA;
+  
+  /* Semantic Colors */
+  --color-success: #2E7D32;
+  --color-error: #BA1A1A;
+  --color-warning: #EF6C00;
+  --color-info: #0277BD;
+  
+  /* Text Colors */
+  --color-on-primary: #FFFFFF;
+  --color-on-secondary: #FFFFFF;
+  --color-on-surface: #1A1C1E;
+  --color-on-surface-variant: #41484D;
+  --color-secondary-text: #6B7280;
+  
+  /* Spacing (8px grid) */
+  --spacing-unit: 8px;
+  
+  /* Border Radius */
+  --radius-small: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-full: 999px;
+  
+  /* Shadows */
+  --shadow-surface: 0px 2px 8px rgba(0,0,0,0.08);
+  --shadow-elevation: 0px 4px 12px rgba(0,0,0,0.12);
+  --shadow-focus: 0px 0px 0px 3px rgba(0,97,164,0.25);
+  
+  /* Typography */
+  --font-family-primary: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
 body {
   margin: 0;
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-family-primary);
   min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
+  line-height: 1.5;
 }
 
 @layer components {
+  /* Buttons */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+    font-weight: 500;
+    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3); /* 12px 24px */
+    border-radius: var(--radius-medium);
+    border: none;
+    cursor: pointer;
+    transition: all 300ms ease-in-out;
+    box-shadow: 0px 4px 12px rgba(0,97,164,0.25);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0px 6px 16px rgba(0,97,164,0.35);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0px 2px 8px rgba(0,97,164,0.25);
   }
   
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    background-color: var(--color-error);
+    color: white;
+    font-weight: 500;
+    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+    border-radius: var(--radius-medium);
+    border: none;
+    cursor: pointer;
+    transition: all 300ms ease-in-out;
+  }
+  
+  .btn-danger:hover {
+    background-color: #9A1515;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    background-color: var(--color-surface-variant);
+    color: var(--color-on-surface);
+    font-weight: 500;
+    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+    border-radius: var(--radius-medium);
+    border: none;
+    cursor: pointer;
+    transition: all 300ms ease-in-out;
   }
   
+  .btn-secondary:hover {
+    background-color: #E5E7EB;
+  }
+  
+  /* Input Fields */
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all;
+    width: 100%;
+    padding: 12px 16px; /* 12px vertical, 16px horizontal (Sevaq spec) */
+    border: 1px solid #E1E5E9;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface-variant);
+    font-size: 16px;
+    transition: all 300ms ease-in-out;
+    outline: none;
   }
   
+  .input-field:focus {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-focus);
+    background-color: white;
+  }
+  
+  /* Cards */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-medium);
+    padding: calc(var(--spacing-unit) * 2); /* 16px */
+    box-shadow: var(--shadow-surface);
+    border: 1px solid rgba(0,0,0,0.05);
+    transition: all 300ms ease-in-out;
   }
   
+  .card:hover {
+    box-shadow: var(--shadow-elevation);
+    transform: translateY(-2px);
+  }
+  
+  /* Badges */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 500;
   }
   
   .badge-active {
-    @apply bg-green-100 text-green-800;
+    background-color: var(--color-primary-container);
+    color: var(--color-primary);
+    border: 1px solid rgba(0,97,164,0.2);
   }
   
   .badge-pending {
-    @apply bg-yellow-100 text-yellow-800;
+    background-color: #FEF3C7;
+    color: #92400E;
   }
   
   .badge-completed {
-    @apply bg-blue-100 text-blue-800;
+    background-color: #DBEAFE;
+    color: #1E40AF;
   }
   
   .badge-cancelled {
-    @apply bg-red-100 text-red-800;
+    background-color: #FEE2E2;
+    color: #991B1B;
   }
   
   .badge-inactive {
-    @apply bg-gray-100 text-gray-800;
+    background-color: #F3F4F6;
+    color: var(--color-on-surface);
   }
   
   .badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
+    background-color: #FEF3C7;
+    color: #92400E;
   }
   
   .badge-info {
-    @apply bg-blue-100 text-blue-800;
+    background-color: #DBEAFE;
+    color: #1E40AF;
   }
   
   .badge-purple {
-    @apply bg-purple-100 text-purple-800;
+    background-color: #EDE9FE;
+    color: #5B21B6;
   }
   
   .badge-success {
-    @apply bg-green-100 text-green-800;
+    background-color: #D1FAE5;
+    color: #065F46;
   }
   
   .badge-danger {
-    @apply bg-red-100 text-red-800;
+    background-color: #FEE2E2;
+    color: #991B1B;
   }
   
   .badge-gray {
-    @apply bg-gray-100 text-gray-800;
+    background-color: #F3F4F6;
+    color: var(--color-on-surface);
   }
 }

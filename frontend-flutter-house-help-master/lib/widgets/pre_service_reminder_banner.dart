@@ -235,7 +235,10 @@ class _PreServiceReminderBannerState extends State<PreServiceReminderBanner> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 12,
+        ), // Increased 2px for better balance
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceVariant,

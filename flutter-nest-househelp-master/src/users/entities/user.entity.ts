@@ -8,6 +8,7 @@ import {
   Index,
   BeforeInsert,
 } from 'typeorm';
+import { Expose } from 'class-transformer';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 import { Address } from '../../addresses/entities/address.entity';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
@@ -41,9 +42,11 @@ export class User {
   password: string;
 
   @Column({ nullable: true })
+  @Expose()
   firstName: string;
 
   @Column({ nullable: true })
+  @Expose()
   lastName: string;
 
   @Column({

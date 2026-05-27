@@ -42,4 +42,22 @@ export class ServiceRequestsController {
   }> {
     return this.serviceRequestsService.getStatus(id);
   }
+
+  /**
+   * Get user's active bookings
+   * GET /service-requests/active
+   * Used by home screen for Active Operations card
+   */
+  @Get('active')
+  async getActiveBookings(
+    @Request() req: JwtRequest,
+  ): Promise<{
+    operationTitle: string;
+    assignedTo: string;
+    eta: string;
+    status: string;
+  } | null> {
+    const userId = req.user.userId;
+    return this.serviceRequestsService.getUserActiveBooking(userId);
+  }
 }

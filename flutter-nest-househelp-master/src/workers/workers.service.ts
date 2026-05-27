@@ -383,10 +383,15 @@ export class WorkersService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    // Validate worker exists
     const worker = await this.workersRepository.findOne({ where: { id: workerId } });
-    // Compare using string casting to handle the type mismatch
-    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    
+    if (!worker) {
+      throw new NotFoundException('Worker not found');
+    }
+    
+    // Check if booking is assigned to this worker (compare integer IDs)
+    const isAssignedToWorker = booking.workerId === workerId || booking.assignedWorkerId === workerId;
     if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
@@ -408,10 +413,16 @@ export class WorkersService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    
+    // Validate worker exists
     const worker = await this.workersRepository.findOne({ where: { id: workerId } });
-    // Compare using string casting to handle the type mismatch
-    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    
+    if (!worker) {
+      throw new NotFoundException('Worker not found');
+    }
+    
+    // Check if booking is assigned to this worker (compare integer IDs)
+    const isAssignedToWorker = booking.workerId === workerId || booking.assignedWorkerId === workerId;
     if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
@@ -436,10 +447,12 @@ export class WorkersService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    
+    // Validate worker exists
     const worker = await this.workersRepository.findOne({ where: { id: workerId } });
-    // Compare using string casting to handle the type mismatch
-    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    
+    // Check if booking is assigned to this worker (compare integer IDs)
+    const isAssignedToWorker = booking.workerId === workerId || booking.assignedWorkerId === workerId;
     if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
@@ -463,10 +476,12 @@ export class WorkersService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    // Get worker's publicId for comparison with assignedWorkerId (stored as UUID in DB but typed as number in entity)
+    
+    // Validate worker exists
     const worker = await this.workersRepository.findOne({ where: { id: workerId } });
-    // Compare using string casting to handle the type mismatch
-    const isAssignedToWorker = booking.workerId === workerId || String(booking.assignedWorkerId) === worker?.publicId;
+    
+    // Check if booking is assigned to this worker (compare integer IDs)
+    const isAssignedToWorker = booking.workerId === workerId || booking.assignedWorkerId === workerId;
     if (!isAssignedToWorker) {
       throw new BadRequestException('Booking is not assigned to this worker');
     }
@@ -568,6 +583,65 @@ export class WorkersService {
     }
 
     return this.workersRepository.save(worker);
+  }
+
+  /**
+   * Get count of workers near a location
+   * Used by home screen for "X verified professionals nearby" display
+   */
+  async getNearbyWorkersCount(lat: number, long: number, radius: number = 5): Promise<number> {
+    const count = await this.workersRepository
+      .createQueryBuilder('worker')
+      .leftJoin('worker.user', 'user')
+      .where(
+        `(
+          6371 * acos(
+            cos(radians(:lat)) * cos(radians(user.latitude)) * cos(radians(user.longitude) - radians(:long)) +
+            sin(radians(:lat)) * sin(radians(user.latitude))
+          )
+        ) <= :radius`,
+        { lat, long, radius },
+      )
+      .andWhere('worker.isAvailable = :isAvailable', { isAvailable: true })
+      .getCount();
+    
+    return count;
+  }
+
+  /**
+   * Get worker statistics (average response time, etc.)
+   * Used by home screen for "X min average arrival" display
+   */
+  async getWorkerStats(): Promise<{
+    avgResponseTime: number;
+    totalWorkers: number;
+    availableWorkers: number;
+  }> {
+    // Get total workers count
+    const totalWorkers = await this.workersRepository.count();
+    
+    // Get available workers count
+    const availableWorkers = await this.workersRepository.count({
+      where: { isAvailable: true },
+    });
+    
+    // Calculate average response time from completed bookings
+    // Using a simplified calculation: average time between booking creation and start time
+    const avgResponseTimeResult = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .select('AVG(EXTRACT(EPOCH FROM (booking.startedAt - booking.createdAt)))', 'avgSeconds')
+      .where('booking.status = :status', { status: BookingStatus.COMPLETED })
+      .andWhere('booking.startedAt IS NOT NULL')
+      .getRawOne();
+    
+    const avgSeconds = parseFloat(avgResponseTimeResult?.avgSeconds || '0');
+    const avgResponseTime = Math.round(avgSeconds / 60) || 14; // Default to 14 minutes if no data
+    
+    return {
+      avgResponseTime,
+      totalWorkers,
+      availableWorkers,
+    };
   }
 
   /**

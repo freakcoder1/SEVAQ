@@ -486,6 +486,7 @@ export class NotificationsService {
 
     // Mark notification as sent to prevent duplicates
     booking.notificationSent = true;
+    await this.bookingsRepository.save(booking);
 
     console.log(`[notifyWorkerNewBooking] Completed for worker ${worker.id} for booking ${booking.id}`);
   }
