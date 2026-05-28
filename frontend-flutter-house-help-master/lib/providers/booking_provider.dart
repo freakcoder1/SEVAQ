@@ -252,9 +252,11 @@ class BookingProvider with ChangeNotifier {
         };
       }
 
-      // Check for active subscriptions (for recurring services)
+      // Check for active subscriptions with assigned workers (for recurring services)
       final activeSubscriptions = _subscriptions
-          .where((s) => s.isActive)
+          .where(
+            (s) => s.isActive && s.workerId != null && s.workerId!.isNotEmpty,
+          )
           .toList();
       if (activeSubscriptions.isNotEmpty) {
         // Get the most recent active subscription

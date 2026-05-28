@@ -1,9 +1,12 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as admin from 'firebase-admin';
 import { UserRole } from '../users/entities/user.entity';
 import { randomBytes } from 'crypto';
+import { RefreshToken } from './entities/refresh-token.entity';
 
 @Injectable()
 export class FirebaseAuthService {
@@ -13,6 +16,8 @@ export class FirebaseAuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
   ) {
     this.initializeFirebase();
   }
@@ -327,10 +332,17 @@ export class FirebaseAuthService {
 
       // Create plain object response - TypeORM entities have circular references that break Nest serialization
       const jwtResponse = this.generateJwt(user);
-      
+
+      // Create a refresh token for OTP login users (same as email/password login)
+      const refreshToken = new RefreshToken();
+      refreshToken.userId = user.id;
+      refreshToken.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      await this.refreshTokenRepository.save(refreshToken);
+
       // Return a clean serializable object, no TypeORM proxy entities
       const response: any = {
         access_token: jwtResponse.access_token,
+        refresh_token: refreshToken.token,
         user: {
           id: user.id,
           publicId: user.publicId,

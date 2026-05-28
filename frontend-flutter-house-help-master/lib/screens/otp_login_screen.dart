@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/firebase_auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/navigation_service.dart';
-import 'main_screen.dart';
+import 'auth_wrapper.dart';
 import 'profile_completion_screen.dart';
 
 class OtpLoginScreen extends StatefulWidget {
@@ -160,7 +160,7 @@ class _OtpLoginScreenState extends State<OtpLoginScreen> {
           if (mounted) {
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(builder: (context) => const AuthWrapper()),
               (route) => false,
             );
           }

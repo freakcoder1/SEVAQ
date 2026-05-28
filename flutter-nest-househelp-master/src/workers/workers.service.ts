@@ -626,22 +626,35 @@ export class WorkersService {
     });
     
     // Calculate average response time from completed bookings
-    // Using a simplified calculation: average time between booking creation and start time
-    const avgResponseTimeResult = await this.bookingsRepository
-      .createQueryBuilder('booking')
-      .select('AVG(EXTRACT(EPOCH FROM (booking.startedAt - booking.createdAt)))', 'avgSeconds')
-      .where('booking.status = :status', { status: BookingStatus.COMPLETED })
-      .andWhere('booking.startedAt IS NOT NULL')
-      .getRawOne();
-    
-    const avgSeconds = parseFloat(avgResponseTimeResult?.avgSeconds || '0');
-    const avgResponseTime = Math.round(avgSeconds / 60) || 14; // Default to 14 minutes if no data
-    
-    return {
-      avgResponseTime,
-      totalWorkers,
-      availableWorkers,
-    };
+    // FIX: Use updatedAt instead of startedAt (column doesn't exist in DB)
+    // updatedAt on a completed booking approximates when work was finished,
+    // so updatedAt - createdAt ~= total job duration. We use this as a proxy
+    // for response time until a proper startedAt column is added.
+    try {
+      const avgResponseTimeResult = await this.bookingsRepository
+        .createQueryBuilder('booking')
+        .select('AVG(EXTRACT(EPOCH FROM (booking.updatedAt - booking.createdAt)))', 'avgSeconds')
+        .where('booking.status = :status', { status: BookingStatus.COMPLETED })
+        .andWhere('booking.updatedAt IS NOT NULL')
+        .getRawOne();
+      
+      const avgSeconds = parseFloat(avgResponseTimeResult?.avgSeconds || '0');
+      const avgResponseTime = Math.round(avgSeconds / 60) || 14; // Default to 14 minutes if no data
+      
+      return {
+        avgResponseTime,
+        totalWorkers,
+        availableWorkers,
+      };
+    } catch (error) {
+      this.logger.error(`Error calculating worker stats: ${error.message}`);
+      // Return defaults so the home screen doesn't break
+      return {
+        avgResponseTime: 14,
+        totalWorkers,
+        availableWorkers,
+      };
+    }
   }
 
   /**

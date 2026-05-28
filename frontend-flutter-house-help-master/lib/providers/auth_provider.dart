@@ -575,6 +575,21 @@ class AuthProvider with ChangeNotifier {
     return false;
   }
 
+  /// PRODUCTION FIX: Silent auth state clear — no navigation.
+  /// Call this from deep layers (ApiService) instead of logout().
+  /// AuthWrapper will see _cachedToken=null and show LoginScreen naturally.
+  void clearAuthState() {
+    debugPrint('AuthProvider: clearAuthState called silently');
+    _currentUser = null;
+    _cachedToken = null;
+    _cachedUserId = null;
+    _cachedUser = null;
+    _cacheLoaded = true; // Mark as "we checked, result is none"
+    _isLoading = false;
+    notifyListeners();
+    // NOTE: No NavigationService call — AuthWrapper will redirect automatically
+  }
+
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();

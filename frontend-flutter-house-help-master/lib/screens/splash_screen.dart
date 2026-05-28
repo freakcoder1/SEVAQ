@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:provider/provider.dart';
 
-import '../providers/auth_provider.dart';
-import '../providers/location_provider.dart';
-import 'location_setup_screen.dart';
-
+/// SplashScreen - Pure animated splash with NO navigation logic.
+///
+/// AuthWrapper is the ONLY source of truth for routing decisions.
+/// This widget simply displays the splash animation while AuthWrapper
+/// initializes providers in the background.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -24,30 +24,24 @@ class _SplashScreenState extends State<SplashScreen>
   Animation<Color?>? _bgColorAnimation;
 
   bool _themeInitialized = false;
-  bool _hasCheckedLocation = false;
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize animation controller
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
 
-    // Logo scale animation with bouncy effect
     _logoAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
 
-    // Title text animation (position and opacity)
     _textAnimation = Tween<double>(begin: 30, end: 0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
-    // Subtitle fade animation
     _subtitleAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -55,7 +49,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Loading indicator animation
     _loadingAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -63,24 +56,17 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Overall fade animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    // Start animations
     _animationController.forward();
 
-    // Initialize theme-dependent animations after build
+    // Initialize theme-dependent color animation after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _initializeThemeDependentAnimations(Theme.of(context));
       }
-    });
-
-    // Start location check after build completes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAuthStatus();
     });
   }
 
@@ -90,118 +76,24 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _checkAuthStatus() async {
-    if (_isLoading) return;
-    _isLoading = true;
-
-    try {
-      // Simulate splash screen duration (skip in test environment)
-      if (!const bool.fromEnvironment('dart.vm.product')) {
-        // Skip delay during tests
-      } else {
-        await Future.delayed(const Duration(seconds: 2));
-      }
-
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final locationProvider = Provider.of<LocationProvider>(
-        context,
-        listen: false,
-      );
-
-      // Check if user is authenticated and location is set up
-      if (authProvider.isAuthenticated) {
-        // Check if location setup is needed
-        if (locationProvider.needsLocationSetup()) {
-          // Navigate to location setup
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => LocationSetupScreen()),
-            );
-          }
-        } else {
-          // Navigate to auth wrapper (which will handle main navigation)
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/auth');
-          }
-        }
-      } else {
-        // Navigate to auth wrapper
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/auth');
-        }
-      }
-    } catch (e) {
-      debugPrint('SplashScreen: Error in _checkAuthStatus: $e');
-      _isLoading = false;
-    }
-  }
-
-  void _checkExistingLocation() async {
-    debugPrint('SplashScreen._checkExistingLocation: called');
-
-    // Prevent multiple simultaneous checks
-    if (_hasCheckedLocation) {
-      debugPrint(
-        'SplashScreen._checkExistingLocation: Already checked, skipping',
-      );
-      return;
-    }
-
-    _hasCheckedLocation = true;
-
-    final locationProvider = Provider.of<LocationProvider>(
-      context,
-      listen: false,
-    );
-
-    // Check if user already has location data saved
-    if (locationProvider.currentLocationData != null) {
-      debugPrint('SplashScreen: Location already set, no need for setup');
-    } else {
-      debugPrint('SplashScreen: No location data found');
-    }
-  }
-
   void _initializeThemeDependentAnimations(ThemeData theme) {
-    debugPrint('SplashScreen._initializeThemeDependentAnimations: START');
     _bgColorAnimation = ColorTween(
       begin: theme.scaffoldBackgroundColor.withAlpha((0.8 * 255).round()),
       end: theme.scaffoldBackgroundColor,
     ).animate(_animationController);
-    debugPrint(
-      'SplashScreen._initializeThemeDependentAnimations: END - _bgColorAnimation.value=${_bgColorAnimation?.value}',
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Watch location provider to trigger rebuild when location changes
-    final locationProvider = context.watch<LocationProvider>();
-    final currentLocation = locationProvider.currentLocationData;
-    final hasCompletedSetup = !locationProvider.needsLocationSetup();
-
-    debugPrint(
-      'SplashScreen.build: START, location=$currentLocation, completed=$hasCompletedSetup',
-    );
-
-    // Check location on every build
-    _checkExistingLocation();
-
-    // Initialize theme-dependent animations if not already done
+    // Initialize on first build (fallback if addPostFrameCallback was early)
     if (!_themeInitialized) {
       _initializeThemeDependentAnimations(theme);
       _themeInitialized = true;
-      debugPrint('SplashScreen.build: Theme initialized');
     }
 
-    // Safety check - ensure animation is not null
     final bgColor = _bgColorAnimation?.value ?? theme.scaffoldBackgroundColor;
-    debugPrint(
-      'SplashScreen.build: bgColor=$bgColor, location=$currentLocation',
-    );
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -332,7 +224,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                   const SizedBox(height: 40),
 
-                  // Enhanced loading indicator
+                  // Loading indicator
                   AnimatedBuilder(
                     animation: _loadingAnimation,
                     builder: (context, child) {

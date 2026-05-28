@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/app_config.dart';
+import '../providers/auth_provider.dart';
 
 /// Exception thrown when JWT token has expired
 class TokenExpiredException implements Exception {
@@ -37,9 +38,10 @@ Map<String, dynamic>? decodeJwt(String token) {
   }
 }
 
-// Time drift compensation: add 30 seconds leeway to account for device/server time differences
+// Time drift compensation: add 5 minutes leeway to account for device/server time differences
 // This prevents premature token expiry detection due to clock skew
-const int TOKEN_TIME_LEEWAY_SECONDS = 30;
+// PRODUCTION FIX: Increased from 30 to 300 seconds for mobile reliability
+const int TOKEN_TIME_LEEWAY_SECONDS = 300;
 
 // Helper function to check if token is expired
 bool isTokenExpired(Map<String, dynamic> tokenData) {
@@ -86,21 +88,59 @@ class ApiService {
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Future<Map<String, String>> _getHeaders() async {
-    String? token = await _storage.read(key: 'jwt_token');
-    debugPrint(
-      'ApiService: _getHeaders - token exists in secure storage: ${token != null}',
-    );
+  /// PRODUCTION FIX: Centralized token clearing that syncs with AuthProvider.
+  /// Call this INSTEAD of scattered clearToken() / storage deletes.
+  static Future<void> _clearAllAuthState() async {
+    debugPrint('ApiService: _clearAllAuthState — syncing with AuthProvider');
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: 'jwt_token');
+    await storage.delete(key: 'user_id');
+    await storage.delete(key: 'cached_user');
+    await storage.delete(key: 'refresh_token');
 
-    // Fallback to SharedPreferences if token not found in secure storage
-    if (token == null) {
-      debugPrint('ApiService: _getHeaders - Trying SharedPreferences fallback');
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('jwt_token');
-      debugPrint(
-        'ApiService: _getHeaders - token exists in SharedPreferences: ${token != null}',
-      );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('user_id');
+    await prefs.remove('cached_user');
+    await prefs.remove('refresh_token');
+
+    // Sync: tell AuthProvider its in-memory caches are invalid
+    try {
+      final ap = AuthProvider.instance;
+      ap.clearAuthState(); // Silent — no navigation, AuthWrapper will react naturally
+    } catch (e) {
+      debugPrint('ApiService: AuthProvider.clearAuthState failed: $e');
     }
+  }
+
+  /// PRODUCTION FIX: Read token from SharedPreferences FIRST
+  /// FlutterSecureStorage is unreliable on some devices (keystore corruption).
+  /// SharedPreferences survives backups, updates, and backgrounding much better.
+  Future<String?> _readToken() async {
+    // 1. SharedPreferences (primary — reliable on all devices)
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+    if (token != null && token.isNotEmpty) {
+      return token;
+    }
+
+    // 2. FlutterSecureStorage fallback (legacy storage)
+    token = await _storage.read(key: 'jwt_token');
+    if (token != null && token.isNotEmpty) {
+      // Heal: replicate back to SharedPreferences so next read is fast+reliable
+      await prefs.setString('jwt_token', token);
+      debugPrint('ApiService: Healed jwt_token from SecureStorage -> SharedPreferences');
+      return token;
+    }
+
+    return null;
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    String? token = await _readToken();
+    debugPrint(
+      'ApiService: _getHeaders - token found: ${token != null}',
+    );
 
     if (token != null) {
       debugPrint('ApiService: _getHeaders - token length: ${token.length}');
@@ -111,30 +151,20 @@ class ApiService {
       }
 
       // Check token expiry (PRODUCTION-READY: Try to refresh expired tokens)
-      // Also check for proactive refresh if token is expiring soon
       final tokenData = decodeJwt(token);
       if (tokenData != null) {
-        // Proactive refresh: refresh if token is expiring soon (within 5 minutes)
+        // Proactive refresh: refresh if token is expiring soon
         if (isTokenExpiringSoon(tokenData)) {
           debugPrint(
             'ApiService: _getHeaders - Token expiring soon, attempting proactive refresh',
           );
-          // Try to refresh the access token with retry logic
           final refreshed = await _refreshAccessTokenWithRetry();
           if (refreshed) {
-            // Get the new token from storage
-            token = await _storage.read(key: 'jwt_token');
-            if (token == null) {
-              token = (await SharedPreferences.getInstance()).getString(
-                'jwt_token',
-              );
-            }
+            token = await _readToken();
             debugPrint(
               'ApiService: _getHeaders - Token proactively refreshed successfully',
             );
           } else {
-            // Proactive refresh failed, but token not yet expired
-            // Continue with current token - will retry on next request
             debugPrint(
               'ApiService: _getHeaders - Proactive refresh failed, continuing with current token',
             );
@@ -143,30 +173,18 @@ class ApiService {
           debugPrint(
             'ApiService: _getHeaders - Token has expired, attempting refresh',
           );
-          // Try to refresh the access token with retry logic
           final refreshed = await _refreshAccessTokenWithRetry();
           if (refreshed) {
-            // Get the new token from storage
-            token = await _storage.read(key: 'jwt_token');
-            if (token == null) {
-              token = (await SharedPreferences.getInstance()).getString(
-                'jwt_token',
-              );
-            }
+            token = await _readToken();
             debugPrint(
               'ApiService: _getHeaders - Token refreshed successfully',
             );
           } else {
-            // Refresh failed after retries, clear token
+            // Refresh failed after retries, clear token AND sync AuthProvider
             debugPrint(
-              'ApiService: _getHeaders - Token refresh failed after retries, clearing token',
+              'ApiService: _getHeaders - Token refresh failed after retries, clearing session',
             );
-            await clearToken();
-            await _storage.delete(key: 'user_id');
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('jwt_token');
-            await prefs.remove('user_id');
-            await prefs.remove('refresh_token');
+            await _clearAllAuthState();
             token = null;
             throw TokenExpiredException(
               'Session expired. Please log in again.',
@@ -174,17 +192,16 @@ class ApiService {
           }
         }
       } else {
-        debugPrint('ApiService: _getHeaders - Invalid token');
-        await clearToken();
-        await _storage.delete(key: 'user_id');
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('jwt_token');
-        await prefs.remove('user_id');
-        await prefs.remove('refresh_token');
+        debugPrint('ApiService: _getHeaders - Invalid token, clearing session');
+        await _clearAllAuthState();
         token = null;
       }
     } else {
       debugPrint('ApiService: _getHeaders - NO TOKEN FOUND in any storage');
+      // No token = not logged in yet. Do NOT call clearAuthState —
+      // AuthWrapper already handles unauthenticated state naturally.
+      // Calling it here would create a throwaway AuthProvider.instance before
+      // main.dart has set the real one.
     }
     return {
       'Content-Type': 'application/json',
@@ -353,13 +370,7 @@ class ApiService {
 
       // If refresh failed or no method/endpoint provided, clear token and throw
       debugPrint('ApiService: Token refresh failed, clearing session');
-      // Clear token from all storage locations
-      await clearToken();
-      await _storage.delete(key: 'user_id');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('jwt_token');
-      await prefs.remove('user_id');
-      await prefs.remove('refresh_token');
+      await _clearAllAuthState();
       // Throw exception to trigger redirect to login
       throw TokenExpiredException('Session expired. Please log in again.');
     } else if (response.statusCode == 400) {
@@ -959,6 +970,34 @@ extension WorkerApi on ApiService {
    */
   Future<dynamic> getMyWorkerEarnings() async {
     return await get('workers/me/earnings');
+  }
+
+  /**
+   * Get nearby worker count for customer trust layer
+   * GET /workers/nearby/count?lat={lat}&long={lng}&radius={radius}
+   */
+  Future<Map<String, dynamic>?> getNearbyWorkersCount(double lat, double lng, {double radius = 5.0}) async {
+    try {
+      final response = await get('workers/nearby/count?lat=$lat&long=$lng&radius=$radius');
+      return response as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('ApiService: getNearbyWorkersCount error: $e');
+      return null;
+    }
+  }
+
+  /**
+   * Get worker stats (avg response time, etc.)
+   * GET /workers/stats
+   */
+  Future<Map<String, dynamic>?> getWorkerStats() async {
+    try {
+      final response = await get('workers/stats');
+      return response as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('ApiService: getWorkerStats error: $e');
+      return null;
+    }
   }
 
   /**

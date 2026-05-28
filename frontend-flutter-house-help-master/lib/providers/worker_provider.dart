@@ -9,36 +9,35 @@ class WorkerProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // ── NEW: Live intelligence data ──
+  int _nearbyCount = 0;
+  int _avgResponseTime = 14;
+  bool _isStatsLoading = false;
+
   List<Worker> get workers => _workers;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  // NEW getters
+  int get nearbyCount => _nearbyCount;
+  int get avgResponseTime => _avgResponseTime;
+  bool get isStatsLoading => _isStatsLoading;
+
   WorkerProvider();
 
   Future<void> fetchWorkers() async {
-    print('🔍 DEBUG: WorkerProvider.fetchWorkers() called');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      print('📡 DEBUG: Making API call to /workers');
       final response = await _apiService.get('workers');
-      print('📡 DEBUG: API response received: $response');
-
       if (response != null) {
-        print('✅ DEBUG: Processing ${response.length} workers from response');
         _workers = (response as List).map((i) => Worker.fromJson(i)).toList();
-        print('✅ DEBUG: Successfully parsed ${_workers.length} workers');
         notifyListeners();
-      } else {
-        print('❌ DEBUG: No response received from API');
       }
     } catch (e) {
-      print('❌ DEBUG: Error fetching workers: $e');
       _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -58,10 +57,31 @@ class WorkerProvider with ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ── NEW: Fetch live nearby count + stats ──
+  Future<void> fetchWorkerStats(double lat, double lng) async {
+    _isStatsLoading = true;
+    notifyListeners();
+
+    try {
+      final countResponse = await _apiService.getNearbyWorkersCount(lat, lng);
+      if (countResponse != null) {
+        _nearbyCount = (countResponse['count'] as num?)?.toInt() ?? 0;
+      }
+
+      final statsResponse = await _apiService.getWorkerStats();
+      if (statsResponse != null) {
+        _avgResponseTime = (statsResponse['avgResponseTime'] as num?)?.toInt() ?? 14;
+      }
+    } catch (e) {
+      debugPrint('WorkerProvider.fetchWorkerStats error: $e');
+    } finally {
+      _isStatsLoading = false;
       notifyListeners();
     }
   }

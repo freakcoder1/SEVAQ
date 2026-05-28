@@ -114,6 +114,7 @@ export class Subscription {
   @Column({ type: 'timestamp', nullable: true, name: 'last_notification_sent_at' })
   lastNotificationSentAt: Date | null;
 
+  @Expose()
   @ManyToOne(() => Worker, { nullable: true })
   @JoinColumn({ name: 'assignedWorkerId' })
   assignedWorker: Worker | null;

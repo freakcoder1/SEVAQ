@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import 'main_screen.dart';
+import 'auth_wrapper.dart';
 
 class ProfileCompletionScreen extends StatefulWidget {
   const ProfileCompletionScreen({super.key});
@@ -57,7 +57,7 @@ class _ProfileCompletionScreenState extends State<ProfileCompletionScreen> {
           // Navigate to main screen
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
+            MaterialPageRoute(builder: (context) => const AuthWrapper()),
             (route) => false,
           );
         }

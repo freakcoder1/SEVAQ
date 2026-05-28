@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../core/intelligence/contextual_message_service.dart';
-import 'package:intl/intl.dart';
+import '../providers/worker_provider.dart';
 
 class TrustLayer extends StatefulWidget {
-  final int professionalsNearby;
-  final int avgResponseTime;
-
-  const TrustLayer({
-    Key? key,
-    this.professionalsNearby = 12,
-    this.avgResponseTime = 14,
-  }) : super(key: key);
+  const TrustLayer({Key? key}) : super(key: key);
 
   @override
   _TrustLayerState createState() => _TrustLayerState();
@@ -44,96 +38,81 @@ class _TrustLayerState extends State<TrustLayer>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      height: 76, // Reduced from 82px
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        6,
-        10,
-        6,
-      ), // Increased left padding by 4px for better breathing
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFFF5FAF8), const Color(0xFFF0F7F4)],
-          stops: [0.0, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Row(
-        children: [
-          // Icon with subtle pulse animation
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (context, child) {
-              return Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: AppTheme.emeraldGreen.withValues(
-                    alpha: 0.18 * _pulseAnimation.value,
-                  ), // Increased 6-8% for stronger anchor point
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(
-                  Icons.verified,
-                  color: AppTheme.emeraldGreen,
-                  size: 14, // Increased 8-10% for better visual weight
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 10),
-          // Text column
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Managed by SevaQ',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  ContextualMessageService.getOperationsMessage(
-                    activeOperations: 0,
-                    backupProfessionals: 2,
-                    avgResponseTime: widget.avgResponseTime,
-                  ),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B6B6B),
-                    letterSpacing: 0.1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  ContextualMessageService.getAvailabilityMessage(
-                    professionalsNearby: widget.professionalsNearby,
-                    avgResponseTime: widget.avgResponseTime,
-                    backupProfessionals: 2,
-                  ),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B6B6B).withValues(
-                      alpha: 0.75,
-                    ), // Increased 3-4% for better accessibility
-                  ),
-                ),
-              ],
+    return Consumer<WorkerProvider>(
+      builder: (context, workerProvider, child) {
+        final nearbyCount = workerProvider.nearbyCount;
+        final avgResponseTime = workerProvider.avgResponseTime;
+
+        return Container(
+          height: 76,
+          padding: const EdgeInsets.fromLTRB(14, 6, 10, 6),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [const Color(0xFFF5FAF8), const Color(0xFFF0F7F4)],
+              stops: [0.0, 1.0],
             ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppTheme.cardShadow,
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppTheme.emeraldGreen.withValues(
+                        alpha: 0.18 * _pulseAnimation.value,
+                      ),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(
+                      Icons.verified,
+                      color: AppTheme.emeraldGreen,
+                      size: 14,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Managed by SevaQ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      ContextualMessageService.getAvailabilityMessage(
+                        professionalsNearby: nearbyCount,
+                        avgResponseTime: avgResponseTime,
+                        backupProfessionals: nearbyCount > 2 ? 2 : (nearbyCount > 0 ? 1 : 0),
+                      ),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6B6B6B),
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

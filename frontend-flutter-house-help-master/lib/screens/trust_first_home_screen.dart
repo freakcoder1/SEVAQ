@@ -55,6 +55,7 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
   String _systemMessage = 'All services on track';
   Recommendation? _currentRecommendation;
   List<String> _suggestions = [];
+  bool _hasLoadedWorkerStats = false;
 
   String _formatLocationText(dynamic locationData) {
     // Handle different location data formats
@@ -174,6 +175,7 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     _loadHomeData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRecommendations();
+      _loadWorkerStats();
       // Fetch bookings and subscriptions to check for pre-service reminders
       final bookingProvider = ProviderManager.safeGetProvider<BookingProvider>(
         context,
@@ -274,6 +276,40 @@ class _TrustFirstHomeScreenState extends State<TrustFirstHomeScreen> {
     } catch (e) {
       setState(() {
         errorMessage = 'Failed to load recommendations: $e';
+      });
+    }
+  }
+
+  /// Load live worker stats for trust layer and society intelligence
+  Future<void> _loadWorkerStats() async {
+    if (_hasLoadedWorkerStats) return;
+
+    final locationProvider = ProviderManager.safeGetProvider<LocationProvider>(
+      context,
+      listen: false,
+    );
+    final workerProvider = ProviderManager.safeGetProvider<WorkerProvider>(
+      context,
+      listen: false,
+    );
+
+    if (locationProvider == null || workerProvider == null) return;
+
+    final position = locationProvider.currentPosition;
+    if (position != null) {
+      _hasLoadedWorkerStats = true;
+      await workerProvider.fetchWorkerStats(position.latitude, position.longitude);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-trigger worker stats fetch when GPS becomes available after initState
+    if (!_hasLoadedWorkerStats) {
+      // Defer to post-frame to avoid setState() during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadWorkerStats();
       });
     }
   }
