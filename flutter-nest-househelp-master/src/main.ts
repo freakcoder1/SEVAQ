@@ -1,4 +1,5 @@
 // Disable ioredis debug logging before anything else
+// FCM Guest Token Fix v3 - snake_case entity mapping deployed 2026-05-29
 if (process.env.DEBUG) {
   process.env.DEBUG = process.env.DEBUG.replace(/ioredis:[^\s,]*/g, '').replace(/,\s*,/g, ',').replace(/^,|,$/g, '');
 } else {
