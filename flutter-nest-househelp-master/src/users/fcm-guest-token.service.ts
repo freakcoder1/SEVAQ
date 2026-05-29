@@ -61,7 +61,7 @@ export class FcmGuestTokenService {
     const stale = await this.repo
       .createQueryBuilder()
       .delete()
-      .where(`"createdAt" < :cutoff`, { cutoff })
+      .where(`"created_at" < :cutoff`, { cutoff })
       .execute();
     const count = stale.affected ?? 0;
     if (count > 0) {
