@@ -30,6 +30,7 @@ import { AdminModule } from './admin/admin.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { User } from './users/entities/user.entity';
+import { FcmGuestToken } from './users/entities/fcm-guest-token.entity';
 import { Service } from './services/entities/service.entity';
 import { Worker } from './workers/entities/worker.entity';
 import { Slot } from './slots/entities/slot.entity';
@@ -143,6 +144,7 @@ import { ObservabilityService } from './common/services/observability.service';
 
         const entities = [
           User,
+          FcmGuestToken,
           Service,
           Worker,
           Slot,
