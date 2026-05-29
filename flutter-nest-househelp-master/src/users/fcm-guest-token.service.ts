@@ -21,17 +21,23 @@ export class FcmGuestTokenService {
   async storeToken(deviceId: string, token: string): Promise<void> {
     if (!deviceId || !token) return;
 
-    const existing = await this.repo.findOne({ where: { deviceId } });
-    if (existing) {
-      existing.token = token;
-      existing.createdAt = new Date();
-      await this.repo.save(existing);
-      this.logger.debug(`Updated guest FCM token for device ${deviceId}`);
-    } else {
-      await this.repo.save(
-        this.repo.create({ deviceId, token, createdAt: new Date() }),
-      );
-      this.logger.debug(`Stored new guest FCM token for device ${deviceId}`);
+    this.logger.log(`storeToken: deviceId=$deviceId, token=${token.substring(0, 10)}...`);
+    try {
+      const existing = await this.repo.findOne({ where: { deviceId } });
+      if (existing) {
+        existing.token = token;
+        existing.createdAt = new Date();
+        await this.repo.save(existing);
+        this.logger.debug(`Updated guest FCM token for device ${deviceId}`);
+      } else {
+        await this.repo.save(
+          this.repo.create({ deviceId, token, createdAt: new Date() }),
+        );
+        this.logger.debug(`Stored new guest FCM token for device ${deviceId}`);
+      }
+    } catch (e) {
+      this.logger.error(`storeToken FAILED: ${e instanceof Error ? e.message : String(e)}`);
+      throw e;
     }
   }
 
