@@ -138,7 +138,17 @@ class LocationProvider with ChangeNotifier {
       await _checkLocationPermission();
 
       if (_hasLocationPermission) {
-        await _getCurrentLocation();
+        await _getCurrentLocation().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint('LocationProvider: Location init timed out after 15s');
+            _currentLocation = 'Unable to get location. Please check your GPS.';
+            _isLoading = false;
+            _isInitialized = true;
+            notifyListeners();
+            return;
+          },
+        );
       } else {
         _isLoading = false;
         _isInitialized = true;
@@ -227,6 +237,11 @@ class LocationProvider with ChangeNotifier {
           accuracy: LocationAccuracy.high,
           distanceFilter: 10,
         ),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Location request timed out after 10 seconds');
+        },
       );
       await _getAddressFromLatLng(_currentPosition!);
     } catch (e) {

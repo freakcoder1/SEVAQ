@@ -134,19 +134,24 @@ class FirebaseMessagingService {
   }
 
   /// Generate a stable device identifier for guest FCM token storage.
-  static Future<String?> _getDeviceId() async {
+  /// NEVER returns null — falls back to a random UUID if storage fails.
+  static Future<String> getDeviceId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? id = prefs.getString('device_id');
-      if (id == null) {
+      if (id == null || id.isEmpty) {
         id = const Uuid().v4();
         await prefs.setString('device_id', id);
         debugPrint('FCM: Generated new deviceId: $id');
+      } else {
+        debugPrint('FCM: Reusing existing deviceId: $id');
       }
       return id;
     } catch (e) {
-      debugPrint('FCM: Error generating deviceId: $e');
-      return null;
+      debugPrint('FCM: Error reading deviceId from storage: $e');
+      final fallback = const Uuid().v4();
+      debugPrint('FCM: Using fallback deviceId: $fallback');
+      return fallback;
     }
   }
 
@@ -154,7 +159,7 @@ class FirebaseMessagingService {
     try {
       final apiService = ApiService();
       String? userRole = await _getUserRole();
-      final deviceId = await _getDeviceId();
+      final deviceId = await getDeviceId();
 
       if (userRole == 'worker') {
         print('FCM: User is worker, trying worker endpoint');
@@ -170,13 +175,13 @@ class FirebaseMessagingService {
       }
 
       // Try user endpoint (for customers or workers without profile yet)
-      print('FCM: Trying user endpoint');
+      print('FCM: Trying user endpoint with deviceId=$deviceId');
       try {
         await apiService.post('/users/register-fcm-token', {
           'fcmToken': fcmToken,
-          if (deviceId != null) 'deviceId': deviceId,
+          'deviceId': deviceId,
         });
-        print('FCM: User token registered successfully!');
+        print('FCM: User token registered successfully! deviceId=$deviceId');
       } catch (e) {
         print('FCM: User endpoint exception: $e');
       }

@@ -89,6 +89,13 @@ export class UsersController {
     return createPaginatedResponse(data, total, page, limit);
   }
 
+  @Get('fcm-guest-tokens')
+  @UseGuards(AdminGuard)
+  async listGuestFcmTokens() {
+    const tokens = await this.fcmGuestTokenService.findAll();
+    return { success: true, data: tokens };
+  }
+
   @Get(':id')
   @UseGuards(AdminGuard)
   findOne(@Param('id') id: string) {

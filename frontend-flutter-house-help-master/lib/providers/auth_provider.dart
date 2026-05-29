@@ -304,6 +304,12 @@ class AuthProvider with ChangeNotifier {
 
   /// One-time async initialization
   Future<void> _initializeAuth() async {
+    // Set loading state at the start to prevent race conditions
+    if (!_cacheLoaded) {
+      _isLoading = true;
+      notifyListeners();
+    }
+    
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_TOKEN_KEY);

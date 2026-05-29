@@ -75,4 +75,8 @@ export class FcmGuestTokenService {
     }
     return count;
   }
+
+  async findAll(): Promise<FcmGuestToken[]> {
+    return await this.repo.find({ order: { createdAt: 'DESC' } });
+  }
 }

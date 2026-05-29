@@ -29,6 +29,10 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
   DateTime _lastBuildTime = DateTime.now();
   static const int _DEBOUNCE_MS = 1500; // 1.5 seconds debounce
 
+  // Initialization timeout to prevent infinite loading
+  static const int _INIT_TIMEOUT_MS = 10000; // 10 seconds
+  DateTime? _initStartTime;
+
   // Initialization delay to wait for async providers (SharedPreferences) to load
   // This prevents showing LoginScreen briefly during app resume
   static const int _INIT_DELAY_MS = 500;
@@ -39,6 +43,7 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     debugPrint('AuthWrapper: initState called');
+    _initStartTime = DateTime.now();
   }
 
   @override
@@ -62,6 +67,13 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Initialization timeout check
+    if (_initStartTime != null &&
+        DateTime.now().difference(_initStartTime!).inMilliseconds > _INIT_TIMEOUT_MS) {
+      debugPrint('AuthWrapper: Init timeout reached, forcing navigation decision');
+      _initStartTime = null; // Reset to prevent repeated logging
+    }
+
     // Watch both auth and location providers for changes
     final auth = context.watch<AuthProvider>();
     final locationProvider = context.watch<LocationProvider>();
@@ -77,7 +89,14 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     if (!_hasCompletedFirstBuild) {
       _hasCompletedFirstBuild = true;
       if (auth.isLoading || !locationProvider.isInitialized) {
-        return const SplashScreen();
+        // Check for timeout - if both are stuck, show loading screen with timeout fallback
+        if (_initStartTime != null &&
+            DateTime.now().difference(_initStartTime!).inMilliseconds > _INIT_TIMEOUT_MS) {
+          debugPrint('AuthWrapper: Timeout during initial load, proceeding anyway');
+          _initStartTime = null;
+        } else {
+          return const SplashScreen();
+        }
       }
       // Providers already ready - evaluate routing immediately below
     }

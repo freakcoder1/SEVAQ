@@ -12,6 +12,7 @@ import '../services/api_service.dart';
 import '../widgets/booking_status_timeline.dart';
 import '../widgets/address_input_popup.dart';
 import 'booking_confirmation_screen.dart';
+import '../services/firebase_messaging_service.dart';
 import '../config/app_config.dart';
 
 /// Professional Assigned Screen
@@ -179,6 +180,7 @@ class _ProfessionalAssignedScreenState
         'amount': (widget.amount * 100).toInt(), // Amount in paise
         'addressId': _savedAddress?.id,
         'location': locationData,
+        'deviceId': await FirebaseMessagingService.getDeviceId(),
       };
 
       // Create payment order on backend
