@@ -70,10 +70,16 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
       'AuthWrapper.build: isLoading=${auth.isLoading}, isAuthenticated=${auth.isAuthenticated}, needsLocationSetup=${locationProvider.needsLocationSetup()}',
     );
 
-    // Handle initial load - show splash screen
+    // Handle initial load - show splash screen ONLY if providers are still
+    // initializing. If providers are already settled (e.g., after login via
+    // pushReplacement), fall through to routing logic immediately to avoid
+    // getting stuck on SplashScreen when no further provider notifications fire.
     if (!_hasCompletedFirstBuild) {
       _hasCompletedFirstBuild = true;
-      return const SplashScreen();
+      if (auth.isLoading || !locationProvider.isInitialized) {
+        return const SplashScreen();
+      }
+      // Providers already ready - evaluate routing immediately below
     }
 
     // Handle loading state - wait for providers to initialize

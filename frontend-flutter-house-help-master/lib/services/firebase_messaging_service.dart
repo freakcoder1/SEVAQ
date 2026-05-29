@@ -7,6 +7,7 @@ import 'package:flutter_house_help/providers/booking_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../config/app_config.dart';
 import '../firebase_options.dart';
 import 'api_service.dart';
@@ -132,16 +133,29 @@ class FirebaseMessagingService {
     });
   }
 
+  /// Generate a stable device identifier for guest FCM token storage.
+  static Future<String?> _getDeviceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? id = prefs.getString('device_id');
+      if (id == null) {
+        id = const Uuid().v4();
+        await prefs.setString('device_id', id);
+        debugPrint('FCM: Generated new deviceId: $id');
+      }
+      return id;
+    } catch (e) {
+      debugPrint('FCM: Error generating deviceId: $e');
+      return null;
+    }
+  }
+
   static Future<void> _sendFcmTokenToBackend(String fcmToken) async {
     try {
-      // Create ApiService instance - this handles auth token automatically
       final apiService = ApiService();
-
-      // Get user role from storage (uses shared_preferences on web, secure storage on mobile)
       String? userRole = await _getUserRole();
+      final deviceId = await _getDeviceId();
 
-      // Only try worker endpoint if user is explicitly a worker
-      // Default to user endpoint for customers and unknown roles
       if (userRole == 'worker') {
         print('FCM: User is worker, trying worker endpoint');
         try {
@@ -160,6 +174,7 @@ class FirebaseMessagingService {
       try {
         await apiService.post('/users/register-fcm-token', {
           'fcmToken': fcmToken,
+          if (deviceId != null) 'deviceId': deviceId,
         });
         print('FCM: User token registered successfully!');
       } catch (e) {

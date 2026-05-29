@@ -13,6 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { FcmGuestTokenService } from './fcm-guest-token.service';
 import { AdminCreateUserDto } from './dto/admin-create-user.dto';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { RegisterFcmTokenDto } from './dto/register-fcm-token.dto';
@@ -26,7 +27,10 @@ import {
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly fcmGuestTokenService: FcmGuestTokenService,
+  ) {}
 
   @Post()
   @UseGuards(AdminGuard)
@@ -37,15 +41,19 @@ export class UsersController {
   @Post('register-fcm-token')
   @HttpCode(HttpStatus.OK)
   async registerFcmToken(@Request() req: any, @Body() registerFcmTokenDto: RegisterFcmTokenDto) {
-    // Allow both authenticated and unauthenticated FCM token registration
     const userId = req.user?.userId;
-    
+
     if (userId) {
       // Authenticated user: attach token to user account
       await this.usersService.updateFcmToken(userId, registerFcmTokenDto.fcmToken);
+    } else if (registerFcmTokenDto.deviceId) {
+      // Guest / unauthenticated: store token keyed by deviceId
+      await this.fcmGuestTokenService.storeToken(
+        registerFcmTokenDto.deviceId,
+        registerFcmTokenDto.fcmToken,
+      );
     }
-    
-    // Always return success even for unauthenticated devices
+
     return {
       success: true,
       message: 'FCM token registered successfully',

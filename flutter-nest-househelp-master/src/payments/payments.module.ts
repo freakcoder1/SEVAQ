@@ -8,6 +8,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
 import { User } from '../users/entities/user.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
@@ -20,6 +21,7 @@ import { Service } from '../services/entities/service.entity';
     SubscriptionsModule,
     ServiceProfilesModule,
     NotificationsModule,
+    UsersModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

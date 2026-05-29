@@ -117,6 +117,11 @@ class AuthProvider with ChangeNotifier {
   // Track if user refresh is in progress to prevent false negative in isAuthenticated
   static bool _isUserRefreshInProgress = false;
 
+  // PRODUCTION FIX: Cache isAuthenticated result to prevent rebuild-spam
+  static bool? _cachedIsAuthenticated;
+  static DateTime? _cachedIsAuthenticatedAt;
+  static const Duration _authCacheTtl = Duration(seconds: 3);
+
   AuthProvider() {
     debugPrint('AuthProvider: Constructor called');
     // Synchronously read from SharedPreferences to restore auth state
@@ -234,6 +239,15 @@ class AuthProvider with ChangeNotifier {
   /// IMPORTANT: Returns false ONLY when we're sure user is NOT authenticated
   /// During loading phase, returns true to prevent navigation loop
   bool get isAuthenticated {
+    // PRODUCTION FIX: Cache result for 3s to prevent rebuild-spam
+    if (
+      _cachedIsAuthenticated != null &&
+      _cachedIsAuthenticatedAt != null &&
+      DateTime.now().difference(_cachedIsAuthenticatedAt!) < _authCacheTtl
+    ) {
+      return _cachedIsAuthenticated!;
+    }
+
     debugPrint('AuthProvider: isAuthenticated called');
     debugPrint('AuthProvider: _cachedToken is null: ${_cachedToken == null}');
     debugPrint('AuthProvider: _cachedUser is null: ${_cachedUser == null}');
@@ -243,6 +257,8 @@ class AuthProvider with ChangeNotifier {
     // If we have cached token and user, user is authenticated
     if (_cachedToken != null && _cachedUser != null) {
       debugPrint('AuthProvider: isAuthenticated - returning TRUE (cached)');
+      _cachedIsAuthenticated = true;
+      _cachedIsAuthenticatedAt = DateTime.now();
       return true;
     }
 
@@ -251,6 +267,8 @@ class AuthProvider with ChangeNotifier {
       debugPrint(
         'AuthProvider: isAuthenticated - returning TRUE (currentUser)',
       );
+      _cachedIsAuthenticated = true;
+      _cachedIsAuthenticatedAt = DateTime.now();
       return true;
     }
 
@@ -272,11 +290,15 @@ class AuthProvider with ChangeNotifier {
               _isUserRefreshInProgress = false;
             });
       }
+      _cachedIsAuthenticated = true;
+      _cachedIsAuthenticatedAt = DateTime.now();
       return true; // Return true to prevent login screen during refresh
     }
 
     // No authentication data found
     debugPrint('AuthProvider: isAuthenticated - no auth data, returning false');
+    _cachedIsAuthenticated = false;
+    _cachedIsAuthenticatedAt = DateTime.now();
     return false;
   }
 
@@ -584,6 +606,8 @@ class AuthProvider with ChangeNotifier {
     _cachedToken = null;
     _cachedUserId = null;
     _cachedUser = null;
+    _cachedIsAuthenticated = null; // invalidate cached auth check
+    _cachedIsAuthenticatedAt = null;
     _cacheLoaded = true; // Mark as "we checked, result is none"
     _isLoading = false;
     notifyListeners();
@@ -831,6 +855,12 @@ class AuthProvider with ChangeNotifier {
 
           _currentUser = User.fromJson(user);
 
+          // Store refresh token FIRST so proactive refresh can work
+          final refreshToken = response['refresh_token'];
+          if (refreshToken != null) {
+            await _storage.write(key: _REFRESH_TOKEN_KEY, value: refreshToken);
+          }
+
           await _storage.write(key: 'jwt_token', value: token);
           await _storage.write(
             key: 'user_id',
@@ -843,6 +873,9 @@ class AuthProvider with ChangeNotifier {
             _USER_ID_KEY,
             user['publicId'] ?? user['id'].toString(),
           );
+          if (refreshToken != null) {
+            await prefs.setString(_REFRESH_TOKEN_KEY, refreshToken);
+          }
           await prefs.setString(_CACHED_USER_KEY, _currentUser!.toJsonString());
 
           _cachedToken = token;
@@ -858,25 +891,18 @@ class AuthProvider with ChangeNotifier {
 
           _isLoading = false;
 
-          // Register pending FCM token now that user is authenticated
-          // This will send any stored pending FCM token to backend
-          try {
-            await FirebaseMessagingService.registerFcmToken();
+          // Register FCM token once, after user is fully persisted.
+          // Keep fire-and-forget so login completes fast; it retries on its own.
+          FirebaseMessagingService.registerFcmToken().then((_) {
             debugPrint(
               'AuthProvider: FCM token registered successfully after login',
             );
-          } catch (e) {
+          }).catchError((e) {
             debugPrint('AuthProvider: Failed to register FCM token: $e');
-          }
+          });
 
           _releaseAuthLock();
           notifyListeners();
-
-          // Register FCM token after successful Firebase login
-          debugPrint(
-            'AuthProvider: Registering FCM token after Firebase login',
-          );
-          FirebaseMessagingService.registerFcmToken();
 
           return true;
         }

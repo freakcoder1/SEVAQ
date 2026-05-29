@@ -1,4 +1,3 @@
-// Hot reload triggered - Flutter app is running on Motorola Edge 60 Fusion
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,15 +27,21 @@ import 'services/firebase_messaging_service.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
-  // Preload SharedPreferences synchronously to prevent navigation loop
-  // This ensures location state is available immediately on app start/resume
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Preload SharedPreferences synchronously so auth/location state is available immediately.
   final prefs = await SharedPreferences.getInstance();
 
-  // Initialize Firebase Messaging
-  await FirebaseMessagingService.initialize();
+  // Run app immediately with a splash screen while Firebase initializes in the background.
+  // This avoids blocking the main thread for 7+ seconds (was causing 440 frame skips).
+  final app = SevaqApp(prefs: prefs);
+  runApp(app);
 
-  runApp(SevaqApp(prefs: prefs));
+  // Initialize Firebase Messaging asynchronously AFTER runApp so the UI is responsive.
+  // The splash screen handles the wait state visually.
+  FirebaseMessagingService.initialize().catchError((e) {
+    debugPrint('FirebaseMessaging init error: $e');
+  });
 }
 
 class SevaqApp extends StatelessWidget {
@@ -45,7 +50,6 @@ class SevaqApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pre-initialize AuthProvider's static prefs instance for synchronous auth restore
     AuthProvider.prefsInstance = prefs;
 
     return MultiProvider(
@@ -54,7 +58,6 @@ class SevaqApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (_) {
             final authProvider = AuthProvider();
-            // Set static instance so screens can access AuthProvider.instance directly
             AuthProvider.instance = authProvider;
             debugPrint('main.dart: AuthProvider static instance set');
             return authProvider;
@@ -80,10 +83,7 @@ class SevaqAppMaterial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get ThemeProvider from the existing MultiProvider (wrapped above)
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
-
-    // Use singleton NavigationService's navigatorKey
     final navigationService = NavigationService();
 
     return MaterialApp(
@@ -100,7 +100,6 @@ class SevaqAppMaterial extends StatelessWidget {
         '/splash': (_) => const SplashScreen(),
         '/login': (_) => LoginScreen(),
         '/location-setup': (_) => LocationFirstSplashScreen(),
-        // Admin Routes
         '/admin/login': (_) => const AdminLoginScreen(),
         '/admin/home': (_) => const AdminMainScreen(),
       },

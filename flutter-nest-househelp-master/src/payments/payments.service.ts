@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { FcmGuestTokenService } from '../users/fcm-guest-token.service';
 import { User } from '../users/entities/user.entity';
 import { Worker } from '../workers/entities/worker.entity';
 import { Service } from '../services/entities/service.entity';
@@ -31,6 +32,7 @@ export class PaymentsService {
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
     private notificationsService: NotificationsService,
+    private fcmGuestTokenService: FcmGuestTokenService,
     private dataSource: DataSource,
   ) {
     const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
@@ -433,10 +435,29 @@ export class PaymentsService {
         });
         booking = await bookingRepo.save(newBooking);
 
+        // NEW: If a guest FCM token exists for this device, attach it to the booking
+        // so notifications work even before the user logs in.
+        if (bookingData.deviceId) {
+          const guestToken = await this.fcmGuestTokenService.getToken(bookingData.deviceId);
+          if (guestToken) {
+            await bookingRepo.update(
+              { id: booking.id },
+              { guestFcmToken: guestToken },
+            );
+            this.logger.log(
+              `Attached guest FCM token to booking ${booking.id} via deviceId ${bookingData.deviceId}`,
+            );
+          }
+        }
+
         // Fetch the booking with related data for the response
         booking = await bookingRepo.findOne({
           where: { id: booking.id },
-          select: ['id', 'publicId', 'userId', 'workerId', 'serviceId', 'serviceRequestId', 'date', 'startTime', 'endTime', 'totalAmount', 'amount', 'status', 'isPaid', 'type', 'notes', 'location', 'guestFcmToken'],
+          select: ['id', 'publicId', 'userId', 'workerId', 'serviceId',
+            'serviceRequestId', 'date', 'startTime', 'endTime',
+            'totalAmount', 'amount', 'status', 'isPaid', 'type',
+            'notes', 'location', 'guestFcmToken',
+          ],
           relations: ['worker', 'worker.user', 'service', 'user'],
         });
       }
