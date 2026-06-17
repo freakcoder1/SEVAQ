@@ -110,6 +110,10 @@ class OtpNotifier extends StateNotifier<OtpState> {
       if (state.resendTimer <= 1) {
         timer.cancel();
         _resendTimer = null;
+        state = state.copyWith(
+          resendTimer: 0,
+          status: OtpStatus.expired,
+        );
       } else {
         state = state.copyWith(resendTimer: state.resendTimer - 1);
       }
