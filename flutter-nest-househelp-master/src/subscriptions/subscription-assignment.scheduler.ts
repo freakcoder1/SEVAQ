@@ -475,10 +475,11 @@ export class SubscriptionAssignmentScheduler {
       // ✅ PERMANENT FIX: Atomic idempotency check with pessimistic locking
       // =====================================================
       const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
+      
       try {
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        
         // Lock the subscription row to prevent concurrent processing
         const lockedSubscription = await queryRunner.manager
           .getRepository(Subscription)
@@ -507,164 +508,107 @@ export class SubscriptionAssignmentScheduler {
           this.logger.log(
             `✅ Idempotent: Subscription ${subscription.id} already has booking ${existingBooking.id}, skipping creation`,
           );
-          await queryRunner.commitTransaction();
           return { success: true, reason: 'Booking already exists' };
         }
 
         // ✅ SAFE: No booking exists. We hold an exclusive lock so no other process can create one.
-        // ✅ BUGFIX: KEEP LOCK HELD DURING BOOKING CREATION - DO NOT COMMIT HERE
 
-      } catch (lockError) {
-        await queryRunner.rollbackTransaction();
-        await queryRunner.release();
-        this.logger.warn(`Lock contention for subscription ${subscription.id}, will retry next run`);
-        return { success: false, reason: 'Lock contention, retry later' };
-      }
+        // Validate subscription has required data (moved inside transaction)
+        if (!subscription.userId) {
+          this.logger.error(`Subscription ${subscription.id} has no userId`);
+          return { success: false, reason: 'Subscription has no userId' };
+        }
 
-      // Validate subscription has required data
-      if (!subscription.userId) {
-        this.logger.error(`Subscription ${subscription.id} has no userId`);
-        return { success: false, reason: 'Subscription has no userId' };
-      }
-
-      if (!subscription.serviceProfile) {
-        this.logger.error(
-          `Subscription ${subscription.id} has no serviceProfile relation loaded`,
-        );
-        return {
-          success: false,
-          reason: 'Subscription has no serviceProfile relation',
-        };
-      }
-
-      // Get the service UUID from the service profile for finding workers
-      const serviceUuid = await this.getServiceUuidByProfile(subscription.serviceProfile);
-      
-      if (!serviceUuid) {
-        this.logger.error(`Failed to get service UUID for subscription ${subscription.id}`);
-        return { success: false, reason: 'Invalid service configuration' };
-      }
-      
-      // Convert service publicId (UUID) to internal service id (integer) for booking creation
-      const internalServiceId = await this.getInternalServiceIdByPublicId(serviceUuid);
-      if (!internalServiceId) {
-        this.logger.error(`Failed to convert service UUID to internal id for: ${serviceUuid}`);
-        return { success: false, reason: 'Invalid service configuration' };
-      }
-      // serviceUuid (string) is used for finding workers via workersService.findByService
-      // internalServiceId (number) is used for creating bookings
-      const serviceId = internalServiceId;
-
-      // Get user's location from subscription - prioritize subscription location,
-      // then user's preferred location, then user's regular location
-      const getUserLocation = (): { lat: number; lng: number } | null => {
-        // First check if subscription has a location set
-        if (subscription.location && subscription.location.lat && subscription.location.lng) {
-          this.logger.log(
-            `Using subscription location: lat=${subscription.location.lat}, lng=${subscription.location.lng}`,
+        if (!subscription.serviceProfile) {
+          this.logger.error(
+            `Subscription ${subscription.id} has no serviceProfile relation loaded`,
           );
-          return { lat: subscription.location.lat, lng: subscription.location.lng };
+          return {
+            success: false,
+            reason: 'Subscription has no serviceProfile relation',
+          };
         }
 
-        // Fall back to user's location if user relation is loaded
-        if (subscription.user) {
-          // Prefer preferredLat/preferredLng if available
-          if (subscription.user.preferredLat && subscription.user.preferredLng) {
-            this.logger.log(
-              `Using user's preferred location: lat=${subscription.user.preferredLat}, lng=${subscription.user.preferredLng}`,
-            );
-            return {
-              lat: parseFloat(subscription.user.preferredLat as unknown as string),
-              lng: parseFloat(subscription.user.preferredLng as unknown as string),
-            };
+        // Get the service UUID from the service profile for finding workers
+        const serviceUuid = await this.getServiceUuidByProfile(subscription.serviceProfile);
+        
+        if (!serviceUuid) {
+          this.logger.error(`Failed to get service UUID for subscription ${subscription.id}`);
+          return { success: false, reason: 'Invalid service configuration' };
+        }
+        
+        // Convert service publicId (UUID) to internal service id (integer) for booking creation
+        const internalServiceId = await this.getInternalServiceIdByPublicId(serviceUuid);
+        if (!internalServiceId) {
+          this.logger.error(`Failed to convert service UUID to internal id for: ${serviceUuid}`);
+          return { success: false, reason: 'Invalid service configuration' };
+        }
+        const serviceId = internalServiceId;
+
+        // Get user's location from subscription
+        const getUserLocation = (): { lat: number; lng: number } | null => {
+          if (subscription.location && subscription.location.lat && subscription.location.lng) {
+            return { lat: subscription.location.lat, lng: subscription.location.lng };
           }
-          // Fall back to regular latitude/longitude
-          if (subscription.user.latitude && subscription.user.longitude) {
-            this.logger.log(
-              `Using user's location: lat=${subscription.user.latitude}, lng=${subscription.user.longitude}`,
-            );
-            return {
-              lat: parseFloat(subscription.user.latitude as unknown as string),
-              lng: parseFloat(subscription.user.longitude as unknown as string),
-            };
+          if (subscription.user) {
+            if (subscription.user.preferredLat && subscription.user.preferredLng) {
+              return {
+                lat: parseFloat(subscription.user.preferredLat as unknown as string),
+                lng: parseFloat(subscription.user.preferredLng as unknown as string),
+              };
+            }
+            if (subscription.user.latitude && subscription.user.longitude) {
+              return {
+                lat: parseFloat(subscription.user.latitude as unknown as string),
+                lng: parseFloat(subscription.user.longitude as unknown as string),
+              };
+            }
           }
+          return null;
+        };
+
+        const location = getUserLocation();
+
+        if (!location) {
+          return { success: false, reason: 'No location found for user' };
         }
 
-        this.logger.warn(
-          `No location found for subscription ${subscription.id} - user may not have completed location setup`,
-        );
-        return null;
-      };
+        const nowIST = this.getNowInIST();
+        const startDate = new Date(subscription.startDate);
 
-      const location = getUserLocation();
-
-      if (!location) {
-        return { success: false, reason: 'No location found for user' };
-      }
-
-      // Check if the proposed time window has already passed for today
-      // If the subscription starts today and the time window is in the past, skip booking creation
-      const nowIST = this.getNowInIST();
-      const startDate = new Date(subscription.startDate);
-
-      this.logger.log(
-        `Assigning primary worker for subscription ${subscription.id} ` +
-          `(starts: ${startDate.toISOString()})`,
-      );
-
-      const proposedTime = this.getStartTimeForTimeWindow(
-        subscription.preferredTimeWindow,
-        startDate,
-      );
-
-      // Parse the proposed time
-      const [proposedHour] = proposedTime.split(':').map(Number);
-      const proposedDateTime = new Date(startDate);
-      proposedDateTime.setHours(proposedHour, 0, 0, 0);
-
-      // If the proposed time has already passed today, skip booking creation for today
-      // BUT still assign a worker so the frontend can show the worker's name
-      // The scheduler will create a booking for tomorrow
-      if (
-        proposedDateTime.getTime() < nowIST.getTime() &&
-        startDate.toDateString() === nowIST.toDateString()
-      ) {
         this.logger.log(
-          `Proposed start time ${proposedTime} is in the past (current: ${nowIST.toTimeString().slice(0, 5)}), skipping booking creation for today but still assigning worker`,
+          `Assigning primary worker for subscription ${subscription.id} ` +
+            `(starts: ${startDate.toISOString()})`,
         );
-        
-        // Even if we're skipping booking creation, we should still assign a worker
-        // to the subscription so the frontend can show the worker's name
-        // Use tomorrow's date for the booking if needed
-        const tomorrow = new Date(nowIST);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
+
+        // Create booking data
         const bookingData = {
           serviceId,
-          date: tomorrow.toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+          date: startDate.toISOString().split('T')[0],
           startTime: this.getStartTimeForTimeWindow(
             subscription.preferredTimeWindow,
-            tomorrow,
+            startDate,
           ),
           endTime: this.getEndTimeForTimeWindow(
             subscription.preferredTimeWindow,
-            tomorrow,
+            startDate,
           ),
           userId: subscription.userId,
           notes: `Initial booking for subscription ${subscription.id}`,
           type: 'subscription',
         };
 
-        // Create the booking for tomorrow
+        // Create the booking
         const booking = await this.bookingsService.create(bookingData);
 
         if (!booking || !booking.id) {
-          // If booking creation fails, try to assign worker directly anyway
-          const assignmentResult = await this.directlyAssignWorkerWithoutBooking(location, serviceUuid, subscription.id);
-          return assignmentResult;
+          this.logger.error(
+            `Failed to create booking for subscription ${subscription.id}`,
+          );
+          return { success: false, reason: 'Failed to create booking' };
         }
 
-        // Now assign a worker to this booking
+        // Now assign a worker to this booking directly without slot lookup
         const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
 
         if (assignmentResult.success) {
@@ -672,117 +616,41 @@ export class SubscriptionAssignmentScheduler {
             `Successfully assigned worker ${assignmentResult.worker?.id} ` +
               `for subscription ${subscription.id}`,
           );
-          // Update the subscription's assignedWorkerId so the frontend can show the worker's name
+          // Update the subscription's assignedWorkerId
           if (assignmentResult.worker && subscription.assignedWorkerId !== assignmentResult.worker.id) {
             subscription.assignedWorkerId = assignmentResult.worker.id;
             await this.subscriptionRepository.save(subscription);
-            this.logger.log(
-              `Updated subscription ${subscription.id} with assigned worker ${assignmentResult.worker.id}`,
-            );
+            subscription.workerAssignmentFailed = false;
+            await this.subscriptionRepository.save(subscription);
           }
-          // Reset workerAssignmentFailed since worker was successfully assigned
-          subscription.workerAssignmentFailed = false;
-          await this.subscriptionRepository.save(subscription);
-          
-          // Notification is already sent inside directlyAssignWorker(), no need to send again
         } else {
           this.logger.warn(
             `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
           );
-          // Set workerAssignmentFailed to true since worker assignment failed
           subscription.workerAssignmentFailed = true;
           await this.subscriptionRepository.save(subscription);
-        }
-
-        return assignmentResult;
-      }
-
-      // Create booking data
-      const bookingData = {
-        serviceId,
-        date: startDate.toISOString().split('T')[0], // Start date in YYYY-MM-DD format
-        startTime: this.getStartTimeForTimeWindow(
-          subscription.preferredTimeWindow,
-          startDate,
-        ),
-        endTime: this.getEndTimeForTimeWindow(
-          subscription.preferredTimeWindow,
-          startDate,
-        ),
-        userId: subscription.userId,
-        notes: `Initial booking for subscription ${subscription.id}`,
-        type: 'subscription',
-      };
-
-      // Create the booking
-      const booking = await this.bookingsService.create(bookingData);
-
-      if (!booking || !booking.id) {
-        this.logger.error(
-          `Failed to create booking for subscription ${subscription.id}`,
-        );
-        return { success: false, reason: 'Failed to create booking' };
-      }
-
-      try {
-        // Now assign a worker to this booking directly without slot lookup
-        // This skips the slot service which doesn't work properly for subscriptions
-        const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
-
-        if (assignmentResult.success) {
-          this.logger.log(
-            `Successfully assigned worker ${assignmentResult.worker?.id} ` +
-              `for subscription ${subscription.id}`,
-          );
-          // Update the subscription's assignedWorkerId so the frontend can show the worker's name
-          if (assignmentResult.worker && subscription.assignedWorkerId !== assignmentResult.worker.id) {
-            subscription.assignedWorkerId = assignmentResult.worker.id;
-            await this.subscriptionRepository.save(subscription);
-            this.logger.log(
-              `Updated subscription ${subscription.id} with assigned worker ${assignmentResult.worker.id}`,
-            );
-          }
-          
-          // ✅ BUGFIX: Update booking status to CONFIRMED so customer app stops showing "finding your match"
-          // Customer interface checks for BookingStatus not AssignmentState
-          if (assignmentResult.worker) {
-            await this.bookingRepository.update(booking.id, {
-              status: BookingStatus.CONFIRMED,
-              assignmentState: AssignmentState.ASSIGNED,
-              workerId: assignmentResult.worker.id,
-            });
-
-            // ✅ BUGFIX: Reload booking with FULL user relations (user, addresses)
-            // This ensures customer name and location are available in the worker app
-            await this.bookingRepository.findOne({
-              where: { id: booking.id },
-              relations: ['user', 'user.addresses', 'worker', 'service'],
-            });
-          }
-          
-          // Notification is already sent inside directlyAssignWorker(), no need to send again
-        } else {
-          this.logger.warn(
-            `Could not assign worker for subscription ${subscription.id}: ${assignmentResult.reason}`,
-          );
-          // ✅ PERMANENT FIX: Clean up orphaned booking when worker assignment fails
-          this.logger.log(`Cleaning up orphaned booking ${booking.id} for subscription ${subscription.id}`);
           await this.bookingsService.cancel(booking.id);
         }
 
         return assignmentResult;
-      } catch (assignmentError) {
-        this.logger.error(`Worker assignment failed, cleaning up booking ${booking.id}: ${assignmentError.message}`);
-        // Always clean up the booking if anything fails after creation
-        await this.bookingsService.cancel(booking.id);
-        throw assignmentError;
+      } catch (error) {
+        this.logger.error(
+          `Error assigning worker for subscription ${subscription.id}: ${error.message}`,
+        );
+        return { success: false, reason: error.message };
+      } finally {
+        // CRITICAL: Always commit and release the query runner
+        try {
+          await queryRunner.commitTransaction();
+        } catch (commitError) {
+          await queryRunner.rollbackTransaction().catch(() => {});
+          this.logger.error(`Transaction commit failed: ${commitError.message}`);
+        }
+        await queryRunner.release().catch(err => 
+          this.logger.error(`Query runner release failed: ${err.message}`)
+        );
+        this.logger.debug(`Released query runner for subscription ${subscription.id}`);
       }
-    } catch (error) {
-      this.logger.error(
-        `Error assigning worker for subscription ${subscription.id}: ${error.message}`,
-      );
-      return { success: false, reason: error.message };
-    }
   }
 
   /**
