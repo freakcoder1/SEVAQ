@@ -27,6 +27,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Heap dumps
+*.hprof
+
 # Flutter
 .dart_tool/
 .flutter-plugins
