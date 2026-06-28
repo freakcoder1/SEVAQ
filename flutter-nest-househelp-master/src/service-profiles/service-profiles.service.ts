@@ -205,8 +205,12 @@ export class ServiceProfilesService {
     });
   }
 
-  async getProfileById(id: number): Promise<ServiceProfile | null> {
-    return this.serviceProfileRepository.findOne({ where: { id } });
+  async getProfileById(id: number | string): Promise<ServiceProfile | null> {
+    // Support both numeric ID and UUID publicId
+    if (typeof id === 'string' && id.includes('-')) {
+      return this.getProfileByPublicId(id);
+    }
+    return this.serviceProfileRepository.findOne({ where: { id: Number(id) } });
   }
 
   async getProfileByPublicId(publicId: string): Promise<ServiceProfile | null> {

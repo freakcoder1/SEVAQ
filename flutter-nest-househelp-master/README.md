@@ -74,10 +74,12 @@ A comprehensive backend API for the SEVAQ house help platform, built with NestJS
 
 ## 🛠 Prerequisites
 
-- **Node.js**: v18+ (LTS recommended)
-- **npm**: v9+
+- **Node.js**: v20+ (required for Firebase packages)
+- **npm**: v10+
 - **PostgreSQL**: v13+
 - **Redis**: v7+ (optional, for caching)
+
+> **Note**: Node.js v20+ is required because `@firebase/util` and related packages have a minimum Node.js version requirement of 20.0.0.
 
 ## 🚀 Quick Start
 

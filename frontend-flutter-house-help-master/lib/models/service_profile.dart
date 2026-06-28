@@ -31,11 +31,25 @@ class ServiceProfile {
   });
 
   factory ServiceProfile.fromJson(Map<String, dynamic> json) {
+    String profileName = json['profileName'] as String? ?? '';
+    if (profileName.isEmpty) {
+      final monthlyPrice = json['monthlyPrice'];
+      if (monthlyPrice != null) {
+        final price = double.tryParse(monthlyPrice.toString()) ?? 0;
+        if (price <= 3500) {
+          profileName = 'BASIC';
+        } else if (price <= 6000) {
+          profileName = 'STANDARD';
+        } else {
+          profileName = 'EXTENDED';
+        }
+      }
+    }
     return ServiceProfile(
       id: _parseId(json['id']),
       publicId: json['publicId'] as String,
-      serviceType: json['serviceType'] as String,
-      profileName: json['profileName'] as String,
+      serviceType: json['serviceType'] as String? ?? '',
+      profileName: profileName,
       description: json['description'] as String? ?? '',
       scopeDefinition: json['scopeDefinition'] as String? ?? '',
       maxCapacityHint: json['maxCapacityHint'] as String? ?? '',
@@ -44,8 +58,8 @@ class ServiceProfile {
                 ? Map<String, dynamic>.from(json['internalRules'] as Map)
                 : <String, dynamic>{})
           : <String, dynamic>{},
-      monthlyPrice: double.parse(json['monthlyPrice'].toString()),
-      isActive: json['isActive'] as bool,
+      monthlyPrice: double.tryParse(json['monthlyPrice']?.toString() ?? '0') ?? 0.0,
+      isActive: json['isActive'] as bool? ?? true,
       visitPattern: json['visitPattern'] as String?,
       maxVisitsPerDay: json['maxVisitsPerDay'] as int?,
       defaultTimeWindows: json['defaultTimeWindows'] != null

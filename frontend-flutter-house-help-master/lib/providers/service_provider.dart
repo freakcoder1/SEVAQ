@@ -25,7 +25,10 @@ class ServiceProvider with ChangeNotifier {
     try {
       final response = await _apiService.get('services');
       if (response != null) {
-        _services = (response as List).map((i) => Service.fromJson(i)).toList();
+        final data = response is Map && response.containsKey('data')
+            ? response['data'] as List
+            : response as List;
+        _services = data.map((i) => Service.fromJson(i)).toList();
         notifyListeners();
       }
     } catch (e) {
@@ -50,7 +53,10 @@ class ServiceProvider with ChangeNotifier {
     try {
       final response = await _apiService.getAvailableServices(lat, lng, radius);
       if (response != null) {
-        _availableServices = (response as List)
+        final data = response is Map && response.containsKey('data')
+            ? response['data'] as List
+            : response as List;
+        _availableServices = data
             .map((i) => Service.fromJson(i))
             .toList();
         notifyListeners();

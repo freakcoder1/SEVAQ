@@ -15,7 +15,7 @@ export class ServiceProfilesController {
     private readonly serviceProfilesService: ServiceProfilesService,
   ) {}
 
-  @Get()
+@Get()
   async getProfilesByServiceType(
     @Query('serviceType') serviceType?: string,
   ): Promise<{ success: boolean; data: any[] }> {
@@ -42,7 +42,10 @@ export class ServiceProfilesController {
         data: serializedProfiles,
       };
     } catch (error) {
-      throw new HttpException('Invalid service type', HttpStatus.BAD_REQUEST);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException('Failed to load service profiles', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

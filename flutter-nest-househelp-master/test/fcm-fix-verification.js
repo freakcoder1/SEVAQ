@@ -14,7 +14,7 @@ const http = require('http');
 const https = require('https');
 
 // Configuration
-const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:45357';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const TEST_TIMEOUT_MS = 10000;
 
 // Color codes for console output
@@ -232,7 +232,7 @@ async function testDatabaseConnection() {
   logSection('Test 3: Database Connection Health');
   
   try {
-    // Try health endpoint if available
+    // Try the main health endpoint first (via app.controller.ts)
     let healthResponse;
     try {
       healthResponse = await makeRequest(`${BASE_URL}/api/health`);

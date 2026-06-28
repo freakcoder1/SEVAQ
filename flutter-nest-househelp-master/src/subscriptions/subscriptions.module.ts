@@ -11,6 +11,7 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionAssignmentScheduler } from './subscription-assignment.scheduler';
 import { OnDemandAssignmentScheduler } from './on-demand-assignment.scheduler';
+import { PricingService } from './pricing.service';
 import { ServiceProfilesModule } from '../service-profiles/service-profiles.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { UsersModule } from '../users/users.module';
@@ -20,7 +21,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Subscription, Booking, User, ServiceProfile, Service, Worker]),
+    TypeOrmModule.forFeature([
+      Subscription,
+      Booking,
+      User,
+      ServiceProfile,
+      Service,
+      Worker,
+    ]),
     ServiceProfilesModule,
     ServicesModule,
     WorkersModule,
@@ -31,14 +39,16 @@ import { NotificationsModule } from '../notifications/notifications.module';
   ],
   controllers: [SubscriptionsController],
   providers: [
-    SubscriptionsService, 
+    SubscriptionsService,
     SubscriptionAssignmentScheduler,
     OnDemandAssignmentScheduler,
+    PricingService,
   ],
   exports: [
     SubscriptionsService,
     SubscriptionAssignmentScheduler,
     OnDemandAssignmentScheduler,
+    PricingService,
   ],
 })
 export class SubscriptionsModule {}

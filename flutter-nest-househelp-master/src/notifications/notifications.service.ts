@@ -751,22 +751,13 @@ export class NotificationsService {
   }
 
   async findAllUserBookings(userPublicId: string): Promise<Booking[]> {
-    // First, find the user by their publicId to get the internal ID
-    const user = await this.usersRepository.findOne({
-      where: { publicId: userPublicId },
-    });
-
-    if (!user) {
-      return [];
-    }
-
     return this.bookingsRepository
       .createQueryBuilder('booking')
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.worker', 'worker')
       .leftJoinAndSelect('worker.user', 'workerUser')
       .leftJoinAndSelect('booking.service', 'service')
-      .where('booking.userId = :userId', { userId: user.id })
+      .where('booking.userId = :userId', { userId: userPublicId })
       .orderBy('booking.date', 'ASC')
       .addOrderBy('booking.startTime', 'ASC')
       .getMany();

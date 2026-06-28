@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, IsNull, Like, LessThan } from 'typeorm';
@@ -25,7 +25,7 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 // Mapping of serviceType to possible service names for database lookup
 // These are used as fallback names when dynamic lookup fails
 const SERVICE_TYPE_TO_NAMES: Record<ServiceType, string[]> = {
-  [ServiceType.COOK]: ['Cooking', 'Cook', 'Kitchen', 'Cooking Help'],
+  [ServiceType.COOK]: ['Cooking Service', 'Cooking', 'Cook', 'Kitchen', 'Cooking Help'],
   [ServiceType.CLEANING]: ['Home Cleaning', 'Cleaning', 'House Cleaning'],
   [ServiceType.MAID]: ['Maid Service', 'Maid', 'Housekeeping'],
 };
@@ -453,47 +453,46 @@ export class SubscriptionAssignmentScheduler {
   async assignWorkerForSubscription(
     subscription: Subscription,
   ): Promise<{ success: boolean; worker?: Worker; reason?: string }> {
-    try {
-      // ✅ FIX: Only apply notification cooldown IF WORKER WAS ACTUALLY FOUND
-      // For unassigned subscriptions, we ALWAYS retry - no cooldown block
-      if (subscription.assignedWorkerId !== null) {
-        // Only apply cooldown when worker is already assigned
-        const cooldownExpired = await this.hasNotificationCooldownExpired(subscription);
-        if (!cooldownExpired) {
-          this.logger.log(
-            `Skipping subscription ${subscription.id}: notification cooldown not expired (worker already assigned)`,
-          );
-          return { success: true, reason: 'Notification cooldown active' };
-        }
-      } else {
+    // ✅ FIX: Only apply notification cooldown IF WORKER WAS ACTUALLY FOUND
+    // For unassigned subscriptions, we ALWAYS retry - no cooldown block
+    if (subscription.assignedWorkerId !== null) {
+      // Only apply cooldown when worker is already assigned
+      const cooldownExpired = await this.hasNotificationCooldownExpired(subscription);
+      if (!cooldownExpired) {
         this.logger.log(
-          `Subscription ${subscription.id} has no assigned worker - skipping cooldown, will retry assignment`,
+          `Skipping subscription ${subscription.id}: notification cooldown not expired (worker already assigned)`,
         );
+        return { success: true, reason: 'Notification cooldown active' };
+      }
+    } else {
+      this.logger.log(
+        `Subscription ${subscription.id} has no assigned worker - skipping cooldown, will retry assignment`,
+      );
+    }
+
+    // =====================================================
+    // ✅ PERMANENT FIX: Atomic idempotency check with pessimistic locking
+    // =====================================================
+    const queryRunner = this.dataSource.createQueryRunner();
+    let shouldCommit = false;
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      // Lock the subscription row to prevent concurrent processing
+      const lockedSubscription = await queryRunner.manager
+        .getRepository(Subscription)
+        .createQueryBuilder('subscription')
+        .setLock('pessimistic_write')
+        .where('subscription.id = :id', { id: subscription.id })
+        .getOne();
+
+      if (!lockedSubscription) {
+        return { success: false, reason: 'Subscription no longer exists' };
       }
 
-      // =====================================================
-      // ✅ PERMANENT FIX: Atomic idempotency check with pessimistic locking
-      // =====================================================
-      const queryRunner = this.dataSource.createQueryRunner();
-      
-      try {
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        
-        // Lock the subscription row to prevent concurrent processing
-        const lockedSubscription = await queryRunner.manager
-          .getRepository(Subscription)
-          .createQueryBuilder('subscription')
-          .setLock('pessimistic_write')
-          .where('subscription.id = :id', { id: subscription.id })
-          .getOne();
-
-        if (!lockedSubscription) {
-          await queryRunner.rollbackTransaction();
-          return { success: false, reason: 'Subscription no longer exists' };
-        }
-
-        // Check for ANY existing booking for this subscription
+      // Check for ANY existing booking for this subscription
         const existingBooking = await queryRunner.manager
           .getRepository(Booking)
           .findOne({
@@ -508,6 +507,7 @@ export class SubscriptionAssignmentScheduler {
           this.logger.log(
             `✅ Idempotent: Subscription ${subscription.id} already has booking ${existingBooking.id}, skipping creation`,
           );
+          shouldCommit = false; // Idempotent - no changes made
           return { success: true, reason: 'Booking already exists' };
         }
 
@@ -610,6 +610,7 @@ export class SubscriptionAssignmentScheduler {
 
         // Now assign a worker to this booking directly without slot lookup
         const assignmentResult = await this.directlyAssignWorker(booking, location, serviceUuid);
+        shouldCommit = true; // Changes were made in transaction
 
         if (assignmentResult.success) {
           this.logger.log(
@@ -639,12 +640,13 @@ export class SubscriptionAssignmentScheduler {
         );
         return { success: false, reason: error.message };
       } finally {
-        // CRITICAL: Always commit and release the query runner
-        try {
-          await queryRunner.commitTransaction();
-        } catch (commitError) {
+        // CRITICAL: Always release the query runner
+        if (shouldCommit) {
+          await queryRunner.commitTransaction().catch(err => {
+            this.logger.error(`Transaction commit failed: ${err.message}`);
+          });
+        } else {
           await queryRunner.rollbackTransaction().catch(() => {});
-          this.logger.error(`Transaction commit failed: ${commitError.message}`);
         }
         await queryRunner.release().catch(err => 
           this.logger.error(`Query runner release failed: ${err.message}`)

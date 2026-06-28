@@ -197,7 +197,7 @@ export class SeedServices {
       },
       {
         publicId: '7f8e4b5c-a883-4c6c-b348-f966508fd49d',
-        name: 'Cooking',
+        name: 'Cooking Service',
         description: 'Home cooking service',
         basePrice: 1200,
         reassuranceText: 'Professional home cooked meals',

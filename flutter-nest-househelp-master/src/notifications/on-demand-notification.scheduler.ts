@@ -31,16 +31,16 @@ export class OnDemandNotificationScheduler {
     this.isRunning = true;
     this.logger.debug('Checking pending on-demand bookings for notifications...');
 
-    try {
-      // Find all on-demand bookings that are pending assignment and have not had notification sent
-      const pendingBookings = await this.bookingRepository.find({
-        where: {
-          type: BookingType.ON_DEMAND,
-          assignmentState: AssignmentState.PENDING,
-          notificationSent: false,
-        },
-        relations: ['worker', 'user'],
-      });
+try {
+       // Find all on-demand bookings that are pending assignment and have not had notification sent
+       const pendingBookings = await this.bookingRepository.find({
+         where: {
+           type: BookingType.ON_DEMAND,
+           assignmentState: AssignmentState.PENDING,
+           notificationSent: false,
+         },
+         relations: ['worker', 'worker.user'],
+       });
 
       if (pendingBookings.length === 0) {
         this.logger.debug('No pending on-demand bookings found');

@@ -58,7 +58,7 @@ export class Subscription {
   @Column('int')
   serviceProfileId: number;
 
-  @OneToOne(() => ServiceProfile)
+  @ManyToOne(() => ServiceProfile)
   @JoinColumn()
   serviceProfile: ServiceProfile;
 

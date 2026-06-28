@@ -2,20 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme.dart';
-
-class ServiceRecommendation {
-  final String serviceName;
-  final String eta;
-  final String zoneReliability;
-  final double price;
-
-  ServiceRecommendation({
-    required this.serviceName,
-    required this.eta,
-    required this.zoneReliability,
-    required this.price,
-  });
-}
+import '../components/primary_recommendation.dart';
 
 class AdaptiveBookingFlow extends StatefulWidget {
   final ServiceRecommendation recommendation;

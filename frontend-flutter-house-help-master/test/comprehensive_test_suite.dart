@@ -205,6 +205,7 @@ void main() {
           eta: "15-30 mins",
           zoneReliability: "High",
           onProceed: () {},
+          price: 500.0,
         );
 
         await tester.pumpWidget(
@@ -260,6 +261,7 @@ void main() {
           eta: "15-30 mins",
           zoneReliability: "High",
           onProceed: () {},
+          price: 500.0,
         );
 
         await tester.pumpWidget(
@@ -285,6 +287,7 @@ void main() {
           eta: "15-30 mins",
           zoneReliability: "High",
           onProceed: () {},
+          price: 500.0,
         );
 
         await tester.pumpWidget(
@@ -312,6 +315,7 @@ void main() {
           eta: "15-30 mins",
           zoneReliability: "High",
           onProceed: () {},
+          price: 500.0,
         );
 
         await tester.pumpWidget(

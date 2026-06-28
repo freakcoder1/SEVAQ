@@ -155,14 +155,43 @@ export class FcmHttpService {
     return this.accessToken as string;
   }
 
-  private getServiceAccount() {
+private getServiceAccount() {
+    // First try individual credentials (used when FIREBASE_SERVICE_ACCOUNT is not set)
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    // If we have individual credentials, use them
+    if (projectId && clientEmail && privateKey) {
+      this.logger.debug('Using individual Firebase credentials');
+      
+      // Clean private key - ensure proper PEM format
+      let key = privateKey;
+      while (key.includes('\\n')) {
+        key = key.replace(/\\n/g, '\n');
+      }
+      key = key.trim();
+      key = key.replace(/\r\n/g, '\n');
+      
+      if (!key.includes('-----BEGIN PRIVATE KEY-----')) {
+        key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+      }
+
+      return {
+        project_id: projectId,
+        client_email: clientEmail,
+        private_key: key,
+        token_uri: 'https://oauth2.googleapis.com/token',
+      };
+    }
+
+    // Fall back to service account JSON
     const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT || '';
     let serviceAccount;
     
     try {
       serviceAccount = JSON.parse(serviceAccountRaw);
     } catch (e) {
-      // Fallback: try to fix escaped newlines before parsing
       try {
         serviceAccount = JSON.parse(serviceAccountRaw.replace(/\\n/g, '\n'));
       } catch (e2: any) {
@@ -173,23 +202,18 @@ export class FcmHttpService {
 
     // Clean private key - ensure proper PEM format for RS256
     if (serviceAccount.private_key) {
-      // Handle any level of newline escaping
       let key = serviceAccount.private_key;
       while (key.includes('\\n')) {
         key = key.replace(/\\n/g, '\n');
       }
       
-      // Ensure the key starts and ends properly with correct line breaks
       key = key.trim();
-      
-      // Normalize line endings to just \n (Unix-style)
       key = key.replace(/\r\n/g, '\n');
       
-      // ONLY add BEGIN/END markers if they are NOT already present
       if (!key.includes('-----BEGIN PRIVATE KEY-----')) {
         key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
       }
-      
+
       serviceAccount.private_key = key;
     }
 

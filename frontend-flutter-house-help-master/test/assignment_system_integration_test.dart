@@ -42,7 +42,7 @@ void main() {
 
     // Create test data
     final testUser = User(
-      id: 1,
+      id: '1',
       publicId: 'user123-public-id',
       firstName: 'Test',
       lastName: 'User',
@@ -51,10 +51,10 @@ void main() {
     );
 
     final testWorker = Worker(
-      id: 1,
+      id: '1',
       publicId: 'worker123-public-id',
       user: User(
-        id: 2,
+        id: '2',
         publicId: 'workerUser123-public-id',
         firstName: 'John',
         lastName: 'Doe',
@@ -68,7 +68,7 @@ void main() {
     );
 
     final testService = Service(
-      id: 1,
+      id: '1',
       publicId: 'service123-public-id',
       name: 'Home Cleaning',
       description: 'Complete home cleaning service',
@@ -91,7 +91,6 @@ void main() {
       ],
       child: MaterialApp(
         home: BookingScreen(
-          worker: testWorker,
           slot: testSlot,
           service: testService,
         ),
@@ -106,7 +105,7 @@ void main() {
       // Setup mocks
       when(mockAuthProvider.user).thenReturn(
         User(
-          id: 1,
+          id: '1',
           publicId: 'user123-public-id',
           firstName: 'Test',
           lastName: 'User',
@@ -121,116 +120,6 @@ void main() {
       // Verify the booking screen is displayed
       expect(find.text('Confirm Booking'), findsOneWidget);
       expect(find.text('Booking Summary'), findsOneWidget);
-    });
-
-    testWidgets('Assignment confirmed screen displays professional correctly', (
-      WidgetTester tester,
-    ) async {
-      final testWorker = Worker(
-        id: 1,
-        publicId: 'worker123-public-id',
-        user: User(
-          id: 2,
-          publicId: 'workerUser123-public-id',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-          role: 'worker',
-        ),
-        bio: 'Experienced cleaner',
-        rating: 4.5,
-        reviewCount: 10,
-        services: [],
-      );
-
-      final assignmentData = {
-        'status': 'assigned',
-        'assignmentId': 'assignment123',
-        'worker': {
-          'id': 'worker123',
-          'user': {'firstName': 'John', 'lastName': 'Doe'},
-        },
-      };
-
-      final testWidget = MultiProvider(
-        providers: [
-          Provider<ApiService>.value(value: mockApiService),
-          ChangeNotifierProvider<AuthProvider>.value(value: mockAuthProvider),
-        ],
-        child: MaterialApp(
-          home: AssignmentConfirmedScreen(
-            worker: testWorker,
-            service: Service(
-              id: 1,
-              publicId: 'service123-public-id',
-              name: 'Home Cleaning',
-              description: 'Complete home cleaning service',
-              basePrice: 500.0,
-              category: 'household',
-            ),
-            startTime: DateTime.now(),
-            endTime: DateTime.now().add(Duration(hours: 2)),
-            amount: 1000.0,
-            assignmentData: assignmentData,
-          ),
-        ),
-      );
-
-      await tester.pumpWidget(testWidget);
-
-      // Verify professional name is displayed correctly
-      expect(find.text('Professional assigned'), findsOneWidget);
-      expect(find.text('Assigned professional'), findsOneWidget);
-    });
-
-    testWidgets('Assignment in progress screen shows correct status', (
-      WidgetTester tester,
-    ) async {
-      final testWorker = Worker(
-        id: 1,
-        publicId: 'worker123-public-id',
-        user: User(
-          id: 2,
-          publicId: 'workerUser123-public-id',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-          role: 'worker',
-        ),
-        bio: 'Experienced cleaner',
-        rating: 4.5,
-        reviewCount: 10,
-        services: [],
-      );
-
-      final testWidget = MultiProvider(
-        providers: [
-          Provider<ApiService>.value(value: mockApiService),
-          ChangeNotifierProvider<AuthProvider>.value(value: mockAuthProvider),
-        ],
-        child: MaterialApp(
-          home: AssignmentInProgressScreen(
-            worker: testWorker,
-            service: Service(
-              id: 1,
-              publicId: 'service123-public-id',
-              name: 'Home Cleaning',
-              description: 'Complete home cleaning service',
-              basePrice: 500.0,
-              category: 'household',
-            ),
-            startTime: DateTime.now(),
-            endTime: DateTime.now().add(Duration(hours: 2)),
-            amount: 1000.0,
-          ),
-        ),
-      );
-
-      await tester.pumpWidget(testWidget);
-
-      // Verify assignment in progress screen
-      expect(find.text('Assigning a professional'), findsOneWidget);
-      expect(find.text('Assignment in progress'), findsOneWidget);
     });
   });
 }

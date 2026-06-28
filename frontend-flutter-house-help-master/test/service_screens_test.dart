@@ -24,10 +24,10 @@ void main() {
   group('Service Screens', () {
     // Create test data
     final testWorker = Worker(
-      id: 1,
+      id: '1',
       publicId: 'test-worker-1',
       user: User(
-        id: 1,
+        id: '1',
         publicId: 'test-user-1',
         email: 'test@example.com',
         firstName: 'John',

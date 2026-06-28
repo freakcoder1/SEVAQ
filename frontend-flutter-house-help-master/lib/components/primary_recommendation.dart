@@ -8,12 +8,14 @@ class ServiceRecommendation {
   final String eta;
   final String zoneReliability;
   final VoidCallback onProceed;
+  final double price;
 
   ServiceRecommendation({
     required this.serviceName,
     required this.eta,
     required this.zoneReliability,
     required this.onProceed,
+    this.price = 500.0,
   });
 }
 

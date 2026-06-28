@@ -29,6 +29,7 @@ import { ServiceProfilesModule } from './service-profiles/service-profiles.modul
 import { AdminModule } from './admin/admin.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { PricingModule } from './pricing/pricing.module';
 import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
 import { Worker } from './workers/entities/worker.entity';
@@ -224,6 +225,7 @@ import { ObservabilityService } from './common/services/observability.service';
     SupportModule,
     SystemConfigModule,
     AddressesModule,
+    PricingModule,
     // DatabaseModule,
   ],
   controllers: [AppController],

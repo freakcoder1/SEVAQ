@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToOne,
+  BeforeInsert,
   VersionColumn,
 } from 'typeorm';
 import { Expose, Type } from 'class-transformer';
@@ -18,6 +19,7 @@ import { Slot } from '../../slots/entities/slot.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 import { ServiceRequest } from '../../service-requests/entities/service-request.entity';
 import { Subscription } from '../../subscriptions/entities/subscription.entity';
+import { randomUUID } from 'crypto';
 
 export class LocationData {
   @Expose()
@@ -75,11 +77,21 @@ export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column('uuid', { unique: true, nullable: false })
+  publicId: string;
+
+  @BeforeInsert()
+  generatePublicId() {
+    if (!this.publicId) {
+      this.publicId = randomUUID();
+    }
+  }
+
   @Column({ name: 'userId', type: 'uuid' })
   userId: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'publicId' })
   user: User;
 
   @ManyToOne(() => Worker, { nullable: true })
@@ -119,7 +131,7 @@ export class Booking {
   @Column({ type: 'time' })
   startTime: string;
 
-  @Column({ type: 'time' })
+  @Column({ type: 'time', default: () => "'00:00:00'" })
   endTime: string;
 
   @Column({

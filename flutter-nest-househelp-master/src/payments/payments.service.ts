@@ -7,20 +7,34 @@ import { BookingsService } from '../bookings/bookings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/entities/user.entity';
-import Razorpay = require('razorpay');
+import { Service } from '../services/entities/service.entity';
+import { ServiceProfile } from '../service-profiles/entities/service-profile.entity';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+
+const testMode = process.env.RAZORPAY_TEST_MODE === 'true' || process.env.NODE_ENV === 'development';
+
+// Conditional Razorpay import - skip in test mode
+let Razorpay: any;
+if (!testMode) {
+  Razorpay = require('razorpay');
+}
 
 @Injectable()
 export class PaymentsService {
   private razorpay: any;
   private readonly logger = new Logger(PaymentsService.name);
+  private readonly isTestMode = testMode;
 
   constructor(
     @InjectRepository(Payment)
     private paymentsRepository: Repository<Payment>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Service)
+    private servicesRepository: Repository<Service>,
+    @InjectRepository(ServiceProfile)
+    private serviceProfilesRepository: Repository<ServiceProfile>,
     private configService: ConfigService,
     private bookingsService: BookingsService,
     private subscriptionsService: SubscriptionsService,
@@ -30,15 +44,18 @@ export class PaymentsService {
     const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
     const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
 
-    if (!keyId || !keySecret) {
+    if (this.isTestMode) {
+      this.logger.warn('⚠️ Running in TEST MODE - Razorpay calls will be mocked');
+      this.razorpay = null; // No Razorpay instance needed in test mode
+    } else if (!keyId || !keySecret) {
       this.logger.error('Razorpay credentials not configured');
       throw new Error('Payment gateway not properly configured');
+    } else {
+      this.razorpay = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret,
+      });
     }
-
-    this.razorpay = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
   }
 
   private serializeBooking(booking: any): any {
@@ -113,6 +130,19 @@ export class PaymentsService {
   }
 
   async createOrder(amount: number, currency: string = 'INR') {
+    // In test mode, return mock order
+    if (this.isTestMode) {
+      this.logger.warn('⚠️ Creating mock order (test mode)');
+      return {
+        id: 'mock_order_' + Date.now(),
+        entity: 'order',
+        amount: amount,
+        currency,
+        status: 'created',
+        created_at: Date.now(),
+      };
+    }
+    
     // Amount is already in paise from frontend, don't multiply again
     const options = {
       amount: amount, // Razorpay expects amount in paise
@@ -129,6 +159,12 @@ export class PaymentsService {
     razorpayPaymentId: string,
     signature: string,
   ): Promise<boolean> {
+    // In test mode, always return true
+    if (this.isTestMode) {
+      this.logger.warn('⚠️ Skipping payment verification (test mode)');
+      return true;
+    }
+    
     const secret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
     if (!secret) {
       throw new Error('Payment verification configuration error');
@@ -321,7 +357,7 @@ export class PaymentsService {
                 where: { publicId: userIdStr },
               });
               if (user) {
-                validBookingData.userId = user.id;
+                validBookingData.userId = user.publicId; // Booking.userId is UUID type
               } else {
                 this.logger.warn(`User not found for publicId: ${userIdStr}`);
                 validBookingData.userId = bookingData.userId;
@@ -332,37 +368,59 @@ export class PaymentsService {
           }
           if (bookingData.workerId)
             validBookingData.workerId = bookingData.workerId;
-          if (bookingData.serviceId)
-            validBookingData.serviceId = bookingData.serviceId;
-          if (bookingData.startTime)
-            validBookingData.startTime = this.convertToTimeString(bookingData.startTime);
-          if (bookingData.endTime)
-            validBookingData.endTime = this.convertToTimeString(bookingData.endTime);
-          if (bookingData.date) {
-            validBookingData.date = this.convertToDateString(bookingData.date);
-          } else if (bookingData.startTime) {
-            // Extract date from startTime datetime string
-            validBookingData.date = this.convertToDateString(bookingData.startTime);
+if (bookingData.serviceId) {
+            // Handle serviceId - convert UUID to numeric ID if needed
+            const serviceIdStr = String(bookingData.serviceId);
+            if (serviceIdStr.includes('-')) {
+              // It's a UUID (publicId), find the internal service ID
+              const service = await this.servicesRepository.findOne({
+                where: { publicId: serviceIdStr },
+              });
+              if (service) {
+                validBookingData.serviceId = service.id; // Booking.serviceId is numeric type
+              } else {
+                this.logger.warn(`Service not found for publicId: ${serviceIdStr}`);
+              }
+            } else {
+              validBookingData.serviceId = bookingData.serviceId;
+            }
           }
-          // Handle amount - FIX: The amount from payment verification is in paise, convert to rupees
-          // bookingData.amount comes from Razorpay which uses paise (1200 rupees = 120000 paise)
-          if (bookingData.amount !== undefined) {
-            const amountValue = Number(bookingData.amount) / 100; // Convert from paise to rupees
-            this.logger.debug(`bookingData.amount = ${bookingData.amount} -> converted to ${amountValue}`);
-            validBookingData.totalAmount = amountValue;
-            validBookingData.amount = amountValue;
-          }
-          // Get date from startTime if available (extracted from service request)
-          if (bookingData.startTime && !validBookingData.date) {
-            validBookingData.date = this.convertToDateString(bookingData.startTime);
-          }
-          if (bookingData.notes) validBookingData.notes = bookingData.notes;
-          if (bookingData.type) validBookingData.type = bookingData.type;
-          if (bookingData.metadata)
-            validBookingData.metadata = bookingData.metadata;
-          if (bookingData.location)
-            validBookingData.location = bookingData.location;
-        }
+           if (bookingData.startTime)
+             validBookingData.startTime = this.convertToTimeString(bookingData.startTime);
+           if (bookingData.endTime)
+             validBookingData.endTime = this.convertToTimeString(bookingData.endTime);
+           if (bookingData.date) {
+             validBookingData.date = this.convertToDateString(bookingData.date);
+           } else if (bookingData.startTime) {
+             // Extract date from startTime datetime string
+             validBookingData.date = this.convertToDateString(bookingData.startTime);
+           }
+           // Default startTime if not provided (required field)
+           if (!validBookingData.startTime) {
+             validBookingData.startTime = '10:00:00';
+           }
+           if (!validBookingData.endTime) {
+             validBookingData.endTime = '11:00:00';
+           }
+           // Handle amount - FIX: The amount from payment verification is in paise, convert to rupees
+           // bookingData.amount comes from Razorpay which uses paise (1200 rupees = 120000 paise)
+           if (bookingData.amount !== undefined) {
+             const amountValue = Number(bookingData.amount) / 100; // Convert from paise to rupees
+             this.logger.debug(`bookingData.amount = ${bookingData.amount} -> converted to ${amountValue}`);
+             validBookingData.totalAmount = amountValue;
+             validBookingData.amount = amountValue;
+           }
+           // Get date from startTime if available (extracted from service request)
+           if (bookingData.startTime && !validBookingData.date) {
+             validBookingData.date = this.convertToDateString(bookingData.startTime);
+           }
+           if (bookingData.notes) validBookingData.notes = bookingData.notes;
+           if (bookingData.type) validBookingData.type = bookingData.type;
+           if (bookingData.metadata)
+             validBookingData.metadata = bookingData.metadata;
+           if (bookingData.location)
+             validBookingData.location = bookingData.location;
+         }
 
         // Create booking using queryRunner for transaction
         const bookingRepo = queryRunner.manager.getRepository('Booking');
@@ -451,7 +509,7 @@ export class PaymentsService {
         try {
           // Load user with fcm token
           const user = await this.usersRepository.findOne({
-            where: { id: booking.userId }
+            where: { publicId: booking.userId }
           });
           
           this.logger.debug(`Found user = ${user ? user.id : 'NULL'}, fcmToken exists: ${!!user?.fcmToken}`);
@@ -544,10 +602,28 @@ export class PaymentsService {
         // Import SubscriptionStatus from subscriptions module
         const { SubscriptionStatus } = await import('../subscriptions/entities/subscription.entity');
         
-        const newSubscription = subscriptionRepo.create({
+        const newSubscriptionData: any = {};
+          // Handle serviceProfileId - convert UUID to numeric ID if needed
+          if (subscriptionData.serviceProfileId) {
+            const spIdStr = String(subscriptionData.serviceProfileId);
+            if (spIdStr.includes('-')) {
+              const sp = await this.serviceProfilesRepository.findOne({
+                where: { publicId: spIdStr },
+              });
+              if (sp) {
+                newSubscriptionData.serviceProfileId = sp.id;
+              } else {
+                this.logger.warn(`ServiceProfile not found for publicId: ${spIdStr}`);
+              }
+            } else {
+              newSubscriptionData.serviceProfileId = subscriptionData.serviceProfileId;
+            }
+          }
+          
+          const newSubscription = subscriptionRepo.create({
           publicId: uuidv4(), // Generate unique publicId
-          userId: subscriptionData.userId,
-          serviceProfileId: subscriptionData.serviceProfileId,
+           ...newSubscriptionData,
+           userId: subscriptionData.userId,
           preferredTimeWindow: subscriptionData.preferredTimeWindow,
           startDate: new Date(subscriptionData.startDate),
           location: subscriptionData.location,
@@ -572,7 +648,7 @@ export class PaymentsService {
       });
       await paymentRepo.save(payment);
 
-      // Commit transaction
+// Commit transaction
       await queryRunner.commitTransaction();
 
       this.logger.log(
@@ -586,64 +662,57 @@ export class PaymentsService {
         await assignmentQueryRunner.connect();
         
         // Find the first booking for this subscription
-        // CRITICAL FIX: subscription.userId is UUID, but booking.userId is INTEGER
-        // We must look up the user's internal ID from their public UUID
-        const userRepo = assignmentQueryRunner.manager.getRepository('user');
-        const user = await userRepo.findOne({
-          where: { publicId: subscription.userId },
+        // CRITICAL FIX: subscription.userId is UUID, but we need to query by it
+        const bookingsRepo = assignmentQueryRunner.manager.getRepository('booking');
+        const startDate = new Date(subscriptionData.startDate);
+        const firstBooking = await bookingsRepo.findOne({
+          where: { 
+            userId: subscription.userId,  // ✅ Using UUID directly, Booking.userId is UUID type
+            date: startDate,
+          },
+          order: { id: 'ASC' },
         });
         
-        if (!user) {
-          this.logger.warn(`User not found for publicId: ${subscription.userId} - cannot assign worker`);
-          await assignmentQueryRunner.release();
+        await assignmentQueryRunner.release();
+        
+        if (firstBooking && firstBooking.id) {
+          this.logger.log(
+            `Triggering immediate assignment for subscription ${subscription.id}, booking ${firstBooking.id}`,
+          );
+          // Assignment service was removed - assignments will be handled by the standard scheduler
+          this.logger.log(
+            `Immediate assignment skipped for subscription ${subscription.id} - will be processed by standard assignment scheduler`,
+          );
         } else {
-          const bookingsRepo = assignmentQueryRunner.manager.getRepository('booking');
-          const startDate = new Date(subscriptionData.startDate);
-          const firstBooking = await bookingsRepo.findOne({
-            where: { 
-              userId: user.id,  // ✅ Using INTEGER internal ID
-              date: startDate,
-            },
-            order: { id: 'ASC' },
-          });
-          
-          await assignmentQueryRunner.release();
-          
-          if (firstBooking && firstBooking.id) {
-            this.logger.log(
-              `Triggering immediate assignment for subscription ${subscription.id}, booking ${firstBooking.id}`,
-            );
-            // Assignment service was removed - assignments will be handled by the standard scheduler
-            this.logger.log(
-              `Immediate assignment skipped for subscription ${subscription.id} - will be processed by standard assignment scheduler`,
-            );
-          } else {
-            this.logger.warn(
-              `No booking found for subscription ${subscription.id} for immediate assignment`,
-            );
-          }
+          this.logger.warn(
+            `No booking found for subscription ${subscription.id} for immediate assignment`,
+          );
         }
-      } catch (assignmentError) {
+      } catch (assignmentError: unknown) {
         this.logger.error(
-          `Failed to trigger immediate assignment for subscription ${subscription.id}: ${assignmentError.message}`,
-          assignmentError.stack,
+          `Failed to trigger immediate assignment for subscription ${subscription.id}: ${assignmentError instanceof Error ? assignmentError.message : String(assignmentError)}`,
+          assignmentError instanceof Error ? assignmentError.stack : undefined,
         );
         // Don't throw - subscription creation already succeeded
       }
 
       return subscription;
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback transaction on error
       await queryRunner.rollbackTransaction();
       this.logger.error(
-        `Subscription payment transaction failed: ${error.message}`,
-        error.stack,
+        `Subscription payment transaction failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
       );
       throw new Error(
-        `Subscription payment processing failed: ${error.message}`,
+        `Subscription payment processing failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       await queryRunner.release();
     }
   }
 }
+
+
+
+

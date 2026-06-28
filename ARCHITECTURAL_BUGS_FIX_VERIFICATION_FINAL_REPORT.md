@@ -65,13 +65,15 @@
 
 ## 🚀 System Health
 
-✅ Application running on: http://0.0.0.0:45357/api
+✅ Application running on: http://0.0.0.0:3000/api
 ✅ Subscription Assignment Scheduler: running every 10 minutes
 ✅ On-Demand Assignment Scheduler: running every 2 minutes
 ✅ Notifications Scheduler: active
 ✅ Pre-service reminders: active
 ✅ Database seeding: completed successfully
 ✅ All API endpoints: mapped correctly
+✅ **FCM Notifications: working with individual credentials**
+✅ **Booking creation with UUID publicId: verified**
 
 ---
 
